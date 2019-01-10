@@ -1,0 +1,86 @@
+{% extends "layout.html.jinja2" %}
+
+{% block css %}
+    <style>
+        .power_on {
+            background-color: green;
+        }
+        .power_off {
+            background-color: red;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <table class="table table-bordered table-sm">
+        <thead>
+            <tr>
+                <th>port</th>
+                <th>state</th>
+                <th>time_range</th>
+                <th>priority</th>
+                <th>delay_power_detect</th>
+                <th>legacy_pd</th>
+                <th>power_limit</th>
+                <th>power</th>
+                <th>voltage</th>
+                <th>current</th>
+                <th>classification</th>
+                <th>status</th>
+                <th>actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for port_status in ports_status %}
+            <tr id="row_port_{{ port_status.port }}">
+                <td id="row_port_{{ port_status.port }}_port">{{ port_status.port }}</td>
+                <td id="row_port_{{ port_status.port }}_state">{{ port_status.state }}</td>
+                <td id="row_port_{{ port_status.port }}_time_range">{{ port_status.time_range }}</td>
+                <td id="row_port_{{ port_status.port }}_priority">{{ port_status.priority }}</td>
+                <td id="row_port_{{ port_status.port }}_delay_power_detect">{{ port_status.delay_power_detect }}</td>
+                <td id="row_port_{{ port_status.port }}_legacy_pd">{{ port_status.legacy_pd }}</td>
+                <td id="row_port_{{ port_status.port }}_power_limit">{{ port_status.power_limit }}</td>
+                <td id="row_port_{{ port_status.port }}_power">{{ port_status.power }}</td>
+                {% if port_status.voltage == "POWER ON" %}
+                <td id="row_port_{{ port_status.port }}_voltage" class="power_on">{{ port_status.voltage }}</td>
+                {% else %}
+                <td id="row_port_{{ port_status.port }}_voltage" class="power_off">{{ port_status.voltage }}</td>
+                {% endif %}
+                <td id="row_port_{{ port_status.port }}_current">{{ port_status.current }}</td>
+                <td id="row_port_{{ port_status.port }}_classification">{{ port_status.classification }}</td>
+                <td id="row_port_{{ port_status.port }}_status">{{ port_status.status }}</td>
+                <td><a href="{{ url_for("switch_api.turn_on", port=port_status.port) }}" class="btn btn-success">ON</a> <a href="{{ url_for("switch_api.turn_off", port=port_status.port) }}" class="btn btn-danger">OFF</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        setInterval(function(){
+            $.ajax({
+               url : '{{ url_for("switch_api.get_updated_port_data") }}',
+               type : 'GET',
+               dataType: "json",
+               success : function(data){
+                   $.each(data, function( key, value ) {
+                       console.log(value);
+                       let port_id = value["port"];
+                       $.each(value, function( key_port, value_port ) {
+                           let element_id = "#row_port_"+port_id+"_"+key_port;
+                           let element = $(element_id);
+                           element.html(value_port);
+
+                           if (key_port == "voltage") {
+                               if (value_port == "POWER ON") {
+                                   element.attr('class', 'power_on');
+                               } else {
+                                   element.attr('class', 'power_off');
+                               }
+                           }
+                       });
+                   });
+               }
+            });
+        }, 10000);
+    </script>
+{% endblock %}

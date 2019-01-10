@@ -1,0 +1,11 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+    <main role="main" class="container">
+        <h1 class="mt-5">Congratulations!</h1>
+        <p class="lead">Your email has been confirmed, we are going to setup your account. It may be ready with 5
+            minutes.</p>
+        <p>You can try to <a href="{{ url_for("login.login") }}">login</a> or go back to the <a href="{{ url_for("app.home") }}">home
+            page</a>.</p>
+    </main>
+{% endblock %}

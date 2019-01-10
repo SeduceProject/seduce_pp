@@ -1,0 +1,52 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+    <main role="main" class="container">
+      <div class="my-3 p-3 bg-white rounded shadow-sm">
+        <h6 class="border-bottom border-gray pb-2 mb-0">Please provide the following information</h6>
+        <br/>
+        <form action="{{ url_for("app.process_take", server_id=server_id) }}" method="post">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="firstName">Duration (hour)</label>
+                <input type="text" class="form-control" id="duration" name="duration" placeholder="" value="1" required>
+                <div class="invalid-feedback">
+                  Valid duration is required.
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="lastName">Last name</label>
+                <select class="custom-select d-block w-100" id="environment" name="environment" required>
+                    {% for environment in environments %}
+                    <option value="{{ environment.name }}">{{ environment.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="invalid-feedback">
+                  Valid environment is required.
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="firstName">Name (optional)</label>
+                <input class="form-control" id="name" name="name" type="text"></input>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="firstName">SSH Public key</label>
+                <textarea class="form-control" rows="5" id="public_key" name="public_key"></textarea>
+                <div class="invalid-feedback">
+                  A valid public key is required.
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <input class="btn btn-primary float-right" type="submit" value="submit"/>
+              </div>
+            </div>
+        </form>
+      </div>
+    </main>
+{% endblock %}

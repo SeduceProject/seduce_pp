@@ -1,0 +1,10 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+    <main role="main" class="container">
+        <h1 class="mt-5">Congratulations!</h1>
+        <p class="lead">Your account creation request has been processed and you should receive soon an email with a
+            confirmation link. Once your email has been confirmed, we will proceed with the creation of your account.
+        <p>You can go back to the <a href="{{ url_for("app.home") }}">home page</a>.</p>
+    </main>
+{% endblock %}
