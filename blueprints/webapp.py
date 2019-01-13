@@ -83,3 +83,9 @@ def home():
     deployment_ids = [d.server_id for d in Deployment.query.filter(Deployment.state != "destroyed").all()]
     available_servers = [s for s in CLUSTER_CONFIG["nodes"] if s.get("id") not in deployment_ids]
     return flask.render_template("homepage.html.jinja2", available_servers=available_servers, user_deployments=user_deployments)
+
+
+@webapp_blueprint.route("/new_home")
+@flask_login.login_required
+def new_home():
+    return flask.render_template("homepage_vuejs.html.jinja2")
