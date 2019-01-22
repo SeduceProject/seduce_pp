@@ -66,9 +66,9 @@ def ask_destruction(deployment_id):
     return flask.redirect(flask.url_for("app.home"))
 
 
-@webapp_blueprint.route("/")
+@webapp_blueprint.route("/old_home")
 @flask_login.login_required
-def home():
+def old_home():
     from lib.config.cluster_config import CLUSTER_CONFIG
     from database import Deployment, User
 
@@ -85,7 +85,7 @@ def home():
     return flask.render_template("homepage.html.jinja2", available_servers=available_servers, user_deployments=user_deployments)
 
 
-@webapp_blueprint.route("/new_home")
+@webapp_blueprint.route("/")
 @flask_login.login_required
-def new_home():
+def home():
     return flask.render_template("homepage_vuejs.html.jinja2")
