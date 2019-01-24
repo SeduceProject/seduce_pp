@@ -1,0 +1,118 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+
+    <style>
+        .status-badge {
+            width: 50px;
+            height: 50px;
+        }
+    </style>
+
+    <div id="app" v-cloak>
+
+        <main role="main" class="container">
+
+            <div class="my-3 p-3 bg-white rounded shadow-sm">
+                <h6 class="border-bottom border-gray pb-2 mb-0">Deployments</h6>
+
+                <div v-for="deployment in user_deployments" class="media text-muted pt-3">
+
+                    <svg height="40" width="40">
+                        <circle cx="20" cy="20" r="12" fill="rgb(255,153,0)" v-if="[[ deployment.state ]] != 'deployed'"/>
+                        <circle cx="20" cy="20" r="12" fill="rgb(76,175,80)" v-if="[[ deployment.state ]] == 'deployed'"/>
+                    </svg>
+
+                    <div class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <strong class="text-gray-dark">[[ deployment.server.name ]]</strong>
+                            <a :href="'/deployment/destroy/' + deployment.id">Free</a>
+                        </div>
+                        <span class="d-block">[[ deployment.server.ip ]]</span>
+                        <span class="d-block">state: <span>[[ deployment.state ]]</span></span>
+                        <span class="d-block" v-if="[[ deployment.state ]] == 'environment_deploying'">progress: <i>[[ deployment.label ]]</i></span>
+                    </div>
+                </div>
+
+                <small class="d-block text-right mt-3">
+                    <a href="#">All servers</a>
+                </small>
+            </div>
+        </main>
+
+        <main role="main" class="container">
+
+            <div class="my-3 p-3 bg-white rounded shadow-sm">
+                <h6 class="border-bottom border-gray pb-2 mb-0">Available servers</h6>
+
+                <div v-for="server in available_servers" class="result">
+                    <div class="media text-muted pt-3">
+                        <img data-src="holder.js/32x32?theme=thumb&bg=007bff&fg=007bff&size=1" alt="" class="mr-2 rounded">
+                        <div class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray">
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <strong class="text-gray-dark">[[ server.name ]]</strong>
+                                <a :href="'/server/take/' + server.id">Take</a>
+                            </div>
+                            <span class="d-block">[[ server.ip ]]</span>
+                        </div>
+                    </div>
+                </div>
+
+                <small class="d-block text-right mt-3">
+                    <a href="#">All servers</a>
+                </small>
+            </div>
+        </main>
+
+    </div>
+
+    <script src="https://unpkg.com/vue"></script>
+    <script src="app.js"></script>
+
+    <script>
+    Vue.filter('formatDate', function(d) {
+        if(!window.Intl) return d;
+        return new Intl.DateTimeFormat('en-US').format(new Date(d));
+    });
+
+    const app = new Vue({
+        el:'#app',
+        data:{
+            term:'',
+            available_servers: [],
+            user_deployments: [],
+            noResults: false,
+            loading: true
+        },
+        methods:{
+            fetch_available_servers: function() {
+                fetch("{{ url_for("app_api.available_servers") }}")
+                .then(res => res.json())
+                .then(res => {
+                    this.available_servers = res.servers;
+                });
+            },
+            fetch_user_deployments: function() {
+                fetch("{{ url_for("app_api.user_deployments") }}")
+                .then(res => res.json())
+                .then(res => {
+                    this.user_deployments = res.deployments;
+                });
+            },
+            reload_all_data: function() {
+                this.fetch_available_servers();
+                this.fetch_user_deployments();
+                this.loading = false;
+            }
+        },
+        beforeMount: function() {
+            this.reload_all_data();
+            this.loading = true;
+            setInterval(function () {
+              this.reload_all_data();
+            }.bind(this), 5000);
+        },
+        delimiters: ['[[',']]']
+    });
+    </script>
+{% endblock %}
