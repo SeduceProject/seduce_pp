@@ -10,13 +10,8 @@ import time
 import paramiko
 from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
 import socket
+from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
 
-
-NFS_BOOT_CMD_LINE = """dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=192.168.1.22:/nfs/raspi1,udp,v3 rw ip=dhcp rootwait elevator=deadline rootfstype=nfs"""
-SDCARD_RESIZE_BOOT_CMD_LINE = """dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet init=/usr/lib/raspi-config/init_resize.sh"""
-SDCARD_BOOT_CMD_LINE = """dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=PARTUUID=%(partition_uuid)s rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait"""
-
-SERVER_PUBLIC_KEY = """ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDjXBuWj8MJuGcJDx1/ch7nDBptyoXjBP3DNQPel+A+sI/76dT/MPw6HgUxywb0aJ1L50QU0xDU/dhl0er4WK31DLf6QR2ursZ7yYhgrRm8uugYEIYxs8qu5SyNXiNPOTnH+Pd+IUt/T3iqyrPLOifnuqWaeN26WqUlWiAcqIrJdfl+KgNuYOS4u3bFNEPBuab3wqi8JREkv25j9NJ7UMrVUzhQ8eMeCQmQsoVBsMwfhLZ/DyZz4o/+IsP05AmJs0q3eJJwsFSWerZTNtes97qkD/H+RQv5VhGqYKncyCoFHt0D4lstFizlG/1rxow6scssQR2dfs1XSuc6VHCnuLv root@nuc1"""
 
 @celery.task()
 def prepare_nfs_boot():
@@ -42,7 +37,7 @@ def prepare_nfs_boot():
 
             # Modify the boot PXE configuration file to mount its file system via NFS
             text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-            text_file.write(NFS_BOOT_CMD_LINE)
+            text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
             text_file.close()
 
             # Update the deployment
@@ -302,7 +297,7 @@ def configure_sdcard_resize_boot():
                 # Modify the boot PXE configuration file to resize the FS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
                 text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-                text_file.write(SDCARD_RESIZE_BOOT_CMD_LINE)
+                text_file.write(get_sdcard_resize_boot_cmdline())
                 text_file.close()
 
                 # /!\ here we check that changes have been committed to the SD card
@@ -349,42 +344,46 @@ def init_reboot_nfs_after_resize():
         pending_deployments = Deployment.query.filter_by(state="configured_sdcard_resize_boot").all()
         print(len(pending_deployments))
 
-        for deployment in pending_deployments:
+        if len(pending_deployments):
+            for deployment in pending_deployments:
+                # Get description of the server that will be deployed
+                server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            # Get description of the server that will be deployed
-            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+                # Turn off port
+                turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
 
-            # Turn off port
-            turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                # Wait 2 seconds
+                time.sleep(2)
 
-            # Wait 2 seconds
-            time.sleep(2)
-
-            # Turn on port
-            turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                # Turn on port
+                turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
 
             # Wait 40 seconds to let the FS to resize
             time.sleep(40)
 
-            # Modify the boot PXE configuration file to resize the FS
-            tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
-            text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-            text_file.write(NFS_BOOT_CMD_LINE)
-            text_file.close()
+            for deployment in pending_deployments:
+                # Get description of the server that will be deployed
+                server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            # Turn off port
-            turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                # Modify the boot PXE configuration file to resize the FS
+                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
+                text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
+                text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
+                text_file.close()
 
-            # Wait 2 seconds
-            time.sleep(2)
+                # Turn off port
+                turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
 
-            # Turn on port
-            turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                # Wait 2 seconds
+                time.sleep(2)
 
-            # Update the deployment
-            deployment.init_reboot_nfs_after_resize()
-            db.session.add(deployment)
-            db.session.commit()
+                # Turn on port
+                turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+
+                # Update the deployment
+                deployment.init_reboot_nfs_after_resize()
+                db.session.add(deployment)
+                db.session.commit()
 
 
 @celery.task()
@@ -528,7 +527,7 @@ def deploy_public_key():
                 time.sleep(2)
 
                 # Add the public key of the server (second try)
-                cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % SERVER_PUBLIC_KEY
+                cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % CLUSTER_CONFIG.get("controller").get("public_key")
                 ssh.exec_command(cmd)
 
                 # Add the public key of the user
@@ -606,7 +605,7 @@ def prepare_sdcard_boot():
                 # Modify the boot PXE configuration file to mount its file system via NFS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
                 text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-                text_file.write(SDCARD_BOOT_CMD_LINE % {"partition_uuid": partition_uuid})
+                text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
                 text_file.close()
 
                 # Unmount the boot partition of the SD CARD
