@@ -1,21 +1,18 @@
 import celery
 from database import db
 from database import Deployment
-import subprocess
 from lib.config.cluster_config import CLUSTER_CONFIG
 from redlock import RedLock
 import os
 import shutil
-from lib.dgs121028p import acquire_gambit, get_ports_status, turn_on_port, turn_off_port
+from lib.dgs121028p import turn_on_port, turn_off_port
 import time
 import paramiko
 from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
 import socket
-import re
 
 
-NFS_BOOT_CMD_LINE = """dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=192.168.1.17:/nfs/raspi1,udp,v3 rw ip=dhcp rootwait elevator=deadline rootfstype=nfs"""
-# SDCARD_RESIZE_BOOT_CMD_LINE = """dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=PARTUUID=%(partition_uuid)s rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet init=/usr/lib/raspi-config/init_resize.sh"""
+NFS_BOOT_CMD_LINE = """dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=192.168.1.22:/nfs/raspi1,udp,v3 rw ip=dhcp rootwait elevator=deadline rootfstype=nfs"""
 SDCARD_RESIZE_BOOT_CMD_LINE = """dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet init=/usr/lib/raspi-config/init_resize.sh"""
 SDCARD_BOOT_CMD_LINE = """dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=PARTUUID=%(partition_uuid)s rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait"""
 
