@@ -98,4 +98,4 @@ if __name__ == '__main__':
     db.create_all()
 
     debug = True
-    app.run(debug=debug, port=9010, host="0.0.0.0")
+    app.run(debug=debug, port=9000, host="0.0.0.0")
