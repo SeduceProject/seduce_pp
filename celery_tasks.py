@@ -17,6 +17,9 @@ def make_celery(app):
             with app.app_context():
                 return TaskBase.__call__(self, *args, **kwargs)
 
+        def after_return(self, status, retval, task_id, args, kwargs, einfo):
+            db.session.close()
+
     celery.Task = ContextTask
     return celery
 
