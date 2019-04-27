@@ -39,6 +39,8 @@ def user_deployments():
         server_candidates = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id]
         if server_candidates:
             deployment.server = server_candidates[0]
+        if deployment.id == 29 and deployment.state == "environment_deploying":
+            print("ici")
 
     if not deployments:
         return json.dumps({

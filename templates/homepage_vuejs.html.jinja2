@@ -26,7 +26,11 @@
                     <div class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray">
                         <div class="d-flex justify-content-between align-items-center w-100">
                             <strong class="text-gray-dark">[[ deployment.server.name ]]</strong>
-                            <a :href="'/deployment/destroy/' + deployment.id">Free</a>
+                            <div>
+                                <a :href="'/deployment/destroy/' + deployment.id">Free</a><br>
+                                <a :href="'http://pi.seduce.fr:2222/ssh/host/' + deployment.server.ip + '?bellStyle=none&header=' + deployment.server.name + '&color=red'">Terminal</a>
+{#                                <a :href="'/console/http://127.0.0.1:2222/ssh/host/' + deployment.server.ip + '?bellStyle=none&header=' + deployment.server.name + '&color=red'">Terminal</a>#}
+                            </div>
                         </div>
                         <span class="d-block">[[ deployment.server.ip ]]</span>
                         <span class="d-block">state: <span>[[ deployment.state ]]</span></span>
@@ -35,7 +39,7 @@
                 </div>
 
                 <small class="d-block text-right mt-3">
-                    <a href="#">All servers</a>
+                    <a href="#">Free all servers</a>
                 </small>
             </div>
         </main>

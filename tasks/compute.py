@@ -44,6 +44,7 @@ def prepare_nfs_boot():
             deployment.prepare_nfs_boot()
             db.session.add(deployment)
             db.session.commit()
+        db.session.remove()
 
 
 @celery.task()
@@ -73,6 +74,7 @@ def init_reboot_nfs():
             deployment.init_reboot_nfs()
             db.session.add(deployment)
             db.session.commit()
+        db.session.remove()
 
 
 @celery.task()
@@ -106,6 +108,7 @@ def conclude_reboot_nfs():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -143,6 +146,7 @@ def prepare_deployment():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -158,7 +162,10 @@ def deploy_env():
 
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
+            environment = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment][0]
+            environment_local_path = environment.get("nfs_path")
+            print("environment_local_path: %s" % (environment_local_path))
+            
             print(server)
 
             try:
@@ -168,7 +175,7 @@ def deploy_env():
                 print("Could connect to %s" % server.get("ip"))
 
                 # Write the image of the environment on SD card
-                deploy_cmd = """rm /tmp/deployment_done; unzip -p /environments/2018-11-13-raspbian-stretch-lite.zip | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;"""
+                deploy_cmd = """rm /tmp/deployment_done; unzip -p %s | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
                 screen_deploy_cmd = "screen -d -m bash -c '%s'" % deploy_cmd
                 ssh.exec_command(screen_deploy_cmd)
 
@@ -181,6 +188,7 @@ def deploy_env():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -228,6 +236,7 @@ def deploy_env_finished():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -333,6 +342,7 @@ def configure_sdcard_resize_boot():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -384,6 +394,7 @@ def init_reboot_nfs_after_resize():
                 deployment.init_reboot_nfs_after_resize()
                 db.session.add(deployment)
                 db.session.commit()
+        db.session.remove()
 
 
 @celery.task()
@@ -417,6 +428,7 @@ def conclude_reboot_nfs_after_resize():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -482,6 +494,7 @@ def collect_partition_uuid():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -555,6 +568,7 @@ def deploy_public_key():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -621,6 +635,7 @@ def prepare_sdcard_boot():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -650,6 +665,7 @@ def init_reboot_sdcard():
             deployment.init_reboot_sdcard()
             db.session.add(deployment)
             db.session.commit()
+        db.session.remove()
 
 
 @celery.task()
@@ -683,6 +699,7 @@ def conclude_reboot_sdcard():
                     SSHException, socket.error) as e:
                 print(e)
                 print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
 
 @celery.task()
@@ -702,6 +719,7 @@ def finish_deployment():
             deployment.finish_deployment()
             db.session.add(deployment)
             db.session.commit()
+        db.session.remove()
 
 
 @celery.task()
@@ -724,6 +742,7 @@ def process_destruction():
             deployment.process_destruction()
             db.session.add(deployment)
             db.session.commit()
+        db.session.remove()
 
 
 @celery.task()
@@ -754,3 +773,4 @@ def conclude_destruction():
                 deployment.conclude_destruction()
                 db.session.add(deployment)
                 db.session.commit()
+        db.session.remove()
