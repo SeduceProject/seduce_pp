@@ -27,6 +27,94 @@ CLUSTER_CONFIG = {
             "ip": "192.168.1.53",
             "model": "RPI3B+",
             "label": ""
+        },
+        {
+            "name": "node-4",
+            "id": "4fb9704c",
+            "port_number": 4,
+            "ip": "192.168.1.54",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-5",
+            "id": "091a30c2",
+            "port_number": 5,
+            "ip": "192.168.1.55",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-6",
+            "id": "ebe8629c",
+            "port_number": 6,
+            "ip": "192.168.1.56",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-7",
+            "id": "2ebf44b1",
+            "port_number": 7,
+            "ip": "192.168.1.57",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-8",
+            "id": "23ff05a5",
+            "port_number": 8,
+            "ip": "192.168.1.58",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-9",
+            "id": "6fa8f83c",
+            "port_number": 9,
+            "ip": "192.168.1.59",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-10",
+            "id": "5e8fa6a1",
+            "port_number": 10,
+            "ip": "192.168.1.60",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-11",
+            "id": "a67c64be",
+            "port_number": 11,
+            "ip": "192.168.1.61",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-12",
+            "id": "1760325b",
+            "port_number": 12,
+            "ip": "192.168.1.62",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-13",
+            "id": "dd5cfc3a",
+            "port_number": 13,
+            "ip": "192.168.1.63",
+            "model": "RPI3B+",
+            "label": ""
+        },
+        {
+            "name": "node-14",
+            "id": "0a1c5d6c",
+            "port_number": 14,
+            "ip": "192.168.1.64",
+            "model": "RPI3B+",
+            "label": ""
         }
     ],
     "switch": {

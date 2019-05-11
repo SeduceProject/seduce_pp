@@ -66,25 +66,6 @@ def ask_destruction(deployment_id):
     return flask.redirect(flask.url_for("app.home"))
 
 
-@webapp_blueprint.route("/old_home")
-@flask_login.login_required
-def old_home():
-    from lib.config.cluster_config import CLUSTER_CONFIG
-    from database import Deployment, User
-
-    user = current_user
-    user_email = user.id
-    db_user = User.query.filter_by(email=user_email).first()
-
-    user_deployments = Deployment.query.filter_by(user_id=db_user.id).filter(Deployment.state != "destroyed").all()
-    for deployment in user_deployments:
-        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        deployment.server = server
-    deployment_ids = [d.server_id for d in Deployment.query.filter(Deployment.state != "destroyed").all()]
-    available_servers = [s for s in CLUSTER_CONFIG["nodes"] if s.get("id") not in deployment_ids]
-    return flask.render_template("homepage.html.jinja2", available_servers=available_servers, user_deployments=user_deployments)
-
-
 @webapp_blueprint.route("/")
 @flask_login.login_required
 def home():
