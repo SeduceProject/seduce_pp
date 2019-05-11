@@ -28,8 +28,7 @@
                             <strong class="text-gray-dark">[[ deployment.server.name ]]</strong>
                             <div>
                                 <a :href="'/deployment/destroy/' + deployment.id">Free</a><br>
-                                <a :href="'http://pi.seduce.fr:2222/ssh/host/' + deployment.server.ip + '?bellStyle=none&header=' + deployment.server.name + '&color=red'">Terminal</a>
-{#                                <a :href="'/console/http://127.0.0.1:2222/ssh/host/' + deployment.server.ip + '?bellStyle=none&header=' + deployment.server.name + '&color=red'">Terminal</a>#}
+                                <a :href="deployment.misc.button.value">[[ deployment.misc.button.label ]]</a>
                             </div>
                         </div>
                         <span class="d-block">[[ deployment.server.ip ]]</span>

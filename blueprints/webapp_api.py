@@ -34,13 +34,25 @@ def user_deployments():
     from database import Deployment
     from lib.config.cluster_config import CLUSTER_CONFIG
 
+    misc = {}
+
     deployments = Deployment.query.filter(Deployment.state != "destroyed").all()
     for deployment in deployments:
         server_candidates = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id]
         if server_candidates:
             deployment.server = server_candidates[0]
-        if deployment.id == 29 and deployment.state == "environment_deploying":
-            print("ici")
+
+        environments_candidates = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment]
+        if environments_candidates:
+            environment = environments_candidates[0]
+            for button_name, button_func in environment.get("buttons", {}).items():
+                value = button_func(deployment.server)
+                misc[deployment.id] = {
+                    "button": {
+                        "label": button_name,
+                        "value": value
+                    }
+                }
 
     if not deployments:
         return json.dumps({
@@ -53,7 +65,8 @@ def user_deployments():
             "id": deployment.id,
             "state": deployment.state,
             "label": deployment.label,
-            "server": deployment.server
+            "server": deployment.server,
+            "misc": misc.get(deployment.id, {})
         } for deployment in deployments]
     })
 

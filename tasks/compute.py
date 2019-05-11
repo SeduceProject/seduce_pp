@@ -715,10 +715,22 @@ def finish_deployment():
 
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+            environment = [environment for environment in CLUSTER_CONFIG.get("environments") if
+                           environment.get("name") == deployment.environment][0]
 
-            deployment.finish_deployment()
-            db.session.add(deployment)
-            db.session.commit()
+            # By default the deployment should be concluded
+            finish_deployment = True
+
+            # If the environment provides a function to check that
+            # a service must be started before concluding the deployment
+            # then the result of the function will be used
+            if "ready" in environment:
+                finish_deployment = environment.get("ready")(server)
+
+            if finish_deployment:
+                deployment.finish_deployment()
+                db.session.add(deployment)
+                db.session.commit()
         db.session.remove()
 
 

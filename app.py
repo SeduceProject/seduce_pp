@@ -5,7 +5,6 @@ from blueprints.login import login_blueprint
 from blueprints.webapp import webapp_blueprint
 from blueprints.switch_api import switch_api_blueprint
 from blueprints.webapp_api import webappapp_api_blueprint
-from blueprints.console_proxy import console_proxy_blueprint
 
 login_manager = flask_login.LoginManager()
 
@@ -14,7 +13,6 @@ app.register_blueprint(login_blueprint)
 app.register_blueprint(webapp_blueprint)
 app.register_blueprint(switch_api_blueprint)
 app.register_blueprint(webappapp_api_blueprint)
-app.register_blueprint(console_proxy_blueprint)
 
 app.secret_key = "GamingFogKey1"
 # USE_SESSION_FOR_NEXT = True
