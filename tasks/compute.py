@@ -162,7 +162,10 @@ def deploy_env():
 
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
+            environment = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment][0]
+            environment_local_path = environment.get("nfs_path")
+            print("environment_local_path: %s" % (environment_local_path))
+            
             print(server)
 
             try:
@@ -172,7 +175,7 @@ def deploy_env():
                 print("Could connect to %s" % server.get("ip"))
 
                 # Write the image of the environment on SD card
-                deploy_cmd = """rm /tmp/deployment_done; unzip -p /environments/2018-11-13-raspbian-stretch-lite.zip | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;"""
+                deploy_cmd = """rm /tmp/deployment_done; unzip -p %s | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
                 screen_deploy_cmd = "screen -d -m bash -c '%s'" % deploy_cmd
                 ssh.exec_command(screen_deploy_cmd)
 

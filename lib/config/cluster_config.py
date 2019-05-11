@@ -118,7 +118,7 @@ CLUSTER_CONFIG = {
         }
     ],
     "switch": {
-        "address": "192.168.1.23",
+        "address": "192.168.1.1",
         "username": b"admin",
         "password": b"seduce"
     },
@@ -127,6 +127,16 @@ CLUSTER_CONFIG = {
             "name": "raspbian",
             "absolute_path": "/nfs/raspi1/environments/2018-11-13-raspbian-stretch-lite.zip",
             "nfs_path": "/environments/2018-11-13-raspbian-stretch-lite.zip"
+        },
+        {
+            "name": "raspbian_new",
+            "absolute_path": "/nfs/raspi1/environments/image_2019-04-27-Raspbian-lite.zip",
+            "nfs_path": "/environments/image_2019-04-27-Raspbian-lite.zip"
+        },
+        {
+            "name": "raspbian_cloud9",
+            "absolute_path": "/nfs/raspi1/environments/image_2019-05-05-Raspbian_Cloud9-lite.zip",
+            "nfs_path": "/environments/image_2019-05-05-Raspbian_Cloud9-lite.zip"
         }
     ]
 }
