@@ -135,8 +135,8 @@ CLUSTER_CONFIG = {
         },
         {
             "name": "raspbian_cloud9",
-            "absolute_path": "/nfs/raspi1/environments/image_2019-04-27-Raspbian_Cloud9-lite.zip",
-            "nfs_path": "/environments/image_2019-04-27-Raspbian_Cloud9-lite.zip"
+            "absolute_path": "/nfs/raspi1/environments/image_2019-05-05-Raspbian_Cloud9-lite.zip",
+            "nfs_path": "/environments/image_2019-05-05-Raspbian_Cloud9-lite.zip"
         }
     ]
 }
