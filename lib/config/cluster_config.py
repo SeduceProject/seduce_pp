@@ -169,10 +169,19 @@ CLUSTER_CONFIG = {
         },
         {
             "name": "raspbian_cloud9",
-            "absolute_path": "/nfs/raspi1/environments/image_2019-05-05-Raspbian_Cloud9-lite.zip",
-            "nfs_path": "/environments/image_2019-05-05-Raspbian_Cloud9-lite.zip",
+            "absolute_path": "/nfs/raspi1/environments/image_raspbian_cloud9_11_05_2019.zip",
+            "nfs_path": "/environments/image_raspbian_cloud9_11_05_2019.zip",
             "buttons": {
                 "cloud9": lambda node_desc: node_desc.get("public_address")
+            },
+            "ready": check_cloud9_is_ready
+        },
+        {
+            "name": "raspbian_jupyter",
+            "absolute_path": "/nfs/raspi1/environments/image_raspbian_jupyter_12_05_2019.zip",
+            "nfs_path": "/environments/image_raspbian_jupyter_12_05_2019.zip",
+            "buttons": {
+                "jupyter": lambda node_desc: node_desc.get("public_address")
             },
             "ready": check_cloud9_is_ready
         }
