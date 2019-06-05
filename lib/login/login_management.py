@@ -6,10 +6,26 @@ class User(flask_login.UserMixin):
     pass
 
 
+authorized_domains = [
+    "@inria.fr",
+    "@imt-atlantique.fr",
+    # "@imt-atlantique.net", # Students are not allowed yet
+]
+
+
+def authorized_user(user):
+    if user.user_authorized:
+        return True
+    for authorized_domain in authorized_domains:
+        if authorized_domain in user.email and user.email_confirmed:
+            return True
+    return False
+
+
 def authenticate(email, password):
     from database import bcrypt
     user = DbUser.query.filter_by(email=email).first()
     if user is not None:
-        if user.user_authorized and bcrypt.check_password_hash(user.password, password):
-            return True
+        if bcrypt.check_password_hash(user.password, password):
+            return authorized_user(user)
     return False

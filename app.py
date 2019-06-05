@@ -23,12 +23,12 @@ login_manager.login_view = "login.login"
 
 @login_manager.user_loader
 def user_loader(email):
-    from lib.login.login_management import User
+    from lib.login.login_management import User, authorized_user
     from database import User as DbUser
 
     db_user = DbUser.query.filter_by(email=email).first()
 
-    if db_user is not None and db_user.user_authorized:
+    if db_user is not None and authorized_user(db_user):
         user = User()
         user.id = db_user.email
         user.firstname = db_user.firstname
