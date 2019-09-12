@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="">
-{#    <link rel="icon" href="../../../../favicon.ico">#}
+    <link rel="icon" href="{{ url_for("static", filename="img/picloud.ico") }}">
 
-    <title>Baremetal raspberry Pis cluster</title>
+    <title>Baremetal RaspberryPi as a service</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="http://getbootstrap.com/docs/4.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://getbootstrap.com/docs/4.1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for("static", filename="css/default.css") }}" rel="stylesheet">
 
     {% block css %}
@@ -20,7 +20,8 @@
   <body class="bg-light">
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light navbar-dark bg-dark">
-      <a class="navbar-brand" href="{{ url_for("app.home") }}">rPI'5000</a>
+      <img src="{{ url_for("static", filename="img/logo.png") }}" width="45" height="30" class="d-inline-block align-top" alt="">
+      <a class="navbar-brand" href="{{ url_for("app.home") }}">Pi'aaS</a>
       <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -58,10 +59,10 @@
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
-    <script>window.jQuery || document.write('<script src="http://getbootstrap.com/docs/4.1/assets/js/vendor/jquery-slim.min.js"><\/script>')</script>
-    <script src="http://getbootstrap.com/docs/4.1/assets/js/vendor/popper.min.js"></script>
-    <script src="http://getbootstrap.com/docs/4.1/dist/js/bootstrap.min.js"></script>
-    <script src="http://getbootstrap.com/docs/4.1/assets/js/vendor/holder.min.js"></script>
+    <script>window.jQuery || document.write('<script src="https://getbootstrap.com/docs/4.1/assets/js/vendor/jquery-slim.min.js"><\/script>')</script>
+    <script src="https://getbootstrap.com/docs/4.1/assets/js/vendor/popper.min.js"></script>
+    <script src="https://getbootstrap.com/docs/4.1/dist/js/bootstrap.min.js"></script>
+    <script src="https://getbootstrap.com/docs/4.1/assets/js/vendor/holder.min.js"></script>
     <script src="offcanvas.js"></script>
 
     {% block js %}

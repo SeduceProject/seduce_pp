@@ -9,7 +9,22 @@ def check_cloud9_is_ready(node_desc):
     if "<title>Cloud9</title>" in result.text:
         return True
 
-    return False
+    if "<title>workspace - Cloud9</title>" in result.text:
+        return True
+    
+    return result.status_code in [200]
+
+
+def check_jupyter_is_ready(node_desc):
+
+    cloud9_ide_url = "%s/tree?" % (node_desc.get("public_address"))
+    result = requests.get(cloud9_ide_url)
+
+    if "<title>Home</title>" in result.text:
+        return True
+
+    return result.status_code in [200]
+
 
 
 CLUSTER_CONFIG = {
@@ -52,7 +67,7 @@ CLUSTER_CONFIG = {
             "ip": "192.168.1.54",
             "model": "RPI3B+",
             "label": "",
-            "public_address": "http://pi3.seduce.fr"
+            "public_address": "http://pi4.seduce.fr"
         },
         {
             "name": "node-5",
@@ -61,7 +76,7 @@ CLUSTER_CONFIG = {
             "ip": "192.168.1.55",
             "model": "RPI3B+",
             "label": "",
-            "public_address": "http://pi4.seduce.fr"
+            "public_address": "http://pi5.seduce.fr"
         },
         {
             "name": "node-6",
@@ -70,7 +85,7 @@ CLUSTER_CONFIG = {
             "ip": "192.168.1.56",
             "model": "RPI3B+",
             "label": "",
-            "public_address": "http://pi5.seduce.fr"
+            "public_address": "http://pi6.seduce.fr"
         },
         {
             "name": "node-7",
@@ -79,7 +94,7 @@ CLUSTER_CONFIG = {
             "ip": "192.168.1.57",
             "model": "RPI3B+",
             "label": "",
-            "public_address": "http://pi6.seduce.fr"
+            "public_address": "http://pi7.seduce.fr"
         },
         {
             "name": "node-8",
@@ -88,7 +103,7 @@ CLUSTER_CONFIG = {
             "ip": "192.168.1.58",
             "model": "RPI3B+",
             "label": "",
-            "public_address": "http://pi7.seduce.fr"
+            "public_address": "http://pi8.seduce.fr"
         },
         {
             "name": "node-9",
@@ -143,10 +158,91 @@ CLUSTER_CONFIG = {
             "model": "RPI3B+",
             "label": "",
             "public_address": "http://pi14.seduce.fr"
+        },
+        {
+            "name": "node-15",
+            "id": "f495d2ae",
+            "port_number": 15,
+            "ip": "192.168.1.65",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi15.seduce.fr"
+        },
+        {
+            "name": "node-16",
+            "id": "2bae2643",
+            "port_number": 16,
+            "ip": "192.168.1.66",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi16.seduce.fr"
+        },
+        {
+            "name": "node-17",
+            "id": "dc41d65c",
+            "port_number": 17,
+            "ip": "192.168.1.67",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi17.seduce.fr"
+        },
+        {
+            "name": "node-18",
+            "id": "1d5a94f5",
+            "port_number": 18,
+            "ip": "192.168.1.68",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi18.seduce.fr"
+        },
+        {
+            "name": "node-19",
+            "id": "8a759e2c",
+            "port_number": 19,
+            "ip": "192.168.1.69",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi19.seduce.fr"
+        },
+        {
+            "name": "node-20",
+            "id": "057a8080",
+            "port_number": 20,
+            "ip": "192.168.1.70",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi20.seduce.fr"
+        },
+        {
+            "name": "node-21",
+            "id": "d896c498",
+            "port_number": 21,
+            "ip": "192.168.1.71",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi21.seduce.fr"
+        },
+        {
+            "name": "node-22",
+            "id": "5d1c4aa6",
+            "port_number": 22,
+            "ip": "192.168.1.72",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi22.seduce.fr"
+        },
+        {
+            "name": "node-23",
+            "id": "2dd19393",
+            "port_number": 23,
+            "ip": "192.168.1.73",
+            "model": "RPI3B+",
+            "label": "",
+            "public_address": "http://pi23.seduce.fr"
         }
     ],
     "switch": {
-        "address": "192.168.1.1",
+        "address": "192.168.1.23",
         "username": b"admin",
         "password": b"seduce"
     },
@@ -169,12 +265,21 @@ CLUSTER_CONFIG = {
         },
         {
             "name": "raspbian_cloud9",
-            "absolute_path": "/nfs/raspi1/environments/image_2019-05-05-Raspbian_Cloud9-lite.zip",
-            "nfs_path": "/environments/image_2019-05-05-Raspbian_Cloud9-lite.zip",
+            "absolute_path": "/nfs/raspi1/environments/image_raspbian_cloud9_11_05_2019.zip",
+            "nfs_path": "/environments/image_raspbian_cloud9_11_05_2019.zip",
             "buttons": {
                 "cloud9": lambda node_desc: node_desc.get("public_address")
             },
             "ready": check_cloud9_is_ready
+        },
+        {
+            "name": "raspbian_jupyter",
+            "absolute_path": "/nfs/raspi1/environments/image_raspbian_jupyter_28_05_2019.zip",
+            "nfs_path": "/environments/image_raspbian_jupyter_28_05_2019.zip",
+            "buttons": {
+                "jupyter": lambda node_desc: node_desc.get("public_address")
+            },
+            "ready": check_jupyter_is_ready
         }
     ]
 }

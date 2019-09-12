@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask_login import current_user
 import flask_login
 import json
 
@@ -31,12 +32,15 @@ def deployment(deployment_id):
 @webappapp_api_blueprint.route("/api/deployments")
 @flask_login.login_required
 def user_deployments():
-    from database import Deployment
+    from database import Deployment, User
     from lib.config.cluster_config import CLUSTER_CONFIG
+    user = current_user
 
     misc = {}
+    flask.create_session()
 
-    deployments = Deployment.query.filter(Deployment.state != "destroyed").all()
+    db_user = User.query.filter_by(email=user.id).first()
+    deployments = Deployment.query.filter(Deployment.state != "destroyed").filter_by(user_id=db_user.id).all()
     for deployment in deployments:
         server_candidates = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id]
         if server_candidates:

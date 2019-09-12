@@ -175,7 +175,8 @@ def deploy_env():
                 print("Could connect to %s" % server.get("ip"))
 
                 # Write the image of the environment on SD card
-                deploy_cmd = """rm /tmp/deployment_done; unzip -p %s | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
+                #deploy_cmd = """rm /tmp/deployment_done; unzip -p %s | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
+                deploy_cmd = """rm /tmp/deployment_done; rsh 192.168.1.22 "pigz -dc /nfs/raspi1/%s" | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
                 screen_deploy_cmd = "screen -d -m bash -c '%s'" % deploy_cmd
                 ssh.exec_command(screen_deploy_cmd)
 

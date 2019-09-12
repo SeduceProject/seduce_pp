@@ -28,7 +28,7 @@
                             <strong class="text-gray-dark">[[ deployment.server.name ]]</strong>
                             <div>
                                 <a :href="'/deployment/destroy/' + deployment.id">Free</a><br>
-                                <a :href="deployment.misc.button.value">[[ deployment.misc.button.label ]]</a>
+                                <a :href="deployment.misc.button.value" v-if="[[ deployment.state ]] == 'deployed'">[[ deployment.misc.button.label ]]</a>
                             </div>
                         </div>
                         <span class="d-block">[[ deployment.server.ip ]]</span>
