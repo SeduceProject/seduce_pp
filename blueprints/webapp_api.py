@@ -10,9 +10,11 @@ webappapp_api_blueprint = Blueprint('app_api', __name__,
 @webappapp_api_blueprint.route("/api/deployment/<string:deployment_id>")
 @flask_login.login_required
 def deployment(deployment_id):
-    from database import Deployment
+    from database import Deployment, db
 
-    deployment = Deployment.query.filter_by(id=deployment_id).first()
+    session = db.create_scoped_session()
+    deployment = session.query(Deployment).query.filter_by(id=deployment_id).first()
+    session.close()
 
     if not deployment:
         return json.dumps({
@@ -32,14 +34,17 @@ def deployment(deployment_id):
 @webappapp_api_blueprint.route("/api/deployments")
 @flask_login.login_required
 def user_deployments():
-    from database import Deployment, User
+    from database import Deployment, User, db
     from lib.config.cluster_config import CLUSTER_CONFIG
     user = current_user
 
     misc = {}
 
-    db_user = User.query.filter_by(email=user.id).first()
-    deployments = Deployment.query.filter(Deployment.state != "destroyed").filter_by(user_id=db_user.id).all()
+    session = db.create_scoped_session()
+    db_user = session.query(User).filter_by(email=user.id).first()
+    deployments = session.query(Deployment).filter(Deployment.state != "destroyed").filter_by(user_id=db_user.id).all()
+    session.close()
+
     for deployment in deployments:
         server_candidates = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id]
         if server_candidates:
@@ -78,9 +83,13 @@ def user_deployments():
 @flask_login.login_required
 def available_servers():
     from lib.config.cluster_config import CLUSTER_CONFIG
-    from database import Deployment, User
+    from database import Deployment, User, db
 
-    deployment_ids = [d.server_id for d in Deployment.query.filter(Deployment.state != "destroyed").all()]
+    session = db.create_scoped_session()
+    not_destroyed_deployments = session.query(Deployment).filter(Deployment.state != "destroyed").all()
+    session.close()
+
+    deployment_ids = [d.server_id for d in not_destroyed_deployments]
     available_servers = [s for s in CLUSTER_CONFIG["nodes"] if s.get("id") not in deployment_ids]
 
     if not deployment:

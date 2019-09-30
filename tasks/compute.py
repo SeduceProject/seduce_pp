@@ -11,6 +11,7 @@ import paramiko
 from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
 import socket
 from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
+import re
 
 
 @celery.task()
@@ -175,8 +176,12 @@ def deploy_env():
                 print("Could connect to %s" % server.get("ip"))
 
                 # Write the image of the environment on SD card
-                deploy_cmd = """rm /tmp/deployment_done; unzip -p %s | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
+                # deploy_cmd = """rm /tmp/deployment_done; unzip -p %s | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
+                deploy_cmd = f"""rm /tmp/deployment_done; rm /tmp/progress_{server['id']}.txt; rsh 192.168.1.22 "pigz -dc /nfs/raspi1/{environment_local_path}" | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress_{server['id']}.txt; touch /tmp/deployment_done;"""
+
                 screen_deploy_cmd = "screen -d -m bash -c '%s'" % deploy_cmd
+                print(screen_deploy_cmd)
+
                 ssh.exec_command(screen_deploy_cmd)
 
                 # Update the deployment
@@ -205,8 +210,6 @@ def deploy_env_finished():
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            print(server)
-
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -222,12 +225,19 @@ def deploy_env_finished():
                     deployment.deploy_env_finished()
                 else:
                     # Get the progress
-                    if "progress.txt" in ftp.listdir("/tmp"):
-                        cmd = """cat /tmp/progress.txt"""
+                    if f"progress_{server['id']}.txt" in ftp.listdir("/tmp"):
+                        cmd = f"""cat /tmp/progress_{server['id']}.txt"""
                         (stdin, stdout, stderr) = ssh.exec_command(cmd)
                         lines = stdout.readlines()
-                        output = "" if len(lines) == 0 else lines[-1].split("\r")[-1]
+                        sublines = [sl.strip() for l in lines for sl in l.split("\r")]
+                        output = re.sub('[^ a-zA-Z0-9./,()]', '', sublines[-1])
                         deployment.label = output
+
+                        print(f"{server.get('ip')} ({deployment.id}) => {output}")
+                    else:
+                        print(f"{server.get('ip')} ({deployment.id}) : NO /tmp/progress_{server['id']}.txt file!!!")
+
+                ssh.close()
 
                 db.session.add(deployment)
                 db.session.commit()

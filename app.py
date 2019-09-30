@@ -3,6 +3,7 @@ from flask import Flask
 import datetime
 from blueprints.login import login_blueprint
 from blueprints.webapp import webapp_blueprint
+from blueprints.webapp_admin import webapp_admin_blueprint
 from blueprints.switch_api import switch_api_blueprint
 from blueprints.webapp_api import webappapp_api_blueprint
 
@@ -13,6 +14,7 @@ app.register_blueprint(login_blueprint)
 app.register_blueprint(webapp_blueprint)
 app.register_blueprint(switch_api_blueprint)
 app.register_blueprint(webappapp_api_blueprint)
+app.register_blueprint(webapp_admin_blueprint)
 
 app.secret_key = "GamingFogKey1"
 # USE_SESSION_FOR_NEXT = True

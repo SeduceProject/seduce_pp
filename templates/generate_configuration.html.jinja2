@@ -1,0 +1,23 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+    <main role="main" class="container">
+
+        <div class="my-3 p-3 bg-white rounded shadow-sm">
+            <h6 class="border-bottom border-gray pb-2 mb-0">Nginx web configuration</h6>
+
+            <textarea>{{ nginx_http_config }}</textarea>
+
+        </div>
+    </main>
+
+    <main role="main" class="container">
+
+        <div class="my-3 p-3 bg-white rounded shadow-sm">
+            <h6 class="border-bottom border-gray pb-2 mb-0">Nginx stream configuration</h6>
+
+            <textarea>{{ nginx_stream_config }}</textarea>
+        </div>
+    </main>
+
+{% endblock %}
