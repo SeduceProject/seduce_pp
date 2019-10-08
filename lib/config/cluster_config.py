@@ -247,26 +247,53 @@ CLUSTER_CONFIG = {
         "password": b"seduce"
     },
     "environments": [
+        # {
+        #     "name": "raspbian",
+        #     "absolute_path": "/nfs/raspi1/environments/2018-11-13-raspbian-stretch-lite.zip",
+        #     "nfs_path": "/environments/2018-11-13-raspbian-stretch-lite.zip",
+        #     "buttons": {
+        #         "console": lambda node_desc: node_desc.get("public_address")
+        #     }
+        # },
+        # {
+        #     "name": "raspbian_new",
+        #     "absolute_path": "/nfs/raspi1/environments/image_2019-04-27-Raspbian-lite.zip",
+        #     "nfs_path": "/environments/image_2019-04-27-Raspbian-lite.zip",
+        #     "buttons": {
+        #         "console": lambda node_desc: node_desc.get("public_address")
+        #     }
+        # },
+        # {
+        #     "name": "raspbian_cloud9",
+        #     "absolute_path": "/nfs/raspi1/environments/image_raspbian_cloud9_11_05_2019.zip",
+        #     "nfs_path": "/environments/image_raspbian_cloud9_11_05_2019.zip",
+        #     "buttons": {
+        #         "cloud9": lambda node_desc: node_desc.get("public_address")
+        #     },
+        #     "ready": check_cloud9_is_ready
+        # },
+        # {
+        #     "name": "raspbian_jupyter",
+        #     "absolute_path": "/nfs/raspi1/environments/image_raspbian_jupyter_28_05_2019.zip",
+        #     "nfs_path": "/environments/image_raspbian_jupyter_28_05_2019.zip",
+        #     "buttons": {
+        #         "jupyter": lambda node_desc: node_desc.get("public_address")
+        #     },
+        #     "ready": check_jupyter_is_ready
+        # },
         {
-            "name": "raspbian",
-            "absolute_path": "/nfs/raspi1/environments/2018-11-13-raspbian-stretch-lite.zip",
-            "nfs_path": "/environments/2018-11-13-raspbian-stretch-lite.zip",
-            "buttons": {
-                "console": lambda node_desc: node_desc.get("public_address")
-            }
-        },
-        {
-            "name": "raspbian_new",
-            "absolute_path": "/nfs/raspi1/environments/image_2019-04-27-Raspbian-lite.zip",
-            "nfs_path": "/environments/image_2019-04-27-Raspbian-lite.zip",
-            "buttons": {
-                "console": lambda node_desc: node_desc.get("public_address")
-            }
-        },
+            "name": "buster",
+            "absolute_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img.zip",
+            "nfs_path": "/environments/2019-09-26-raspbian-buster-lite.img.zip",
+            # "buttons": {
+            #     "cloud9": lambda node_desc: node_desc.get("public_address")
+            # },
+            # "ready": check_cloud9_is_ready
+        },        
         {
             "name": "raspbian_cloud9",
-            "absolute_path": "/nfs/raspi1/environments/image_raspbian_cloud9_11_05_2019.zip",
-            "nfs_path": "/environments/image_raspbian_cloud9_11_05_2019.zip",
+            "absolute_path": "/nfs/raspi1/environments/image_cloud9_19_09_2019.zip",
+            "nfs_path": "/environments/image_cloud9_19_09_2019.zip",
             "buttons": {
                 "cloud9": lambda node_desc: node_desc.get("public_address")
             },
@@ -274,8 +301,8 @@ CLUSTER_CONFIG = {
         },
         {
             "name": "raspbian_jupyter",
-            "absolute_path": "/nfs/raspi1/environments/image_raspbian_jupyter_28_05_2019.zip",
-            "nfs_path": "/environments/image_raspbian_jupyter_28_05_2019.zip",
+            "absolute_path": "/nfs/raspi1/environments/image_jupyter_20_09_2019.zip",
+            "nfs_path": "/environments/image_jupyter_20_09_2019.zip",
             "buttons": {
                 "jupyter": lambda node_desc: node_desc.get("public_address")
             },
