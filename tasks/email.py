@@ -1,5 +1,9 @@
 import celery
+from celery.utils.log import get_task_logger
+import logging
 
+logger = get_task_logger(__name__)
+logger.setLevel(logging.INFO)
 
 @celery.task()
 def send_confirmation_email():
@@ -7,9 +11,9 @@ def send_confirmation_email():
     from database import User
     from lib.email.notification import send_confirmation_request
 
-    print("Checking users in 'created' state")
+    logger.debug("Checking users in 'created' state")
     users = User.query.filter_by(state="created").all()
-    print(len(users))
+    logger.debug(len(users))
     for user in users:
 
         result = send_confirmation_request(user)

@@ -12,8 +12,24 @@ from paramiko.ssh_exception import BadHostKeyException, AuthenticationException,
 import socket
 from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
 import re
+from celery.utils.log import get_task_logger
+import logging
+from celery.signals import after_setup_task_logger
+from celery.app.log import TaskFormatter
+from contextlib import contextmanager
+from redlock.lock import RedLockError
 
-POSTINSTALL_CMDS = """
+logger = get_task_logger(__name__)
+logger.setLevel(logging.INFO)
+
+
+@after_setup_task_logger.connect
+def setup_task_logger(logger, *args, **kwargs):
+    for handler in logger.handlers:
+        handler.setFormatter(TaskFormatter('%(asctime)s - %(levelname)s - %(processName)s - [%(task_name)s:%(lineno)d] - %(message)s'))
+
+
+POSTINSTALL_CMDS = """\
 #!/bin/bash
 
 systemctl enable ssh
@@ -25,14 +41,25 @@ exit 0
 """
 
 
+def ignore_failed_lock_acquisition(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except RedLockError as e:
+            logger.info("Could not get acquire the lock")
+
+    return wrapper
+
+
+@ignore_failed_lock_acquisition
 @celery.task()
 def prepare_nfs_boot():
-    print("Checking deployments in 'created' state")
+    logger.debug("Checking deployments in 'created' state")
 
     # Use lock in context
     with RedLock("lock/deployments/created"):
         pending_deployments = Deployment.query.filter_by(state="created").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -56,17 +83,20 @@ def prepare_nfs_boot():
             deployment.prepare_nfs_boot()
             db.session.add(deployment)
             db.session.commit()
+
+            logger.info(f"deployment {deployment.id}: 'created' => 'configured_nfs_boot'")
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def init_reboot_nfs():
-    print("Checking deployments in 'configured_nfs_boot' state")
+    logger.debug("Checking deployments in 'configured_nfs_boot' state")
 
     # Use lock in context
     with RedLock("lock/deployments/configured_nfs_boot"):
         pending_deployments = Deployment.query.filter_by(state="configured_nfs_boot").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
             # Get description of the server that will be deployed
@@ -85,64 +115,69 @@ def init_reboot_nfs():
             deployment.init_reboot_nfs()
             db.session.add(deployment)
             db.session.commit()
+            logger.info(f"deployment {deployment.id}: 'configured_nfs_boot' => 'nfs_rebooting'")
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def conclude_reboot_nfs():
-    print("Checking deployments in 'nfs_rebooting' state")
+    logger.debug("Checking deployments in 'nfs_rebooting' state")
 
     # Use lock in context
     with RedLock("lock/deployments/nfs_rebooting"):
         pending_deployments = Deployment.query.filter_by(state="nfs_rebooting").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            print(server)
+            logger.info(server)
 
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 # Update the deployment
                 deployment.conclude_reboot_nfs()
                 db.session.add(deployment)
                 db.session.commit()
 
+                logger.info(f"deployment {deployment.id}: 'nfs_rebooting' => 'nfs_rebooted'")
+
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def prepare_deployment():
-    print("Checking deployments in 'nfs_rebooted' state")
+    logger.debug("Checking deployments in 'nfs_rebooted' state")
 
     # Use lock in context
     with RedLock("lock/deployments/nfs_rebooted"):
         pending_deployments = Deployment.query.filter_by(state="nfs_rebooted").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            print(server)
+            logger.info(server)
 
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root")
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 # Create folder for mounting the sd card
                 ssh.exec_command("mkdir -p /tmp/sdcard_boot")
@@ -153,21 +188,24 @@ def prepare_deployment():
                 db.session.add(deployment)
                 db.session.commit()
 
+                logger.info(f"deployment {deployment.id}: 'nfs_rebooted' => 'ready_deploy'")
+
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def deploy_env():
-    print("Checking deployments in 'ready_deploy' state")
+    logger.debug("Checking deployments in 'ready_deploy' state")
 
     # Use lock in context
     with RedLock("lock/deployments/ready_deploy"):
         pending_deployments = Deployment.query.filter_by(state="ready_deploy").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -176,22 +214,22 @@ def deploy_env():
             environment = [environment for environment in CLUSTER_CONFIG.get("environments") if
                            environment.get("name") == deployment.environment][0]
             environment_local_path = environment.get("nfs_path")
-            print("environment_local_path: %s" % (environment_local_path))
+            logger.info("environment_local_path: %s" % (environment_local_path))
 
-            print(server)
+            logger.info(server)
 
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 # Write the image of the environment on SD card
                 # deploy_cmd = """rm /tmp/deployment_done; unzip -p %s | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
                 deploy_cmd = f"""rm /tmp/deployment_done; rm /tmp/progress_{server['id']}.txt; rsh 192.168.1.22 "pigz -dc /nfs/raspi1/{environment_local_path}" | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress_{server['id']}.txt; touch /tmp/deployment_done;"""
 
                 screen_deploy_cmd = "screen -d -m bash -c '%s'" % deploy_cmd
-                print(screen_deploy_cmd)
+                logger.info(screen_deploy_cmd)
 
                 ssh.exec_command(screen_deploy_cmd)
 
@@ -200,21 +238,24 @@ def deploy_env():
                 db.session.add(deployment)
                 db.session.commit()
 
+                logger.info(f"deployment {deployment.id}: 'ready_deploy' => 'environment_deploying'")
+
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def deploy_env_finished():
-    print("Checking deployments in 'environment_deploying' state")
+    logger.debug("Checking deployments in 'environment_deploying' state")
 
     # Use lock in context
     with RedLock("lock/deployments/environment_deploying"):
         pending_deployments = Deployment.query.filter_by(state="environment_deploying").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -225,15 +266,16 @@ def deploy_env_finished():
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 # Write the image of the environment on SD card
                 ftp = ssh.open_sftp()
-                print(ftp)
+                logger.info(ftp)
 
                 if "deployment_done" in ftp.listdir("/tmp"):
                     # Update the deployment
                     deployment.deploy_env_finished()
+                    logger.info(f"deployment {deployment.id}: 'environment_deploying' => 'environment_deployed'")
                 else:
                     # Get the progress
                     if f"progress_{server['id']}.txt" in ftp.listdir("/tmp"):
@@ -244,30 +286,32 @@ def deploy_env_finished():
                         output = re.sub('[^ a-zA-Z0-9./,()]', '', sublines[-1])
                         deployment.label = output
 
-                        print(f"{server.get('ip')} ({deployment.id}) => {output}")
+                        logger.info(f"{server.get('ip')} ({deployment.id}) => {output}")
                     else:
-                        print(f"{server.get('ip')} ({deployment.id}) : NO /tmp/progress_{server['id']}.txt file!!!")
+                        logger.info(f"{server.get('ip')} ({deployment.id}) : NO /tmp/progress_{server['id']}.txt file!!!")
 
                 ssh.close()
 
                 db.session.add(deployment)
                 db.session.commit()
 
+
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def configure_sdcard_resize_boot():
-    print("Checking deployments in 'environment_deployed' state")
+    logger.debug("Checking deployments in 'environment_deployed' state")
 
     # Use lock in context
     with RedLock("lock/deployments/environment_deployed"):
         pending_deployments = Deployment.query.filter_by(state="environment_deployed").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -275,12 +319,12 @@ def configure_sdcard_resize_boot():
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
             try:
-                print("<start>")
+                logger.info("<start>")
 
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 long_cmd = """
 #!/bin/bash
@@ -322,7 +366,7 @@ mount /dev/mmcblk0p2 /tmp/sdcard_fs
                 ssh.exec_command(long_cmd)
 
                 ftp = ssh.open_sftp()
-                print(ftp)
+                logger.info(ftp)
 
                 # Modify the boot PXE configuration file to resize the FS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
@@ -342,11 +386,11 @@ mount /dev/mmcblk0p2 /tmp/sdcard_fs
                 successful_step = True
 
                 if "_bootcode.bin" not in ftp.listdir("/tmp/sdcard_boot"):
-                    print("bootcode.bin file has not been renamed!")
+                    logger.info("bootcode.bin file has not been renamed!")
                     successful_step = False
 
                 if "ssh" not in ftp.listdir("/tmp/sdcard_boot"):
-                    print("ssh file has not been created!")
+                    logger.info("ssh file has not been created!")
                     successful_step = False
 
                 # Unmount the boot partition of the SD CARD
@@ -359,23 +403,26 @@ mount /dev/mmcblk0p2 /tmp/sdcard_fs
                     db.session.add(deployment)
                     db.session.commit()
 
-                print("<end>")
+                    logger.info(f"deployment {deployment.id}: 'environment_deployed' => 'configured_sdcard_resize_boot'")
+
+                logger.info("<end>")
 
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def init_reboot_nfs_after_resize():
-    print("Checking configured_nfs_boot in 'configured_sdcard_resize_boot' state")
+    logger.debug("Checking configured_nfs_boot in 'configured_sdcard_resize_boot' state")
 
     # Use lock in context
     with RedLock("lock/deployments/configured_sdcard_resize_boot"):
         pending_deployments = Deployment.query.filter_by(state="configured_sdcard_resize_boot").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         if len(pending_deployments):
             for deployment in pending_deployments:
@@ -419,51 +466,57 @@ def init_reboot_nfs_after_resize():
                 deployment.init_reboot_nfs_after_resize()
                 db.session.add(deployment)
                 db.session.commit()
+
+                logger.info(f"deployment {deployment.id}: 'configured_sdcard_resize_boot' => 'nfs_rebooting_after_resize'")
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def conclude_reboot_nfs_after_resize():
-    print("Checking deployments in 'nfs_rebooting_after_resize' state")
+    logger.debug("Checking deployments in 'nfs_rebooting_after_resize' state")
 
     # Use lock in context
     with RedLock("lock/deployments/nfs_rebooting_after_resize"):
         pending_deployments = Deployment.query.filter_by(state="nfs_rebooting_after_resize").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            print(server)
+            logger.info(server)
 
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 # Update the deployment
                 deployment.conclude_reboot_nfs_after_resize()
                 db.session.add(deployment)
                 db.session.commit()
 
+                logger.info(f"deployment {deployment.id}: 'nfs_rebooting_after_resize' => 'nfs_rebooted_after_resize'")
+
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def collect_partition_uuid():
-    print("Checking deployments in 'nfs_rebooted_after_resize' state")
+    logger.debug("Checking deployments in 'nfs_rebooted_after_resize' state")
 
     # Use lock in context
     with RedLock("lock/deployments/nfs_rebooted_after_resize"):
         pending_deployments = Deployment.query.filter_by(state="nfs_rebooted_after_resize").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -474,7 +527,7 @@ def collect_partition_uuid():
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 successful_step = True
 
@@ -515,21 +568,24 @@ def collect_partition_uuid():
                 db.session.add(deployment)
                 db.session.commit()
 
+                logger.info(f"deployment {deployment.id}: 'nfs_rebooted_after_resize' => 'collected_partition_uuid'")
+
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def deploy_public_key():
-    print("Checking deployments in 'collected_partition_uuid' state")
+    logger.debug("Checking deployments in 'collected_partition_uuid' state")
 
     # Use lock in context
     with RedLock("lock/deployments/collected_partition_uuid"):
         pending_deployments = Deployment.query.filter_by(state="collected_partition_uuid").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -540,7 +596,7 @@ def deploy_public_key():
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 long_cmd = f"""
 #!/bin/bash
@@ -598,7 +654,7 @@ fi
                 ssh.exec_command(cmd)
 
                 ftp = ssh.open_sftp()
-                print(ftp)
+                logger.info(ftp)
                 if "authorized_keys" not in ftp.listdir("/tmp/sdcard_fs/root/.ssh"):
                     successful_step = False
 
@@ -612,21 +668,24 @@ fi
                     db.session.add(deployment)
                     db.session.commit()
 
+                    logger.info(f"deployment {deployment.id}: 'collected_partition_uuid' => 'public_key_deployed'")
+
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def prepare_sdcard_boot():
-    print("Checking deployments in 'public_key_deployed' state")
+    logger.debug("Checking deployments in 'public_key_deployed' state")
 
     # Use lock in context
     with RedLock("lock/deployments/public_key_deployed"):
         pending_deployments = Deployment.query.filter_by(state="public_key_deployed").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -637,7 +696,7 @@ def prepare_sdcard_boot():
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 # Ensure 'sdcard_boot' exists
                 ssh.exec_command("mkdir -p /tmp/sdcard_boot")
@@ -655,7 +714,7 @@ def prepare_sdcard_boot():
 
                 # Short circuit the bootcode.bin file on the SD CARD
                 ftp = ssh.open_sftp()
-                print(ftp)
+                logger.info(ftp)
                 if "bootcode.bin" in ftp.listdir("/tmp/sdcard_boot"):
                     ssh.exec_command("mv /tmp/sdcard_boot/bootcode.bin /tmp/sdcard_boot/_bootcode.bin")
 
@@ -670,12 +729,10 @@ def prepare_sdcard_boot():
                 text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
                 text_file.close()
 
-                # Update the files that are going to be server via tftp
-                print(f"Updating files in {tftpboot_node_folder}")
-                local_cmd = f"scp -r {server.get('ip')}:/tmp/sdcard_boot/* {tftpboot_node_folder}/."
-                os.system(local_cmd)
-                local_cmd = f"cp /tftpboot/bootcode.bin {tftpboot_node_folder}/bootcode.bin"
-                os.system(local_cmd)
+                # # Update the files that are going to be server via tftp
+                # logger.info(f"Updating files in {tftpboot_node_folder}")
+                # local_cmd = f"rsync -v -r root@{server.get('ip')}:/tmp/sdcard_boot/* {tftpboot_node_folder}/"
+                # os.system(local_cmd)
 
                 # Unmount the boot partition of the SD CARD
                 cmd = "umount /tmp/sdcard_boot"
@@ -686,21 +743,24 @@ def prepare_sdcard_boot():
                 db.session.add(deployment)
                 db.session.commit()
 
+                logger.info(f"deployment {deployment.id}: 'public_key_deployed' => 'configured_sdcard_boot'")
+
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def init_reboot_sdcard():
-    print("Checking deployments in 'configured_sdcard_boot' state")
+    logger.debug("Checking deployments in 'configured_sdcard_boot' state")
 
     # Use lock in context
     with RedLock("lock/deployments/configured_sdcard_boot"):
         pending_deployments = Deployment.query.filter_by(state="configured_sdcard_boot").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
             # Get description of the server that will be deployed
@@ -719,30 +779,33 @@ def init_reboot_sdcard():
             deployment.init_reboot_sdcard()
             db.session.add(deployment)
             db.session.commit()
+
+            logger.info(f"deployment {deployment.id}: 'configured_sdcard_boot' => 'sdcard_rebooting'")
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def conclude_reboot_sdcard():
-    print("Checking deployments in 'sdcard_rebooting' state")
+    logger.debug("Checking deployments in 'sdcard_rebooting' state")
 
     # Use lock in context
     with RedLock("lock/deployments/sdcard_rebooting"):
         pending_deployments = Deployment.query.filter_by(state="sdcard_rebooting").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            print(server)
+            logger.info(server)
 
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
 
                 # Update the deployment
                 deployment.conclude_reboot_sdcard()
@@ -751,19 +814,22 @@ def conclude_reboot_sdcard():
 
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
-                print(e)
-                print("Could not connect to %s" % server.get("ip"))
+                logger.info(e)
+                logger.info("Could not connect to %s" % server.get("ip"))
+
+                logger.info(f"deployment {deployment.id}: 'sdcard_rebooting' => 'sdcard_rebooted'")
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def finish_deployment():
-    print("Checking deployments in 'sdcard_rebooted' state")
+    logger.debug("Checking deployments in 'sdcard_rebooted' state")
 
     # Use lock in context
     with RedLock("lock/deployments/sdcard_rebooted"):
         pending_deployments = Deployment.query.filter_by(state="sdcard_rebooted").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -785,17 +851,20 @@ def finish_deployment():
                 deployment.finish_deployment()
                 db.session.add(deployment)
                 db.session.commit()
+
+                logger.info(f"deployment {deployment.id}: 'sdcard_rebooted' => 'deployed'")
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def process_destruction():
-    print("Checking deployments in 'destruction_requested' state")
+    logger.debug("Checking deployments in 'destruction_requested' state")
 
     # Use lock in context
     with RedLock("lock/deployments/destruction_requested"):
         pending_deployments = Deployment.query.filter_by(state="destruction_requested").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
             # Get description of the server that will be deployed
@@ -804,20 +873,23 @@ def process_destruction():
             # Turn off port
             turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
 
+            logger.info(f"deployment {deployment.id}: '{deployment.state}' => 'destroying'")
+
             deployment.process_destruction()
             db.session.add(deployment)
             db.session.commit()
         db.session.remove()
 
 
+@ignore_failed_lock_acquisition
 @celery.task()
 def conclude_destruction():
-    print("Checking deployments in 'destroying' state")
+    logger.debug("Checking deployments in 'destroying' state")
 
     # Use lock in context
     with RedLock("lock/deployments/destroying"):
         pending_deployments = Deployment.query.filter_by(state="destroying").all()
-        print(len(pending_deployments))
+        logger.debug(len(pending_deployments))
 
         for deployment in pending_deployments:
 
@@ -829,7 +901,7 @@ def conclude_destruction():
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+                logger.info("Could connect to %s" % server.get("ip"))
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
                 can_connect = False
@@ -838,4 +910,6 @@ def conclude_destruction():
                 deployment.conclude_destruction()
                 db.session.add(deployment)
                 db.session.commit()
+
+                logger.info(f"deployment {deployment.id}: 'destroying' => 'destroyed'")
         db.session.remove()
