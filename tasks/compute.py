@@ -13,6 +13,17 @@ import socket
 from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
 import re
 
+POSTINSTALL_CMDS = """
+#!/bin/bash
+
+systemctl enable ssh
+service ssh start
+
+echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDjXBuWj8MJuGcJDx1/ch7nDBptyoXjBP3DNQPel+A+sI/76dT/MPw6HgUxywb0aJ1L50QU0xDU/dhl0er4WK31DLf6QR2ursZ7yYhgrRm8uugYEIYxs8qu5SyNXiNPOTnH+Pd+IUt/T3iqyrPLOifnuqWaeN26WqUlWiAcqIrJdfl+KgNuYOS4u3bFNEPBuab3wqi8JREkv25j9NJ7UMrVUzhQ8eMeCQmQsoVBsMwfhLZ/DyZz4o/+IsP05AmJs0q3eJJwsFSWerZTNtes97qkD/H+RQv5VhGqYKncyCoFHt0D4lstFizlG/1rxow6scssQR2dfs1XSuc6VHCnuLv root@nuc1" >> /root/.ssh/authorized_keys 
+
+exit 0
+"""
+
 
 @celery.task()
 def prepare_nfs_boot():
@@ -58,7 +69,6 @@ def init_reboot_nfs():
         print(len(pending_deployments))
 
         for deployment in pending_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
@@ -135,8 +145,8 @@ def prepare_deployment():
                 print("Could connect to %s" % server.get("ip"))
 
                 # Create folder for mounting the sd card
-                ssh.exec_command("mkdir -p /mnt/sdcard_boot")
-                ssh.exec_command("mkdir -p /mnt/sdcard_fs")
+                ssh.exec_command("mkdir -p /tmp/sdcard_boot")
+                ssh.exec_command("mkdir -p /tmp/sdcard_fs")
 
                 # Update the deployment
                 deployment.prepared_deployment()
@@ -163,10 +173,11 @@ def deploy_env():
 
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-            environment = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment][0]
+            environment = [environment for environment in CLUSTER_CONFIG.get("environments") if
+                           environment.get("name") == deployment.environment][0]
             environment_local_path = environment.get("nfs_path")
             print("environment_local_path: %s" % (environment_local_path))
-            
+
             print(server)
 
             try:
@@ -264,54 +275,54 @@ def configure_sdcard_resize_boot():
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
             try:
+                print("<start>")
+
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
                 print("Could connect to %s" % server.get("ip"))
 
-                # Ensure 'sdcard_boot' and 'sdcard_fs' exists
-                ssh.exec_command("mkdir -p /mnt/sdcard_boot")
-                ssh.exec_command("mkdir -p /mnt/sdcard_fs")
+                long_cmd = """
+#!/bin/bash
 
-                # Unmount the boot file system
-                cmd = "umount /mnt/sdcard_boot"
-                ssh.exec_command(cmd)
+if [ ! -d /tmp/sdcard_boot ]; then
+    mkdir -p /tmp/sdcard_boot
+fi
 
-                # Unmount the root file system
-                cmd = "umount /mnt/sdcard_fs"
-                ssh.exec_command(cmd)
+if [ ! -d /tmp/sdcard_fs ]; then
+    mkdir -p /tmp/sdcard_fs
+fi
 
-                # Mount the boot partition of the SD CARD
-                cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
-                ssh.exec_command(cmd)
+if [[ $(findmnt  | grep "sdcard_boot") ]]; then
+    umount /tmp/sdcard_boot
+fi
 
-                # Mount the root partition of the SD CARD
-                cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
-                ssh.exec_command(cmd)
+if [[ $(findmnt  | grep "sdcard_fs") ]]; then
+    umount /tmp/sdcard_fs
+fi
 
-                # Wait 2 second
-                time.sleep(2)
+mount /dev/mmcblk0p1 /tmp/sdcard_boot
+mount /dev/mmcblk0p2 /tmp/sdcard_fs
 
-                # Short circuit the bootcode.bin file on the SD CARD
+mv /tmp/sdcard_boot/bootcode.bin /tmp/sdcard_boot/_bootcode.bin
+echo '1' > /tmp/sdcard_boot/ssh
+
+if [[ $(findmnt  | grep "sdcard_boot") ]]; then
+    umount /tmp/sdcard_boot
+fi
+
+if [[ $(findmnt  | grep "sdcard_fs") ]]; then
+    umount /tmp/sdcard_fs
+fi
+
+mount /dev/mmcblk0p1 /tmp/sdcard_boot
+mount /dev/mmcblk0p2 /tmp/sdcard_fs
+
+"""
+                ssh.exec_command(long_cmd)
+
                 ftp = ssh.open_sftp()
                 print(ftp)
-                if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
-                    ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
-
-                # Create a ssh file on the SD Card
-                cmd = "echo '1' > /mnt/sdcard_boot/ssh"
-                ssh.exec_command(cmd)
-
-                # Tweak: make sure that the ssh service will be enabled whenever /boot/ssh has been create
-                cmd = "sed -i 's/ConditionPathExistsGlob.*//g' /mnt/sdcard_fs/etc/systemd/system/multi-user.target.wants/sshswitch.service"
-                ssh.exec_command(cmd)
-
-                # Unmount the boot partition of the SD CARD
-                cmd = "umount /mnt/sdcard_boot"
-                ssh.exec_command(cmd)
-
-                cmd = "umount /mnt/sdcard_fs"
-                ssh.exec_command(cmd)
 
                 # Modify the boot PXE configuration file to resize the FS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
@@ -319,27 +330,27 @@ def configure_sdcard_resize_boot():
                 text_file.write(get_sdcard_resize_boot_cmdline())
                 text_file.close()
 
-                # /!\ here we check that changes have been committed to the SD card
-
-                # Mount the boot partition of the SD CARD
-                cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
-                ssh.exec_command(cmd)
+                # # /!\ here we check that changes have been committed to the SD card
+                #
+                # # Mount the boot partition of the SD CARD
+                # cmd = "mount /dev/mmcblk0p1 /tmp/sdcard_boot"
+                # ssh.exec_command(cmd)
 
                 # Wait 2 second
                 time.sleep(2)
 
                 successful_step = True
 
-                if "_bootcode.bin" not in ftp.listdir("/mnt/sdcard_boot"):
+                if "_bootcode.bin" not in ftp.listdir("/tmp/sdcard_boot"):
                     print("bootcode.bin file has not been renamed!")
                     successful_step = False
 
-                if "ssh" not in ftp.listdir("/mnt/sdcard_boot"):
+                if "ssh" not in ftp.listdir("/tmp/sdcard_boot"):
                     print("ssh file has not been created!")
                     successful_step = False
 
                 # Unmount the boot partition of the SD CARD
-                cmd = "umount /mnt/sdcard_boot"
+                cmd = "umount /tmp/sdcard_boot"
                 ssh.exec_command(cmd)
 
                 # Update the deployment
@@ -347,6 +358,8 @@ def configure_sdcard_resize_boot():
                     deployment.configure_sdcard_resize_boot()
                     db.session.add(deployment)
                     db.session.commit()
+
+                print("<end>")
 
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
@@ -367,7 +380,8 @@ def init_reboot_nfs_after_resize():
         if len(pending_deployments):
             for deployment in pending_deployments:
                 # Get description of the server that will be deployed
-                server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+                server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][
+                    0]
 
                 # Turn off port
                 turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
@@ -383,7 +397,8 @@ def init_reboot_nfs_after_resize():
 
             for deployment in pending_deployments:
                 # Get description of the server that will be deployed
-                server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+                server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][
+                    0]
 
                 # Modify the boot PXE configuration file to resize the FS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
@@ -464,14 +479,14 @@ def collect_partition_uuid():
                 successful_step = True
 
                 # Ensure 'sdcard_boot' exists
-                ssh.exec_command("mkdir -p /mnt/sdcard_boot")
+                ssh.exec_command("mkdir -p /tmp/sdcard_boot")
 
                 # Unmount the boot file system
-                cmd = "umount /mnt/sdcard_fs"
+                cmd = "umount /tmp/sdcard_fs"
                 ssh.exec_command(cmd)
 
                 # Mount the boot partition of the SD CARD
-                cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
+                cmd = "mount /dev/mmcblk0p2 /tmp/sdcard_fs"
                 ssh.exec_command(cmd)
 
                 # Sleep 2 seconds
@@ -488,7 +503,7 @@ def collect_partition_uuid():
                     successful_step = False
 
                 # Unmount the boot partition of the SD CARD
-                cmd = "umount /mnt/sdcard_boot"
+                cmd = "umount /tmp/sdcard_boot"
                 ssh.exec_command(cmd)
 
                 # Update the deployment
@@ -527,45 +542,68 @@ def deploy_public_key():
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
                 print("Could connect to %s" % server.get("ip"))
 
-                # Unmount the file system
-                cmd = "umount /mnt/sdcard_fs"
-                ssh.exec_command(cmd)
+                long_cmd = f"""
+#!/bin/bash
 
-                # Mount the file system of the SD CARD
-                cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
-                ssh.exec_command(cmd)
+if [ ! -d /tmp/sdcard_boot ]; then
+    mkdir -p /tmp/sdcard_boot
+fi
 
-                # Sleep 2 seconds
-                time.sleep(2)
+if [ ! -d /tmp/sdcard_fs ]; then
+    mkdir -p /tmp/sdcard_fs
+fi
 
-                # Create a ssh folder in the root folder of the SD CARD's file system
-                cmd = "mkdir -p /mnt/sdcard_fs/root/.ssh"
-                ssh.exec_command(cmd)
+if [[ $(findmnt  | grep "sdcard_boot") ]]; then
+    umount /tmp/sdcard_boot
+fi
 
-                # Add the public key of the server
-                cmd = "cp /root/.ssh/authorized_keys /mnt/sdcard_fs/root/.ssh/authorized_keys"
-                ssh.exec_command(cmd)
+if [[ $(findmnt  | grep "sdcard_fs") ]]; then
+    umount /tmp/sdcard_fs
+fi
 
-                # Sleep 2 seconds
-                time.sleep(2)
+mount /dev/mmcblk0p1 /tmp/sdcard_boot
+mount /dev/mmcblk0p2 /tmp/sdcard_fs
 
-                # Add the public key of the server (second try)
-                cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % CLUSTER_CONFIG.get("controller").get("public_key")
-                ssh.exec_command(cmd)
+# Do something here
 
-                # Add the public key of the user
-                cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % deployment.public_key
-                ssh.exec_command(cmd)
+mkdir -p /tmp/sdcard_fs/root/.ssh
+cp /root/.ssh/authorized_keys /tmp/sdcard_fs/root/.ssh/authorized_keys
+
+echo '{CLUSTER_CONFIG.get("controller").get("public_key")}' >> /tmp/sdcard_fs/root/.ssh/authorized_keys
+echo '{deployment.public_key}' >> /tmp/sdcard_fs/root/.ssh/authorized_keys
+
+# Add the public key of the user
+echo '{deployment.public_key}' >> /tmp/sdcard_fs/root/.ssh/authorized_keys
+
+cat << EOF > /tmp/sdcard_fs/etc/rc.local
+{POSTINSTALL_CMDS}
+EOF
+
+chmod +x /tmp/sdcard_fs/etc/rc.local          
+
+if [[ $(findmnt  | grep "sdcard_boot") ]]; then
+    umount /tmp/sdcard_boot
+fi
+
+if [[ $(findmnt  | grep "sdcard_fs") ]]; then
+    umount /tmp/sdcard_fs
+fi
+"""
+                ssh.exec_command(long_cmd)
 
                 successful_step = True
 
+                # Mount the file system
+                cmd = "mount /dev/mmcblk0p2 /tmp/sdcard_fs"
+                ssh.exec_command(cmd)
+
                 ftp = ssh.open_sftp()
                 print(ftp)
-                if "authorized_keys" not in ftp.listdir("/mnt/sdcard_fs/root/.ssh"):
+                if "authorized_keys" not in ftp.listdir("/tmp/sdcard_fs/root/.ssh"):
                     successful_step = False
 
                 # Unmount the file system
-                cmd = "umount /mnt/sdcard_fs"
+                cmd = "umount /tmp/sdcard_fs"
                 ssh.exec_command(cmd)
 
                 # Update the deployment
@@ -602,14 +640,14 @@ def prepare_sdcard_boot():
                 print("Could connect to %s" % server.get("ip"))
 
                 # Ensure 'sdcard_boot' exists
-                ssh.exec_command("mkdir -p /mnt/sdcard_boot")
+                ssh.exec_command("mkdir -p /tmp/sdcard_boot")
 
                 # Unmount the boot partition of the SD CARD
-                cmd = "umount /mnt/sdcard_boot"
+                cmd = "umount /tmp/sdcard_boot"
                 ssh.exec_command(cmd)
 
                 # Mount the boot partition of the SD CARD
-                cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
+                cmd = "mount /dev/mmcblk0p1 /tmp/sdcard_boot"
                 ssh.exec_command(cmd)
 
                 # Sleep 2 seconds
@@ -618,8 +656,8 @@ def prepare_sdcard_boot():
                 # Short circuit the bootcode.bin file on the SD CARD
                 ftp = ssh.open_sftp()
                 print(ftp)
-                if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
-                    ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
+                if "bootcode.bin" in ftp.listdir("/tmp/sdcard_boot"):
+                    ssh.exec_command("mv /tmp/sdcard_boot/bootcode.bin /tmp/sdcard_boot/_bootcode.bin")
 
                 # Get the partition UUID of the rootfs partition
                 (stdin, stdout, stderr) = ssh.exec_command(
@@ -632,8 +670,15 @@ def prepare_sdcard_boot():
                 text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
                 text_file.close()
 
+                # Update the files that are going to be server via tftp
+                print(f"Updating files in {tftpboot_node_folder}")
+                local_cmd = f"scp -r {server.get('ip')}:/tmp/sdcard_boot/* {tftpboot_node_folder}/."
+                os.system(local_cmd)
+                local_cmd = f"cp /tftpboot/bootcode.bin {tftpboot_node_folder}/bootcode.bin"
+                os.system(local_cmd)
+
                 # Unmount the boot partition of the SD CARD
-                cmd = "umount /mnt/sdcard_boot"
+                cmd = "umount /tmp/sdcard_boot"
                 ssh.exec_command(cmd)
 
                 # Update the deployment
@@ -658,7 +703,6 @@ def init_reboot_sdcard():
         print(len(pending_deployments))
 
         for deployment in pending_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
@@ -754,7 +798,6 @@ def process_destruction():
         print(len(pending_deployments))
 
         for deployment in pending_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
