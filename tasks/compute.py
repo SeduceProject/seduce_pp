@@ -279,7 +279,7 @@ def deploy_env_finished():
                 else:
                     # Get the progress
                     if f"progress_{server['id']}.txt" in ftp.listdir("/tmp"):
-                        cmd = f"""cat /tmp/progress_{server['id']}.txt"""
+                        cmd = f"""tail -n 1 /tmp/progress_{server['id']}.txt"""
                         (stdin, stdout, stderr) = ssh.exec_command(cmd)
                         lines = stdout.readlines()
                         sublines = [sl.strip() for l in lines for sl in l.split("\r")]
@@ -288,7 +288,7 @@ def deploy_env_finished():
 
                         logger.info(f"{server.get('ip')} ({deployment.id}) => {output}")
                     else:
-                        logger.info(f"{server.get('ip')} ({deployment.id}) : NO /tmp/progress_{server['id']}.txt file!!!")
+                        logger.error(f"{server.get('ip')} ({deployment.id}) : NO /tmp/progress_{server['id']}.txt file!!!")
 
                 ssh.close()
 
@@ -326,7 +326,7 @@ def configure_sdcard_resize_boot():
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
                 logger.info("Could connect to %s" % server.get("ip"))
 
-                long_cmd = """
+                long_cmd = f"""
 #!/bin/bash
 
 if [ ! -d /tmp/sdcard_boot ]; then
@@ -348,8 +348,44 @@ fi
 mount /dev/mmcblk0p1 /tmp/sdcard_boot
 mount /dev/mmcblk0p2 /tmp/sdcard_fs
 
-mv /tmp/sdcard_boot/bootcode.bin /tmp/sdcard_boot/_bootcode.bin
-echo '1' > /tmp/sdcard_boot/ssh
+mount --bind /dev /tmp/sdcard_fs/dev/
+mount --bind /sys /tmp/sdcard_fs/sys/
+mount --bind /proc /tmp/sdcard_fs/proc/
+mount --bind /dev/pts /tmp/sdcard_fs/dev/pts
+
+sleep 2
+
+# Do something here
+cat << EOF | chroot /tmp/sdcard_fs /bin/bash
+mkdir -p /root/.ssh
+cp /root/.ssh/authorized_keys /root/.ssh/authorized_keys
+
+echo '{CLUSTER_CONFIG.get("controller").get("public_key")}' >> /root/.ssh/authorized_keys
+echo '{deployment.public_key}' >> /root/.ssh/authorized_keys
+
+# Add the public key of the user
+echo '{deployment.public_key}' >> /root/.ssh/authorized_keys
+
+# Enable ssh
+systemctl enable ssh
+
+cat << EOF1 > /etc/rc.local
+{POSTINSTALL_CMDS}
+EOF1
+
+apt update
+apt install -y python3
+
+chmod +x /etc/rc.local   
+EOF
+
+# Finish
+umount /tmp/sdcard_fs/dev/pts
+umount /tmp/sdcard_fs/dev/
+umount /tmp/sdcard_fs/sys/
+umount /tmp/sdcard_fs/proc/
+
+sleep 2     
 
 if [[ $(findmnt  | grep "sdcard_boot") ]]; then
     umount /tmp/sdcard_boot
@@ -358,10 +394,6 @@ fi
 if [[ $(findmnt  | grep "sdcard_fs") ]]; then
     umount /tmp/sdcard_fs
 fi
-
-mount /dev/mmcblk0p1 /tmp/sdcard_boot
-mount /dev/mmcblk0p2 /tmp/sdcard_fs
-
 """
                 ssh.exec_command(long_cmd)
 
@@ -385,9 +417,9 @@ mount /dev/mmcblk0p2 /tmp/sdcard_fs
 
                 successful_step = True
 
-                if "_bootcode.bin" not in ftp.listdir("/tmp/sdcard_boot"):
-                    logger.info("bootcode.bin file has not been renamed!")
-                    successful_step = False
+                # if "_bootcode.bin" not in ftp.listdir("/tmp/sdcard_boot"):
+                #     logger.info("bootcode.bin file has not been renamed!")
+                #     successful_step = False
 
                 if "ssh" not in ftp.listdir("/tmp/sdcard_boot"):
                     logger.info("ssh file has not been created!")
@@ -620,22 +652,41 @@ fi
 mount /dev/mmcblk0p1 /tmp/sdcard_boot
 mount /dev/mmcblk0p2 /tmp/sdcard_fs
 
+mount --bind /dev /tmp/sdcard_fs/dev/
+mount --bind /sys /tmp/sdcard_fs/sys/
+mount --bind /proc /tmp/sdcard_fs/proc/
+mount --bind /dev/pts /tmp/sdcard_fs/dev/pts
+
 # Do something here
+cat << EOF | chroot /tmp/sdcard_fs /bin/bash
+mkdir -p /root/.ssh
+cp /root/.ssh/authorized_keys /root/.ssh/authorized_keys
 
-mkdir -p /tmp/sdcard_fs/root/.ssh
-cp /root/.ssh/authorized_keys /tmp/sdcard_fs/root/.ssh/authorized_keys
-
-echo '{CLUSTER_CONFIG.get("controller").get("public_key")}' >> /tmp/sdcard_fs/root/.ssh/authorized_keys
-echo '{deployment.public_key}' >> /tmp/sdcard_fs/root/.ssh/authorized_keys
+echo '{CLUSTER_CONFIG.get("controller").get("public_key")}' >> /root/.ssh/authorized_keys
+echo '{deployment.public_key}' >> /root/.ssh/authorized_keys
 
 # Add the public key of the user
-echo '{deployment.public_key}' >> /tmp/sdcard_fs/root/.ssh/authorized_keys
+echo '{deployment.public_key}' >> /root/.ssh/authorized_keys
 
-cat << EOF > /tmp/sdcard_fs/etc/rc.local
+# Enable ssh
+systemctl enable ssh
+
+cat << EOF1 > /etc/rc.local
 {POSTINSTALL_CMDS}
+EOF1
+
+apt update
+apt install -y python3
+
+chmod +x /etc/rc.local   
 EOF
 
-chmod +x /tmp/sdcard_fs/etc/rc.local          
+# Finish
+
+umount /tmp/sdcard_fs/dev/pts
+umount /tmp/sdcard_fs/dev/
+umount /tmp/sdcard_fs/sys/
+umount /tmp/sdcard_fs/proc/       
 
 if [[ $(findmnt  | grep "sdcard_boot") ]]; then
     umount /tmp/sdcard_boot
@@ -712,12 +763,6 @@ def prepare_sdcard_boot():
                 # Sleep 2 seconds
                 time.sleep(2)
 
-                # Short circuit the bootcode.bin file on the SD CARD
-                ftp = ssh.open_sftp()
-                logger.info(ftp)
-                if "bootcode.bin" in ftp.listdir("/tmp/sdcard_boot"):
-                    ssh.exec_command("mv /tmp/sdcard_boot/bootcode.bin /tmp/sdcard_boot/_bootcode.bin")
-
                 # Get the partition UUID of the rootfs partition
                 (stdin, stdout, stderr) = ssh.exec_command(
                     """blkid | grep '/dev/mmcblk0p2: LABEL="rootfs"' | sed 's/.*PARTUUID=//g' | sed 's/"//g'""")
@@ -729,7 +774,7 @@ def prepare_sdcard_boot():
                 text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
                 text_file.close()
 
-                # # Update the files that are going to be server via tftp
+                # # Update the files that are going to be served via tftp
                 # logger.info(f"Updating files in {tftpboot_node_folder}")
                 # local_cmd = f"rsync -v -r root@{server.get('ip')}:/tmp/sdcard_boot/* {tftpboot_node_folder}/"
                 # os.system(local_cmd)
@@ -811,13 +856,13 @@ def conclude_reboot_sdcard():
                 deployment.conclude_reboot_sdcard()
                 db.session.add(deployment)
                 db.session.commit()
+                logger.info(f"deployment {deployment.id}: 'sdcard_rebooting' => 'sdcard_rebooted'")
 
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
                 logger.info(e)
                 logger.info("Could not connect to %s" % server.get("ip"))
 
-                logger.info(f"deployment {deployment.id}: 'sdcard_rebooting' => 'sdcard_rebooted'")
         db.session.remove()
 
 
@@ -869,6 +914,23 @@ def process_destruction():
         for deployment in pending_deployments:
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                logger.info("Could connect to %s" % server.get("ip"))
+
+                # Short circuit the bootcode.bin file on the SD CARD
+                ftp = ssh.open_sftp()
+                logger.info(ftp)
+                if "bootcode.bin" in ftp.listdir("/boot"):
+                    ssh.exec_command("mv /boot/bootcode.bin /boot/_bootcode.bin")
+                    logger.info("Could move bootcode.bin")
+
+            except (BadHostKeyException, AuthenticationException,
+                    SSHException, socket.error) as e:
+                logger.error("Could not connect to %s" % server.get("ip"))
 
             # Turn off port
             turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
