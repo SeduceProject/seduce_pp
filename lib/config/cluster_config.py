@@ -281,15 +281,15 @@ CLUSTER_CONFIG = {
         #     },
         #     "ready": check_jupyter_is_ready
         # },
-        {
-            "name": "buster",
-            "absolute_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img.zip",
-            "nfs_path": "/environments/2019-09-26-raspbian-buster-lite.img.zip",
-            # "buttons": {
-            #     "cloud9": lambda node_desc: node_desc.get("public_address")
-            # },
-            # "ready": check_cloud9_is_ready
-        },        
+        # {
+        #     "name": "buster",
+        #     "absolute_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img.zip",
+        #     "nfs_path": "/environments/2019-09-26-raspbian-buster-lite.img.zip",
+        #     # "buttons": {
+        #     #     "cloud9": lambda node_desc: node_desc.get("public_address")
+        #     # },
+        #     # "ready": check_cloud9_is_ready
+        # },
         {
             "name": "raspbian_cloud9",
             "absolute_path": "/nfs/raspi1/environments/image_cloud9_19_09_2019.zip",
