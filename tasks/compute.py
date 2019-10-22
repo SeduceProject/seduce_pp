@@ -12,6 +12,8 @@ from paramiko.ssh_exception import BadHostKeyException, AuthenticationException,
 import socket
 from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
 import re
+import random
+import uuid
 
 
 @celery.task()
@@ -297,6 +299,7 @@ def configure_sdcard_resize_boot():
                 print(ftp)
                 if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
                     ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
+                    ssh.exec_command("sync")
 
                 # Create a ssh file on the SD Card
                 cmd = "echo '1' > /mnt/sdcard_boot/ssh"
@@ -615,11 +618,11 @@ def prepare_sdcard_boot():
                 # Sleep 2 seconds
                 time.sleep(2)
 
-                # Short circuit the bootcode.bin file on the SD CARD
+                # Fix the bootcode.bin file on the SD CARD, in order to have the correct kernel running
                 ftp = ssh.open_sftp()
                 print(ftp)
-                if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
-                    ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
+                if "_bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
+                    ssh.exec_command("mv /mnt/sdcard_boot/_bootcode.bin /mnt/sdcard_boot/bootcode.bin")
 
                 # Get the partition UUID of the rootfs partition
                 (stdin, stdout, stderr) = ssh.exec_command(
@@ -729,7 +732,46 @@ def finish_deployment():
                            environment.get("name") == deployment.environment][0]
 
             # By default the deployment should be concluded
+            finish_init = True
             finish_deployment = True
+
+            # Implement a mecanism that execute the init script
+            if deployment.init_script is not None or deployment.init_script != "":
+
+                finish_init = False
+
+                try:
+                    ssh = paramiko.SSHClient()
+                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                    print("Could connect to %s" % server.get("ip"))
+
+                    ftp = ssh.open_sftp()
+                    print(ftp)
+                    if "started_init_script" not in ftp.listdir("/tmp/"):
+                        # Generate random title
+                        random_file_name = str(uuid.uuid1())
+                        random_file_path = f"/tmp/{random_file_name}"
+
+                        with open(random_file_path, mode="w") as f:
+                            f.write(deployment.init_script)
+
+                        ftp.put(random_file_path, "/tmp/init_script.sh")
+
+                        if "init_script.sh" not in ftp.listdir("/tmp"):
+                            print(f"ERROR: \"init_script.sh\" not in /tmp")
+                            continue
+
+                        # Launch init script
+                        cmd = "touch /tmp/started_init_script; sed -i 's/\r$//' /tmp/init_script.sh; bash /tmp/init_script.sh; touch /tmp/finished_init_script"
+                        ssh.exec_command(cmd)
+
+                    if "finished_init_script" in ftp.listdir("/tmp/"):
+                        finish_init = True
+
+                    ssh.close()
+                except:
+                    pass
 
             # If the environment provides a function to check that
             # a service must be started before concluding the deployment
@@ -737,7 +779,7 @@ def finish_deployment():
             if "ready" in environment:
                 finish_deployment = environment.get("ready")(server)
 
-            if finish_deployment:
+            if finish_deployment and finish_init:
                 deployment.finish_deployment()
                 db.session.add(deployment)
                 db.session.commit()
@@ -758,12 +800,29 @@ def process_destruction():
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            # Turn off port
-            turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+            try:
+                # Create an ssh session
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                print("Could connect to %s" % server.get("ip"))
 
-            deployment.process_destruction()
-            db.session.add(deployment)
-            db.session.commit()
+                # Fix the bootcode.bin file on the SD CARD, in order to have the correct kernel running
+                ftp = ssh.open_sftp()
+                print(ftp)
+                if "bootcode.bin" in ftp.listdir("/boot"):
+                    ssh.exec_command("mv /boot/bootcode.bin /boot/_bootcode.bin")
+                    ssh.exec_command("sync")
+                    ssh.exec_command("reboot")
+
+                # Turn off port
+                turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+
+                deployment.process_destruction()
+                db.session.add(deployment)
+                db.session.commit()
+            except:
+                print(f"Problem when shutting down this deployment")
         db.session.remove()
 
 

@@ -51,6 +51,8 @@ class Deployment(db.Model):
     public_key = db.Column(db.Text)
     environment = db.Column(db.Text)
     duration = db.Column(db.Text)
+    init_script = db.Column(db.Text)
+
     name = db.Column(db.Text)
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)

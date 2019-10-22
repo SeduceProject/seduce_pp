@@ -34,6 +34,7 @@ def process_take(server_id):
     new_deployment.public_key = flask.request.form.get("public_key")
     new_deployment.environment = flask.request.form.get("environment")
     new_deployment.duration = flask.request.form.get("duration")
+    new_deployment.init_script = flask.request.form.get("init_script")
     new_deployment.server_id = server_id
     new_deployment.start_date = datetime.datetime.utcnow()
     new_deployment.user_id = db_user.id

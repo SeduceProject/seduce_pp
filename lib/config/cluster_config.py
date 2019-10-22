@@ -12,7 +12,7 @@ def check_cloud9_is_ready(node_desc):
     if "<title>workspace - Cloud9</title>" in result.text:
         return True
     
-    return result.status_code in [200]
+    return False
 
 
 def check_jupyter_is_ready(node_desc):
@@ -23,7 +23,7 @@ def check_jupyter_is_ready(node_desc):
     if "<title>Home</title>" in result.text:
         return True
 
-    return result.status_code in [200]
+    return False
 
 
 

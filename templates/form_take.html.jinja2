@@ -1,5 +1,20 @@
 {% extends "layout.html.jinja2" %}
 
+{% block css %}
+<script src="{{ url_for("static", filename="js/jquery-3.4.1.slim.min.js") }}"></script>
+<script src="{{ url_for("static", filename="js/codemirror.js") }}"></script>
+<link rel="stylesheet" href="{{ url_for("static", filename="css/codemirror.css") }}">
+<script src="{{ url_for("static", filename="js/shell.js") }}"></script>
+
+<style>
+.CodeMirror {
+    border: 1px solid #ced4da;
+    border-radius: .25rem;
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+</style>
+{% endblock %}
+
 {% block content %}
     <main role="main" class="container">
       <div class="my-3 p-3 bg-white rounded shadow-sm">
@@ -43,10 +58,28 @@
             </div>
             <div class="row">
               <div class="col-md-12 mb-3">
+                <label for="init_script">Init script</label>
+                <textarea class="form-control" rows="5" id="init_script" class="shell_code" name="init_script"></textarea>
+                <div class="invalid-feedback">
+                  A valid init script is required.
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
                 <input class="btn btn-primary float-right" type="submit" value="submit"/>
               </div>
             </div>
         </form>
       </div>
     </main>
+
+    <script>
+  var editor = CodeMirror.fromTextArea(document.getElementById('init_script'), {
+    mode: 'shell',
+    lineNumbers: true,
+    matchBrackets: true
+  });
+</script>
+
 {% endblock %}
