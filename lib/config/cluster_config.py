@@ -11,7 +11,7 @@ def check_cloud9_is_ready(node_desc):
 
     if "<title>workspace - Cloud9</title>" in result.text:
         return True
-    
+
     return False
 
 
