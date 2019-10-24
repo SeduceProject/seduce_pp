@@ -23,6 +23,9 @@ def check_jupyter_is_ready(node_desc):
     if "<title>Home</title>" in result.text:
         return True
 
+    if "/static/style/style.min.css" in result.text:
+        return True
+
     return False
 
 

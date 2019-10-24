@@ -618,22 +618,43 @@ def prepare_sdcard_boot():
                 # Sleep 2 seconds
                 time.sleep(2)
 
-                # Fix the bootcode.bin file on the SD CARD, in order to have the correct kernel running
-                ftp = ssh.open_sftp()
-                print(ftp)
-                if "_bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
-                    ssh.exec_command("mv /mnt/sdcard_boot/_bootcode.bin /mnt/sdcard_boot/bootcode.bin")
+                # # Fix the bootcode.bin file on the SD CARD, in order to have the correct kernel running
+                # ftp = ssh.open_sftp()
+                # print(ftp)
+                # if "_bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
+                #     ssh.exec_command("mv /mnt/sdcard_boot/_bootcode.bin /mnt/sdcard_boot/bootcode.bin")
 
                 # Get the partition UUID of the rootfs partition
                 (stdin, stdout, stderr) = ssh.exec_command(
                     """blkid | grep '/dev/mmcblk0p2: LABEL="rootfs"' | sed 's/.*PARTUUID=//g' | sed 's/"//g'""")
                 partition_uuid = stdout.readlines()[0].strip()
 
-                # Modify the boot PXE configuration file to mount its file system via NFS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
-                text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-                text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
-                text_file.close()
+
+                # Download the boot partition and put it in the tftpboot folder
+                # cmd = f"""rm -rf {tftpboot_node_folder}"""
+                # os.system(cmd)
+
+                # cmd = f"""scp -r root@{server.get("ip")}:/mnt/sdcard_boot {tftpboot_node_folder}"""
+                # os.system(cmd)
+
+                cmd = f"""rsync -v --stats --progress -az root@{server.get("ip")}:/mnt/sdcard_boot/ {tftpboot_node_folder}/"""
+                os.system(cmd)
+
+                cmd = f"""
+#cp /tmp/toto/start.elf {tftpboot_node_folder}/.
+#cp /tmp/toto/kernel7.img {tftpboot_node_folder}/.
+#cp /tmp/toto/bcm2710-rpi-3-b-plus.dtb {tftpboot_node_folder}/.
+rm -rf {tftpboot_node_folder}/overlays
+cp -r /tftpboot/rpiboot/overlays {tftpboot_node_folder}/.
+                """
+
+                os.system(cmd)
+
+                # # Modify the boot PXE configuration file to mount its file system via NFS
+                # text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
+                # text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
+                # text_file.close()
 
                 # Unmount the boot partition of the SD CARD
                 cmd = "umount /mnt/sdcard_boot"
@@ -800,29 +821,13 @@ def process_destruction():
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
-            try:
-                # Create an ssh session
-                ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
+            # Turn off port
+            turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
 
-                # Fix the bootcode.bin file on the SD CARD, in order to have the correct kernel running
-                ftp = ssh.open_sftp()
-                print(ftp)
-                if "bootcode.bin" in ftp.listdir("/boot"):
-                    ssh.exec_command("mv /boot/bootcode.bin /boot/_bootcode.bin")
-                    ssh.exec_command("sync")
-                    ssh.exec_command("reboot")
+            deployment.process_destruction()
+            db.session.add(deployment)
+            db.session.commit()
 
-                # Turn off port
-                turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-
-                deployment.process_destruction()
-                db.session.add(deployment)
-                db.session.commit()
-            except:
-                print(f"Problem when shutting down this deployment")
         db.session.remove()
 
 
