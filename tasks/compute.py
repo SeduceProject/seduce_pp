@@ -31,7 +31,8 @@ def prepare_nfs_boot():
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
             # Create a folder containing network boot files that will be served via TFTP
-            tftpboot_template_folder = "/tftpboot/rpiboot"
+            # tftpboot_template_folder = "/tftpboot/rpiboot"
+            tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
             tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
 
             if os.path.isdir(tftpboot_node_folder):
@@ -315,6 +316,15 @@ def configure_sdcard_resize_boot():
 
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
+
+                # Create a folder containing network boot files that will be served via TFTP
+                tftpboot_template_folder = "/tftpboot/rpiboot"
+                # tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
+                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
+
+                if os.path.isdir(tftpboot_node_folder):
+                    shutil.rmtree(tftpboot_node_folder)
+                shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
 
                 # Modify the boot PXE configuration file to resize the FS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
@@ -618,43 +628,31 @@ def prepare_sdcard_boot():
                 # Sleep 2 seconds
                 time.sleep(2)
 
-                # # Fix the bootcode.bin file on the SD CARD, in order to have the correct kernel running
-                # ftp = ssh.open_sftp()
-                # print(ftp)
-                # if "_bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
-                #     ssh.exec_command("mv /mnt/sdcard_boot/_bootcode.bin /mnt/sdcard_boot/bootcode.bin")
-
                 # Get the partition UUID of the rootfs partition
                 (stdin, stdout, stderr) = ssh.exec_command(
                     """blkid | grep '/dev/mmcblk0p2: LABEL="rootfs"' | sed 's/.*PARTUUID=//g' | sed 's/"//g'""")
                 partition_uuid = stdout.readlines()[0].strip()
 
+                # Create a folder containing network boot files that will be served via TFTP
+                # tftpboot_template_folder = "/tftpboot/rpiboot"
+                tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
 
-                # Download the boot partition and put it in the tftpboot folder
-                # cmd = f"""rm -rf {tftpboot_node_folder}"""
-                # os.system(cmd)
-
-                # cmd = f"""scp -r root@{server.get("ip")}:/mnt/sdcard_boot {tftpboot_node_folder}"""
-                # os.system(cmd)
-
-                cmd = f"""rsync -v --stats --progress -az root@{server.get("ip")}:/mnt/sdcard_boot/ {tftpboot_node_folder}/"""
-                os.system(cmd)
+                if os.path.isdir(tftpboot_node_folder):
+                    shutil.rmtree(tftpboot_node_folder)
+                shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
 
                 cmd = f"""
-#cp /tmp/toto/start.elf {tftpboot_node_folder}/.
-#cp /tmp/toto/kernel7.img {tftpboot_node_folder}/.
-#cp /tmp/toto/bcm2710-rpi-3-b-plus.dtb {tftpboot_node_folder}/.
-rm -rf {tftpboot_node_folder}/overlays
-cp -r /tftpboot/rpiboot/overlays {tftpboot_node_folder}/.
+scp root@{server.get("ip")}:/mnt/sdcard_boot/kernel7.img {tftpboot_node_folder}/.
+scp -r root@{server.get("ip")}:/mnt/sdcard_boot/bcm2710-*.dtb {tftpboot_node_folder}/.
                 """
 
                 os.system(cmd)
 
-                # # Modify the boot PXE configuration file to mount its file system via NFS
-                # text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-                # text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
-                # text_file.close()
+                # Modify the boot PXE configuration file to mount its file system via NFS
+                text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
+                text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
+                text_file.close()
 
                 # Unmount the boot partition of the SD CARD
                 cmd = "umount /mnt/sdcard_boot"
