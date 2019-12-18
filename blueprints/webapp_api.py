@@ -80,13 +80,17 @@ def available_servers():
     server_info = {}
     for s in CLUSTER_CONFIG["nodes"]:
         server_info[s["id"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"], "state": "free"}
+    id2email = {}
     for d in not_destroyed_deployments:
         if d.user_id == db_user.id:
             server_info[d.server_id]["state"] = d.state
             server_info[d.server_id]["dname"] = d.name
         else:
             server_info[d.server_id]["state"] = "in_use"
-            server_info[d.server_id]["dname"] ="XXXXX"
+            if d.user_id not in id2email.keys():
+                foreign = User.query.filter_by(id=d.user_id).first()
+                id2email[foreign.id] = foreign.email
+            server_info[d.server_id]["dname"] = id2email[foreign.id]
 
     if not deployment:
         return json.dumps({
