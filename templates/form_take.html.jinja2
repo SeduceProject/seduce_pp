@@ -3,9 +3,14 @@
 {% block content %}
     <main role="main" class="container">
       <div class="my-3 p-3 bg-white rounded shadow-sm">
-        <h6 class="border-bottom border-gray pb-2 mb-0">Please provide the following information</h6>
+        <h6>Please provide the following information to deploy the following nodes:</h6>
+        <div class="border-bottom border-gray pb-2 mb-0">
+            {% for name in server_names %}
+                <span class="node-list">{{ name }},</span>
+            {% endfor %}
+        </div>
         <br/>
-        <form action="{{ url_for("app.process_take", server_id=server_id) }}" method="post">
+        <form action="{{ url_for("app.process_take") }}" method="post">
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="firstName">Duration (hour)</label>
@@ -28,8 +33,11 @@
             </div>
             <div class="row">
               <div class="col-md-12 mb-3">
-                <label for="firstName">Name (optional)</label>
-                <input class="form-control" id="name" name="name" type="text"></input>
+                <label for="firstName">Name</label>
+                <input class="form-control" id="name" name="name" type="text" required></input>
+                <div class="invalid-feedback">
+                  The name is required to identify your deployment.
+                </div>
               </div>
             </div>
             <div class="row">

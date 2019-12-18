@@ -57,7 +57,7 @@ deployment_transitions = [
     {'trigger': 'deploy_public_key', 'source': 'collected_partition_uuid', 'dest': 'public_key_deployed'},
     {'trigger': 'prepare_sdcard_boot', 'source': 'public_key_deployed', 'dest': 'configured_sdcard_boot'},
 
-    {'trigger': 'init_reboot_sdcard', 'source': 'configured_sdcard_boot', 'dest': 'sdcard_rebooting'},
+    {'trigger': 'init_reboot_sdcard', 'source': '*', 'dest': 'sdcard_rebooting'},
     {'trigger': 'conclude_reboot_sdcard', 'source': 'sdcard_rebooting', 'dest': 'sdcard_rebooted'},
     {'trigger': 'finish_deployment', 'source': 'sdcard_rebooted', 'dest': 'deployed'},
 

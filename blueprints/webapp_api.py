@@ -45,22 +45,15 @@ def user_deployments():
     deployments = session.query(Deployment).filter(Deployment.state != "destroyed").filter_by(user_id=db_user.id).all()
     session.close()
 
-    for deployment in deployments:
-        server_candidates = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id]
-        if server_candidates:
-            deployment.server = server_candidates[0]
-
-        environments_candidates = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment]
-        if environments_candidates:
-            environment = environments_candidates[0]
-            for button_name, button_func in environment.get("buttons", {}).items():
-                value = button_func(deployment.server)
-                misc[deployment.id] = {
-                    "button": {
-                        "label": button_name,
-                        "value": value
-                    }
-                }
+    deployment_info = {}
+    for d in deployments:
+        if d.name not in deployment_info.keys():
+            deployment_info[d.name] = {"name": d.name, "ids": [], "server_ids": [], "server_names": [], "user_id": d.user_id}
+        deployment_info[d.name]["ids"].append(d.id)
+        deployment_info[d.name]["server_ids"].append(d.server_id)
+        for s in CLUSTER_CONFIG["nodes"]:
+            if s["id"] == d.server_id:
+                deployment_info[d.name]["server_names"].append(s["name"])
 
     if not deployments:
         return json.dumps({
@@ -69,13 +62,7 @@ def user_deployments():
 
     return json.dumps({
         "status": "ok",
-        "deployments":[{
-            "id": deployment.id,
-            "state": deployment.state,
-            "label": deployment.label,
-            "server": deployment.server,
-            "misc": misc.get(deployment.id, {})
-        } for deployment in deployments]
+        "deployments": list(deployment_info.values())
     })
 
 
@@ -85,19 +72,28 @@ def available_servers():
     from lib.config.cluster_config import CLUSTER_CONFIG
     from database import Deployment, User, db
 
+    db_user = User.query.filter_by(email=current_user.id).first()
     session = db.create_scoped_session()
     not_destroyed_deployments = session.query(Deployment).filter(Deployment.state != "destroyed").all()
     session.close()
 
-    deployment_ids = [d.server_id for d in not_destroyed_deployments]
-    available_servers = [s for s in CLUSTER_CONFIG["nodes"] if s.get("id") not in deployment_ids]
+    server_info = {}
+    for s in CLUSTER_CONFIG["nodes"]:
+        server_info[s["id"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"], "state": "free"}
+    for d in not_destroyed_deployments:
+        if d.user_id == db_user.id:
+            server_info[d.server_id]["state"] = d.state
+            server_info[d.server_id]["dname"] = d.name
+        else:
+            server_info[d.server_id]["state"] = "in_use"
+            server_info[d.server_id]["dname"] ="XXXXX"
 
     if not deployment:
         return json.dumps({
-            "status": "ko",
+            "status": "ko"
         })
 
     return json.dumps({
         "status": "ok",
-        "servers": available_servers
+        "server_info": list(server_info.values())
     })
