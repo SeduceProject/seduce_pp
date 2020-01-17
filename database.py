@@ -6,6 +6,7 @@ from app import app
 from sqlalchemy import event
 from transitions import Machine
 from lib.config.config_loader import load_config
+import datetime
 
 bcrypt = Bcrypt(app)
 
@@ -56,6 +57,7 @@ class Deployment(db.Model):
     name = db.Column(db.Text)
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)
+    updated_at = db.Column(db.DateTime)
 
     label = db.Column(db.Text)
 
@@ -81,6 +83,10 @@ def receive_init(obj, *args, **kwargs):
     from fsm import deployment_initial_state, deployment_states, deployment_transitions
     # when we load data from the DB(via query) we need to set the proper initial state
     initial = obj.state or deployment_initial_state
-    machine = Machine(model=obj, states=deployment_states, transitions=deployment_transitions, initial=initial)
+    machine = Machine(model=obj, states=deployment_states, transitions=deployment_transitions, initial=initial, after_state_change=lambda: update_last_change_date(obj))
     # in case that we need to have machine obj in model obj
     setattr(obj, 'machine', machine)
+
+
+def update_last_change_date(obj, *args, **kwargs):
+    setattr(obj, 'updated_at', datetime.datetime.utcnow())

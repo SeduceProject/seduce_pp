@@ -6,6 +6,7 @@ from blueprints.webapp import webapp_blueprint
 from blueprints.webapp_admin import webapp_admin_blueprint
 from blueprints.switch_api import switch_api_blueprint
 from blueprints.webapp_api import webappapp_api_blueprint
+import flask
 
 login_manager = flask_login.LoginManager()
 
@@ -90,6 +91,11 @@ def timesince(dt, default="just now"):
             return "%d %s ago" % (period, singular if period == 1 else plural)
 
     return default
+
+
+# @app.before_request
+# def set_domain_session():
+#     flask.session['domain'] = "pi.seduce.fr"
 
 
 if __name__ == '__main__':

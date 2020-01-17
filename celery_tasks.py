@@ -27,8 +27,8 @@ def make_celery(app):
 # flask_app = Flask(__name__)
 flask_app = db.app
 flask_app.config.update(
-    CELERY_BROKER_URL='redis://127.0.0.1:6379',
-    CELERY_RESULT_BACKEND='redis://127.0.0.1:6379',
+    CELERY_BROKER_URL='redis://127.0.0.1:8879',
+    CELERY_RESULT_BACKEND='redis://127.0.0.1:8879',
 )
 celery = make_celery(flask_app)
 
@@ -59,6 +59,8 @@ def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(5.0, process_destruction.s(), name='process_destruction')
     sender.add_periodic_task(5.0, conclude_destruction.s(), name='conclude_destruction')
 
+    sender.add_periodic_task(5.0, check_stuck_deployments.s(), name='check_stuck_deployments')
+
 
 if __name__ == "__main__":
     import time
@@ -87,6 +89,8 @@ if __name__ == "__main__":
 
         process_destruction()
         conclude_destruction()
+
+        check_stuck_deployments()
 
         # Close the session
         db.session.close()

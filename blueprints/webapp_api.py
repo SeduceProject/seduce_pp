@@ -2,9 +2,23 @@ from flask import Blueprint
 from flask_login import current_user
 import flask_login
 import json
+import flask
+import logging
+import uuid
 
 webappapp_api_blueprint = Blueprint('app_api', __name__,
                                     template_folder='templates')
+
+
+@webappapp_api_blueprint.route("/api/authorized")
+def authorized():
+    print(current_user, flush=True)
+    print(flask.request, flush=True)
+    print(flask.request.headers, flush=True)
+    if current_user.is_authenticated:
+        return "You are logged in! Sweet!"
+    else:
+        return 'Sorry, but unfortunately you\'re not logged in.', 401
 
 
 @webappapp_api_blueprint.route("/api/deployment/<string:deployment_id>")
@@ -49,6 +63,8 @@ def user_deployments():
         server_candidates = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id]
         if server_candidates:
             deployment.server = server_candidates[0]
+        else:
+            print("ici")
 
         environments_candidates = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment]
         if environments_candidates:
