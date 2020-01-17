@@ -90,11 +90,11 @@ tftp-no-blocksize
 * Restart the service: `sudo service dnsmasq restart`
 
 ### Python requirements
-pip3 install -r requirements.txt
-pip3 install supervisor celery[redis]
+* pip3 install -r requirements.txt
+* pip3 install supervisor celery[redis]
 
 ### DB configuration
-mysql -u root -p
+* mysql -u root -p
 ```
 CREATE DATABASE piseduce;
 CREATE USER 'pipi'@'localhost' IDENTIFIED BY 'totopwd';
