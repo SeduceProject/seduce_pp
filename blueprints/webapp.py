@@ -51,7 +51,7 @@ def process_take():
         d.public_key = flask.request.form.get("public_key")
         d.environment = flask.request.form.get("environment")
         d.duration = flask.request.form.get("duration")
-        d.init_script = flask.request.form.get("init_script")
+        d.label = flask.request.form.get("c9pwd")
         d.start_date = datetime.datetime.utcnow()
         d.state = "created"
     db.session.commit()

@@ -12,10 +12,6 @@ from paramiko.ssh_exception import BadHostKeyException, AuthenticationException,
 import socket
 from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
 import re
-import random
-import uuid
-from sqlalchemy import or_
-import datetime
 
 
 @celery.task()
@@ -33,8 +29,7 @@ def prepare_nfs_boot():
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
 
             # Create a folder containing network boot files that will be served via TFTP
-            # tftpboot_template_folder = "/tftpboot/rpiboot"
-            tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
+            tftpboot_template_folder = "/tftpboot/rpiboot"
             tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
 
             if os.path.isdir(tftpboot_node_folder):
@@ -170,7 +165,6 @@ def deploy_env():
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
             environment = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment][0]
             environment_local_path = environment.get("nfs_path")
-            environment_img_path = environment.get("img_path")
             print("environment_local_path: %s" % (environment_local_path))
             
             print(server)
@@ -183,8 +177,7 @@ def deploy_env():
 
                 # Write the image of the environment on SD card
                 # deploy_cmd = """rm /tmp/deployment_done; unzip -p %s | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress.txt; touch /tmp/deployment_done;""" % (environment_local_path)
-                # deploy_cmd = f"""rm /tmp/deployment_done; rm /tmp/progress_{server['id']}.txt; rsh 192.168.1.22 "pigz -dc /nfs/raspi1/{environment_local_path}" | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress_{server['id']}.txt; touch /tmp/deployment_done;"""
-                deploy_cmd = f"""rm /tmp/deployment_done; rm /tmp/progress_{server['id']}.txt; rsh 192.168.1.25 "cat {environment_img_path}" | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress_{server['id']}.txt; touch /tmp/deployment_done;"""
+                deploy_cmd = f"""rm /tmp/deployment_done; rm /tmp/progress_{server['id']}.txt; rsh 192.168.1.22 "pigz -dc /nfs/raspi1/{environment_local_path}" | sudo dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress_{server['id']}.txt; touch /tmp/deployment_done;"""
 
                 screen_deploy_cmd = "screen -d -m bash -c '%s'" % deploy_cmd
                 print(screen_deploy_cmd)
@@ -304,7 +297,6 @@ def configure_sdcard_resize_boot():
                 print(ftp)
                 if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
                     ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
-                    ssh.exec_command("sync")
 
                 # Create a ssh file on the SD Card
                 cmd = "echo '1' > /mnt/sdcard_boot/ssh"
@@ -320,15 +312,6 @@ def configure_sdcard_resize_boot():
 
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
-
-                # Create a folder containing network boot files that will be served via TFTP
-                tftpboot_template_folder = "/tftpboot/rpiboot"
-                # tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
-                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
-
-                if os.path.isdir(tftpboot_node_folder):
-                    shutil.rmtree(tftpboot_node_folder)
-                shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
 
                 # Modify the boot PXE configuration file to resize the FS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
@@ -573,11 +556,12 @@ def deploy_public_key():
                 # Add the public key of the user
                 cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % deployment.public_key
                 ssh.exec_command(cmd)
-
-                # Secure the cloud9 connection with password
-                #cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:admin -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9"
-                #ssh.exec_command(cmd)
-
+                
+                # Secure the cloud9 connection
+                cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:admin -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9"
+                #% deployment.label
+                ssh.exec_command(cmd)
+                
                 successful_step = True
 
                 ftp = ssh.open_sftp()
@@ -636,28 +620,19 @@ def prepare_sdcard_boot():
                 # Sleep 2 seconds
                 time.sleep(2)
 
+                # Short circuit the bootcode.bin file on the SD CARD
+                ftp = ssh.open_sftp()
+                print(ftp)
+                if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
+                    ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
+
                 # Get the partition UUID of the rootfs partition
                 (stdin, stdout, stderr) = ssh.exec_command(
                     """blkid | grep '/dev/mmcblk0p2: LABEL="rootfs"' | sed 's/.*PARTUUID=//g' | sed 's/"//g'""")
                 partition_uuid = stdout.readlines()[0].strip()
 
-                # Create a folder containing network boot files that will be served via TFTP
-                # tftpboot_template_folder = "/tftpboot/rpiboot"
-                tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
-                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
-
-                if os.path.isdir(tftpboot_node_folder):
-                    shutil.rmtree(tftpboot_node_folder)
-                shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
-
-                cmd = f"""
-scp root@{server.get("ip")}:/mnt/sdcard_boot/kernel7.img {tftpboot_node_folder}/.
-scp -r root@{server.get("ip")}:/mnt/sdcard_boot/bcm2710-*.dtb {tftpboot_node_folder}/.
-                """
-
-                os.system(cmd)
-
                 # Modify the boot PXE configuration file to mount its file system via NFS
+                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
                 text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
                 text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
                 text_file.close()
@@ -759,56 +734,15 @@ def finish_deployment():
                            environment.get("name") == deployment.environment][0]
 
             # By default the deployment should be concluded
-            finish_init = True
             finish_deployment = True
-
-            # Implement a mecanism that execute the init script
-            if deployment.init_script is not None or deployment.init_script != "":
-
-                finish_init = False
-
-                try:
-                    ssh = paramiko.SSHClient()
-                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                    print("Could connect to %s" % server.get("ip"))
-
-                    ftp = ssh.open_sftp()
-                    print(ftp)
-                    if "started_init_script" not in ftp.listdir("/tmp/"):
-                        # Generate random title
-                        random_file_name = str(uuid.uuid1())
-                        random_file_path = f"/tmp/{random_file_name}"
-
-                        with open(random_file_path, mode="w") as f:
-                            f.write("DEBIAN_FRONTEND=noninteractive\n")
-                            f.write(deployment.init_script)
-
-                        ftp.put(random_file_path, "/tmp/init_script.sh")
-
-                        if "init_script.sh" not in ftp.listdir("/tmp"):
-                            print(f"ERROR: \"init_script.sh\" not in /tmp")
-                            continue
-
-                        # Launch init script
-                        cmd = "touch /tmp/started_init_script; sed -i 's/\r$//' /tmp/init_script.sh; bash /tmp/init_script.sh; touch /tmp/finished_init_script"
-                        ssh.exec_command(cmd)
-
-                    if "finished_init_script" in ftp.listdir("/tmp/"):
-                        finish_init = True
-
-                    ssh.close()
-                except:
-                    pass
 
             # If the environment provides a function to check that
             # a service must be started before concluding the deployment
             # then the result of the function will be used
             if "ready" in environment:
                 finish_deployment = environment.get("ready")(server)
-            print("finish_init %s" % finish_init)
-            print("finish_deployment %s" % finish_deployment)
-            if finish_deployment and finish_init:
+
+            if finish_deployment:
                 deployment.finish_deployment()
                 db.session.add(deployment)
                 db.session.commit()
@@ -835,7 +769,6 @@ def process_destruction():
             deployment.process_destruction()
             db.session.add(deployment)
             db.session.commit()
-
         db.session.remove()
 
 
@@ -867,52 +800,4 @@ def conclude_destruction():
                 deployment.conclude_destruction()
                 db.session.add(deployment)
                 db.session.commit()
-        db.session.remove()
-
-
-@celery.task()
-def check_stuck_deployments():
-    print("Checking deployments with servers that failed to reboot")
-
-    # Use lock in context
-    with RedLock("lock/check/stuck_deployment"):
-        pending_deployments = Deployment.query.filter_by(state="destroying").all()
-        rebooting_deployments = Deployment.query.filter(or_(Deployment.state == "nfs_rebooting",
-                                                          Deployment.state == "nfs_rebooting_after_resize",
-                                                          Deployment.state == "sdcard_rebooting")).all()
-        print(len(pending_deployments))
-
-        for deployment in rebooting_deployments:
-
-            # Get description of the server that will be deployed
-            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
-            can_connect = True
-            try:
-                ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
-            except (BadHostKeyException, AuthenticationException,
-                    SSHException, socket.error) as e:
-                can_connect = False
-
-            if not can_connect:
-                now = datetime.datetime.utcnow()
-                elapsed_time_since_last_update = (now - deployment.updated_at).total_seconds()
-                if elapsed_time_since_last_update > 90:
-                    print(f"""Error: { elapsed_time_since_last_update } seconds since last update, I will force reboot { server.get("ip") }""")
-                    deployment.updated_at = now
-
-                    # Turn off port
-                    turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-
-                    # Wait 2 seconds
-                    time.sleep(2)
-
-                    # Turn on port
-                    turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-
-                    db.session.add(deployment)
-                    db.session.commit()
         db.session.remove()
