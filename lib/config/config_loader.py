@@ -2,7 +2,7 @@ import configparser
 import os
 
 
-CONFIG_FILES_PATH = ["/etc/seducepp.conf", "~/seducepp.conf", "conf/seducepp/seducepp.conf"]
+CONFIG_FILES_PATH = ["/etc/seducepp.conf", "seducepp.conf", "conf/seducepp/seducepp.conf"]
 
 CONFIG_SINGLETON = None
 
