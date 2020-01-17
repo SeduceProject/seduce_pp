@@ -8,61 +8,89 @@ webapp_blueprint = Blueprint('app', __name__,
                              template_folder='templates')
 
 
-@webapp_blueprint.route("/server/take/<string:server_id>")
+@webapp_blueprint.route("/server/take/<string:server_info>")
 @flask_login.login_required
-def take(server_id):
+def take(server_info):
     from lib.config.cluster_config import CLUSTER_CONFIG
-
-    return flask.render_template("form_take.html.jinja2",
-                                 server_id=server_id,
-                                 environments=CLUSTER_CONFIG.get("environments"))
-
-
-@webapp_blueprint.route("/server/process_take/<string:server_id>", methods=["POST"])
-@flask_login.login_required
-def process_take(server_id):
     from database import Deployment, User
     from database import db
 
-    user = current_user
-    user_email = user.id
-    db_user = User.query.filter_by(email=user_email).first()
+    db_user = User.query.filter_by(email=current_user.id).first()
+    # Delete previous deployments still in initialized state
+    Deployment.query.filter_by(user_id=db_user.id, state="initialized").delete();
+    # Reserve the nodes to avoid other users to take them
+    info = server_info.split(";")
+    server_ids = info[0].split(",")
+    server_names = info[1].split(",")
+    for id in server_ids:
+        new_deployment = Deployment()
+        new_deployment.state = "initialized"
+        new_deployment.server_id = id
+        new_deployment.user_id = db_user.id
+        new_deployment.name = "initialized"
+        db.session.add(new_deployment)
+        db.session.commit()
 
-    new_deployment = Deployment()
-    if "name" in flask.request.form:
-        new_deployment.name = flask.request.form.get("name")
-    new_deployment.public_key = flask.request.form.get("public_key")
-    new_deployment.environment = flask.request.form.get("environment")
-    new_deployment.duration = flask.request.form.get("duration")
-    new_deployment.init_script = flask.request.form.get("init_script")
-    new_deployment.server_id = server_id
-    new_deployment.start_date = datetime.datetime.utcnow()
-    new_deployment.user_id = db_user.id
+    return flask.render_template("form_take.html.jinja2",
+                                 server_ids=server_ids,
+                                 server_names=server_names,
+                                 environments=CLUSTER_CONFIG.get("environments"))
 
-    db.session.add(new_deployment)
+
+@webapp_blueprint.route("/server/process_take/", methods=["POST"])
+@flask_login.login_required
+def process_take():
+    from database import Deployment, User
+    from database import db
+
+    db_user = User.query.filter_by(email=current_user.id).first()
+    deployments = Deployment.query.filter_by(user_id=db_user.id, state="initialized").all()
+
+    for d in deployments:
+        d.name = flask.request.form.get("name")
+        d.public_key = flask.request.form.get("public_key")
+        d.environment = flask.request.form.get("environment")
+        d.duration = flask.request.form.get("duration")
+        d.init_script = flask.request.form.get("init_script")
+        d.start_date = datetime.datetime.utcnow()
+        d.state = "created"
     db.session.commit()
 
     return flask.redirect(flask.url_for("app.home"))
 
 
-@webapp_blueprint.route("/deployment/destroy/<string:deployment_id>")
+@webapp_blueprint.route("/server/reboot/<string:server_id>")
 @flask_login.login_required
-def ask_destruction(deployment_id):
+def ask_reboot(server_id):
     from database import Deployment, User
     from database import db
 
-    user = current_user
-    user_email = user.id
-    db_user = User.query.filter_by(email=user_email).first()
-
-    deployment = Deployment.query.filter_by(id=deployment_id).first()
-
-    if deployment is not None:
-
-        deployment.ask_destruction()
-
-        db.session.add(deployment)
+    db_user = User.query.filter_by(email=current_user.id).first()
+    # Verify the node belongs to my deployments
+    my_deployment = Deployment.query.filter(Deployment.user_id == db_user.id, Deployment.server_id == server_id,
+                                            Deployment.state != "destroyed").first();
+    if my_deployment is not None:
+        my_deployment.init_reboot_sdcard()
+        db.session.add(my_deployment)
         db.session.commit()
+    return flask.redirect(flask.url_for("app.home"))
+
+
+@webapp_blueprint.route("/deployment/destroy/<string:deployment_ids>")
+@flask_login.login_required
+def ask_destruction(deployment_ids):
+    from database import Deployment, User
+    from database import db
+
+    db_user = User.query.filter_by(email=current_user.id).first()
+
+    for d in deployment_ids.split(","):
+        deployment = Deployment.query.filter_by(id=d, user_id=db_user.id).first()
+        if deployment is not None:
+            deployment.ask_destruction()
+
+            db.session.add(deployment)
+    db.session.commit()
 
     return flask.redirect(flask.url_for("app.home"))
 
