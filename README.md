@@ -1,12 +1,6 @@
 ## Installation de PiSeduce dans une VM
 * Linux Ubuntu Server 18.04.3 amd64
 
-### Passwords
-Ubuntu: 
-MariaDB: 
-root: 
-IP: 
-
 ### Installation des paquets
 ```
 sudo apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
