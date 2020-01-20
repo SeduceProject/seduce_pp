@@ -50,7 +50,9 @@ def process_take():
         d.name = flask.request.form.get("name")
         d.public_key = flask.request.form.get("public_key")
         d.init_script = flask.request.form.get("init_script")
-        d.c9pwd = flask.request.form.get("c9pwd")
+        pwd = flask.request.form.get("c9pwd")
+        if pwd.strip():
+            d.c9pwd = pwd
         d.environment = flask.request.form.get("environment")
         d.duration = flask.request.form.get("duration")
         d.start_date = datetime.datetime.utcnow()
