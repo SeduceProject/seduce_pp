@@ -62,7 +62,7 @@ def user_deployments():
     deployment_info = {}
     for d in deployments:
         if d.name not in deployment_info.keys():
-            deployment_info[d.name] = {"name": d.name, "ids": [], "server_ids": [], "server_names": [], "user_id": d.user_id}
+            deployment_info[d.name] = {"name": d.name, "ids": [], "server_ids": [], "server_names": [], "state": d.state, "user_id": d.user_id}
         deployment_info[d.name]["ids"].append(d.id)
         deployment_info[d.name]["server_ids"].append(d.server_id)
         for s in CLUSTER_CONFIG["nodes"]:
