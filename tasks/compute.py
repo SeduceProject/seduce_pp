@@ -570,7 +570,7 @@ def deploy_public_key():
                 ssh.exec_command(cmd)
                 
                 # Secure the cloud9 connection
-                cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:admin -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9"
+                cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9" % deployment.c9pwd
                 #% deployment.label
                 ssh.exec_command(cmd)
                 
