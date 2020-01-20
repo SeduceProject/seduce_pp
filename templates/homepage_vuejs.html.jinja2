@@ -32,7 +32,7 @@
                             <div v-if="[[ s.state ]] == 'free'" class="deployment-name">Ready to deploy</div>
                             <div v-if="[[ s.state ]] != 'free'" class="deployment-name">[[ s.dname.substring(0,18) ]]</div>
                             <a v-if="[[ s.state ]] != 'free' && [[ s.state ]] != 'in_use'" :href="'/server/reboot/' + s.id" class="shell-link">Reboot</a>
-                            <a v-if="[[ s.state ]] == 'deployed'" :href="'http://' + s.ip + ':8181'" target="_blank" class="shell-link">Console</a>
+                            <a v-if="[[ s.state ]] == 'deployed'" :href=s.public_address target="_blank" class="shell-link">Console</a>
                         </div>
                     </div>
                 </div>

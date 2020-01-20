@@ -93,7 +93,8 @@ def available_servers():
 
     server_info = {}
     for s in CLUSTER_CONFIG["nodes"]:
-        server_info[s["id"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"], "state": "free"}
+        server_info[s["id"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"],
+                "public_address": s["public_address"], "state": "free"}
     id2email = {}
     for d in not_destroyed_deployments:
         if d.user_id == db_user.id:
