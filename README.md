@@ -258,3 +258,17 @@ chmod 600 ssh_host_dsa_key ssh_host_ecdsa_key ssh_host_ed25519_key ssh_host_rsa_
 chmod ... /etc/ssh
 ```
 
+## Setting a development environment
+* Clone the directory
+* Create a new database `piseduce_new`
+* Copy the configuration file and edit it
+  * change mail account for both the [mail] and the [admin] sections
+  * change the url of the [db] section to connect to the new database
+* Change the port of the frontend api
+  * edit the app.py file
+* Start the frontend `python3 app.py`
+* Import the user database
+  * `mysqldump -upipi -ptoto piseduce user > user.sql`
+  * `mysql -upipi -ptoto piseduce_new < user.sql`
+* Start the tasks `python3 celery_tasks.py`
+* Reserve the nodes from the main frontend and use them to test your new feature
