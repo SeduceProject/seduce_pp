@@ -12,7 +12,7 @@
 .square-resa {
     width: 200px;
     height: 120px;
-    border: 1px solid #3498DB;
+    border: 1px solid #17a2b8;
     border-radius: 8px;
     padding-top: 3px;
     margin: 2px;
@@ -49,123 +49,183 @@
 }
 
 /* state colors */
-.free {
+.in_selection {
     width: 90%;
     background-color: #7d9bff;
     margin: auto;
 }
 
-.in_selection {
+.initialized {
     width: 90%;
     background-color: #ece4ff;
     margin: auto;
 }
 
-.initialized {
+.free {
     width: 90%;
-    background-color: #7db8ff;
+    background-color: #17a2b8;
     margin: auto;
 }
 
 .created {
     width: 90%;
-    background-color: #74caff;
+    background-color: #E582FB;
     margin: auto;
 }
 
 .configured_nfs_boot {
     width: 90%;
-    background-color: #7dd4ff;
+    background-color: #E186F7;
+    margin: auto;
+}
+
+.turn_on_nfs_boot {
+    width: 90%;
+    background-color: #DD8BF3;
     margin: auto;
 }
 
 .nfs_rebooting {
     width: 90%;
-    background-color: #7de7ff;
+    background-color: #DA90EE;
     margin: auto;
 }
 
 .nfs_rebooted {
     width: 90%;
-    background-color: #7dfbff;
+    background-color: #D694EA;
     margin: auto;
 }
 
 .ready_deploy {
     width: 90%;
-    background-color: #7dffe5;
+    background-color: #D299E6;
     margin: auto;
 }
 
 .environment_deploying {
     width: 90%;
-    background-color: #7dffcc;
+    background-color: #CE9EE2;
     margin: auto;
 }
 
 .environment_deployed {
     width: 90%;
-    background-color: #7dffae;
+    background-color: #CAA2DE;
     margin: auto;
 }
 
-.public_key_deployed {
+.filesystem_mounted {
     width: 90%;
-    background-color: #7dff87;
+    background-color: #C6A7DA;
+    margin: auto;
+}
+
+.filesystem_ready {
+    width: 90%;
+    background-color: #C2ABD6;
     margin: auto;
 }
 
 .configured_sdcard_resize_boot {
     width: 90%;
-    background-color: #87ff7d;
+    background-color: #BFB0D1;
+    margin: auto;
+}
+
+.off_after_resize {
+    width: 90%;
+    background-color: #BBB5CD;
+    margin: auto;
+}
+
+.sdcard_resizing {
+    width: 90%;
+    background-color: #B7B9C9;
+    margin: auto;
+}
+
+.off_sdcard_resize {
+    width: 90%;
+    background-color: #B3BEC5;
     margin: auto;
 }
 
 .nfs_rebooting_after_resize {
     width: 90%;
-    background-color: #a6ff7d;
+    background-color: #AFC3C1;
     margin: auto;
 }
 
 .nfs_rebooted_after_resize {
     width: 90%;
-    background-color: #bcff7d;
+    background-color: #ABC7BD;
+    margin: auto;
+}
+
+.sdcard_mounted {
+    width: 90%;
+    background-color: #A7CCB9;
     margin: auto;
 }
 
 .collected_partition_uuid {
     width: 90%;
-    background-color: #ceff7d;
+    background-color: #A4D1B4;
+    margin: auto;
+}
+
+.mounted_public_key {
+    width: 90%;
+    background-color: #A0D5B0;
+    margin: auto;
+}
+
+.public_key_deployed {
+    width: 90%;
+    background-color: #9CDAAC;
+    margin: auto;
+}
+
+.sdcard_boot_ready {
+    width: 90%;
+    background-color: #98DEA8;
     margin: auto;
 }
 
 .configured_sdcard_boot {
     width: 90%;
-    background-color: #e1ff7d;
+    background-color: #94E3A4;
+    margin: auto;
+}
+
+.off_sdcard_boot {
+    width: 90%;
+    background-color: #90E8A0;
     margin: auto;
 }
 
 .sdcard_rebooting {
     width: 90%;
-    background-color: #f5ff7d;
+    background-color: #8CEC9C;
     margin: auto;
 }
 
 .sdcard_rebooted {
     width: 90%;
-    background-color: #fffb7d;
+    background-color: #89F197;
     margin: auto;
 }
 
 .deployed {
     width: 90%;
-    background-color: #ffe97d;
+    background-color: #7DFF8B;
     margin: auto;
 }
 
 .destruction_requested {
     width: 90%;
-    background-color:  #fd7dff;
+    background-color: #fd7dff;
     margin: auto;
 }
 
@@ -177,13 +237,13 @@
 
 .destroyed {
     width: 90%;
-    background-color:#b67dff;
+    background-color: #b67dff;
     margin: auto;
 }
 
 .in_use {
     width: 90%;
-    background-color:  #ff7d7d;
+    background-color: #ff7d7d;
     margin: auto;
 }
 /* End of state colors */
