@@ -66,33 +66,43 @@ if __name__ == "__main__":
     import time
 
     while True:
-        # # DEFAULT
+        # DEFAULT
         send_confirmation_email()
-        # COMPUTE
-        prepare_nfs_boot()
-        init_reboot_nfs()
-        conclude_reboot_nfs()
-        prepare_deployment()
-        deploy_env()
-        deploy_env_finished()
 
-        configure_sdcard_resize_boot()
-        init_reboot_nfs_after_resize()
-        conclude_reboot_nfs_after_resize()
-        collect_partition_uuid()
-        deploy_public_key()
-
-        prepare_sdcard_boot()
-        init_reboot_sdcard()
-        conclude_reboot_sdcard()
+        # COMPUTE (the reverse order is crucial !)
         finish_deployment()
+        conclude_reboot_sdcard()
+        on_reboot_sdcard()
+        off_reboot_sdcard()
+        do_sdcard_boot()
+        prepare_sdcard_boot()
+        deploy_public_key()
+        mount_public_key()
+        collect_partition_uuid()
+        sdcard_mount()
+        conclude_reboot_nfs_after_resize()
+        on_nfs_boot()
+        off_nfs_boot()
+        turn_on_after_resize()
+        turn_off_after_resize()
+        filesystem_check()
+        configure_sdcard_resize_boot()
+        mount_filesystem()
+        deploy_env_finished()
+        deploy_env()
+        prepare_deployment()
+        conclude_reboot_nfs()
+        start_reboot_nfs()
+        init_reboot_nfs()
+        prepare_nfs_boot()
 
-        process_destruction()
+        boot_stuck_deployments()
+        detect_stuck_deployments()
+
         conclude_destruction()
-
-        check_stuck_deployments()
+        process_destruction()
 
         # Close the session
         db.session.close()
-
-        time.sleep(10)
+        # Do not decrease the sleep time (the time is configured from the node reboot time)
+        time.sleep(3)

@@ -17,6 +17,8 @@ import uuid
 from sqlalchemy import or_
 import datetime
 
+sleeping_nodes = {}
+rebooting_nodes = []
 
 @celery.task()
 def prepare_nfs_boot():
@@ -69,15 +71,29 @@ def init_reboot_nfs():
 
             # Turn off port
             turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-
-            # Wait 2 seconds
-            time.sleep(2)
-
-            # Turn on port
-            turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-
             # Update the deployment
             deployment.init_reboot_nfs()
+            db.session.add(deployment)
+            db.session.commit()
+        db.session.remove()
+
+
+@celery.task()
+def start_reboot_nfs():
+    print("Checking deployments in 'turn_on_nfs_boot' state")
+
+    # Use lock in context
+    with RedLock("lock/deployments/turn_on_nfs_boot"):
+        pending_deployments = Deployment.query.filter_by(state="turn_on_nfs_boot").all()
+        print(len(pending_deployments))
+
+        for deployment in pending_deployments:
+            # Get description of the server that will be deployed
+            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+            # Turn on port
+            turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+            # Update the deployment
+            deployment.start_reboot_nfs()
             db.session.add(deployment)
             db.session.commit()
         db.session.remove()
@@ -252,7 +268,7 @@ def deploy_env_finished():
 
 
 @celery.task()
-def configure_sdcard_resize_boot():
+def mount_filesystem():
     print("Checking deployments in 'environment_deployed' state")
 
     # Use lock in context
@@ -261,104 +277,133 @@ def configure_sdcard_resize_boot():
         print(len(pending_deployments))
 
         for deployment in pending_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
-
                 # Ensure 'sdcard_boot' and 'sdcard_fs' exists
                 ssh.exec_command("mkdir -p /mnt/sdcard_boot")
                 ssh.exec_command("mkdir -p /mnt/sdcard_fs")
-
                 # Unmount the boot file system
                 cmd = "umount /mnt/sdcard_boot"
                 ssh.exec_command(cmd)
-
                 # Unmount the root file system
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
-
                 # Mount the boot partition of the SD CARD
                 cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
                 ssh.exec_command(cmd)
-
                 # Mount the root partition of the SD CARD
                 cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
+                # Update the deployment
+                deployment.mount_filesystem()
+                db.session.add(deployment)
+                db.session.commit()
+            except (BadHostKeyException, AuthenticationException,
+                    SSHException, socket.error) as e:
+                print(e)
+                print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
-                # Wait 2 second
-                time.sleep(2)
 
+@celery.task()
+def configure_sdcard_resize_boot():
+    print("Checking deployments in 'filesystem_mounted' state")
+
+    # Use lock in context
+    with RedLock("lock/deployments/filesystem_mounted"):
+        pending_deployments = Deployment.query.filter_by(state="filesystem_mounted").all()
+        print(len(pending_deployments))
+
+        for deployment in pending_deployments:
+            # Get description of the server that will be deployed
+            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
                 # Short circuit the bootcode.bin file on the SD CARD
                 ftp = ssh.open_sftp()
-                print(ftp)
                 if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
                     ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
-                    ssh.exec_command("sync")
-
                 # Create a ssh file on the SD Card
                 cmd = "echo '1' > /mnt/sdcard_boot/ssh"
                 ssh.exec_command(cmd)
-
                 # Tweak: make sure that the ssh service will be enabled whenever /boot/ssh has been create
                 cmd = "sed -i 's/ConditionPathExistsGlob.*//g' /mnt/sdcard_fs/etc/systemd/system/multi-user.target.wants/sshswitch.service"
                 ssh.exec_command(cmd)
-
+                ssh.exec_command("sync")
                 # Unmount the boot partition of the SD CARD
                 cmd = "umount /mnt/sdcard_boot"
                 ssh.exec_command(cmd)
-
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
-
                 # Create a folder containing network boot files that will be served via TFTP
                 tftpboot_template_folder = "/tftpboot/rpiboot"
                 # tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
-
                 if os.path.isdir(tftpboot_node_folder):
                     shutil.rmtree(tftpboot_node_folder)
                 shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
-
                 # Modify the boot PXE configuration file to resize the FS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
                 text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
                 text_file.write(get_sdcard_resize_boot_cmdline())
                 text_file.close()
-
                 # /!\ here we check that changes have been committed to the SD card
-
                 # Mount the boot partition of the SD CARD
                 cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
                 ssh.exec_command(cmd)
+                # Update the deployment
+                deployment.configure_sdcard_resize_boot()
+                db.session.add(deployment)
+                db.session.commit()
+                print("%s"% ftp.listdir("/mnt/sdcard_boot"))
+            except (BadHostKeyException, AuthenticationException,
+                SSHException, socket.error) as e:
+                print(e)
+                print("Could not connect to %s" % server.get("ip"))
+    db.session.remove()
 
-                # Wait 2 second
-                time.sleep(2)
+@celery.task()
+def filesystem_check():
+    print("Checking deployments in 'filesystem_ready' state")
 
+    # Use lock in context
+    with RedLock("lock/deployments/filesystem_ready"):
+        pending_deployments = Deployment.query.filter_by(state="filesystem_ready").all()
+        print(len(pending_deployments))
+
+        for deployment in pending_deployments:
+            # Get description of the server that will be deployed
+            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                ftp = ssh.open_sftp()
                 successful_step = True
-
                 if "_bootcode.bin" not in ftp.listdir("/mnt/sdcard_boot"):
                     print("bootcode.bin file has not been renamed!")
                     successful_step = False
-
                 if "ssh" not in ftp.listdir("/mnt/sdcard_boot"):
                     print("ssh file has not been created!")
                     successful_step = False
-
                 # Unmount the boot partition of the SD CARD
                 cmd = "umount /mnt/sdcard_boot"
                 ssh.exec_command(cmd)
-
                 # Update the deployment
                 if successful_step:
-                    deployment.configure_sdcard_resize_boot()
+                    deployment.filesystem_check()
                     db.session.add(deployment)
                     db.session.commit()
+                #else:
+                #    deployment.retry_configure_sdcard()
+                #    db.session.add(deployment)
+                #    db.session.commit()
 
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
@@ -368,8 +413,8 @@ def configure_sdcard_resize_boot():
 
 
 @celery.task()
-def init_reboot_nfs_after_resize():
-    print("Checking configured_nfs_boot in 'configured_sdcard_resize_boot' state")
+def turn_off_after_resize():
+    print("Checking deployments in 'configured_sdcard_resize_boot' state")
 
     # Use lock in context
     with RedLock("lock/deployments/configured_sdcard_resize_boot"):
@@ -380,40 +425,83 @@ def init_reboot_nfs_after_resize():
             for deployment in pending_deployments:
                 # Get description of the server that will be deployed
                 server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
                 # Turn off port
                 turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                # Update the deployment state
+                deployment.turn_off_after_resize()
+                db.session.add(deployment)
+                db.session.commit()
+        db.session.remove()
 
-                # Wait 2 seconds
-                time.sleep(2)
 
-                # Turn on port
-                turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+@celery.task()
+def turn_on_after_resize():
+    print("Checking deployments in 'off_after_resize' state")
 
-            # Wait 40 seconds to let the FS to resize
-            time.sleep(40)
+    # Use lock in context
+    with RedLock("lock/deployments/off_after_resize"):
+        pending_deployments = Deployment.query.filter_by(state="off_after_resize").all()
+        print(len(pending_deployments))
 
+        if len(pending_deployments):
             for deployment in pending_deployments:
                 # Get description of the server that will be deployed
                 server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
-                # Modify the boot PXE configuration file to resize the FS
-                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
-                text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-                text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
-                text_file.close()
-
-                # Turn off port
-                turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-
-                # Wait 2 seconds
-                time.sleep(2)
-
                 # Turn on port
                 turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                sleeping_nodes[deployment.id] = { "time": datetime.datetime.now(), 'duration': 40 }
+                # Update the deployment state
+                deployment.turn_on_after_resize()
+                db.session.add(deployment)
+                db.session.commit()
+        db.session.remove()
 
-                # Update the deployment
-                deployment.init_reboot_nfs_after_resize()
+
+@celery.task()
+def off_nfs_boot():
+    print("Checking deployments in 'sdcard_resizing' state")
+
+    # Use lock in context
+    with RedLock("lock/deployments/sdcard_resizing"):
+        pending_deployments = Deployment.query.filter_by(state="sdcard_resizing").all()
+        print(len(pending_deployments))
+
+        if len(pending_deployments):
+            for deployment in pending_deployments:
+              if deployment.id in sleeping_nodes:
+                  elapsedTime = (datetime.datetime.now() - sleeping_nodes[deployment.id]["time"]).total_seconds()
+                  print("now: %s, time: %s, elapsedTime: %d" %
+                          (datetime.datetime.now(), sleeping_nodes[deployment.id]["time"], elapsedTime))
+                  if elapsedTime >= sleeping_nodes[deployment.id]["duration"]:
+                      # Get description of the server that will be deployed
+                      server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+                      # Modify the boot PXE configuration file to resize the FS
+                      tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
+                      text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
+                      text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
+                      text_file.close()
+                      # Turn off port
+                      turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                      deployment.off_nfs_boot()
+                      db.session.add(deployment)
+                      db.session.commit()
+
+
+@celery.task()
+def on_nfs_boot():
+    print("Checking deployments in 'off_sdcard_resize' state")
+
+    # Use lock in context
+    with RedLock("lock/deployments/off_sdcard_resize"):
+        pending_deployments = Deployment.query.filter_by(state="off_sdcard_resize").all()
+        print(len(pending_deployments))
+
+        if len(pending_deployments):
+            for deployment in pending_deployments:
+                server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+                # Turn on port
+                turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                deployment.on_nfs_boot()
                 db.session.add(deployment)
                 db.session.commit()
         db.session.remove()
@@ -454,7 +542,7 @@ def conclude_reboot_nfs_after_resize():
 
 
 @celery.task()
-def collect_partition_uuid():
+def sdcard_mount():
     print("Checking deployments in 'nfs_rebooted_after_resize' state")
 
     # Use lock in context
@@ -463,55 +551,23 @@ def collect_partition_uuid():
         print(len(pending_deployments))
 
         for deployment in pending_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
-
-                successful_step = True
-
                 # Ensure 'sdcard_boot' exists
                 ssh.exec_command("mkdir -p /mnt/sdcard_boot")
-
                 # Unmount the boot file system
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
-
                 # Mount the boot partition of the SD CARD
                 cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
-
-                # Sleep 2 seconds
-                time.sleep(2)
-
-                # Check the size of the partition : if it is small, go back to 'environment_deployed' state
-                cmd = """lsblk | grep mmcblk0p2 | awk '{print $4}' | sed 's/G//g'"""
-                (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                output = stdout.readlines()
-                partition_size = float(output[0].strip())
-
-                # Check if resize has been successful (partition's size should be larger than 4 GB)
-                if partition_size < 4.0:
-                    successful_step = False
-
-                # Unmount the boot partition of the SD CARD
-                cmd = "umount /mnt/sdcard_boot"
-                ssh.exec_command(cmd)
-
-                # Update the deployment
-                if successful_step:
-                    deployment.collect_partition_uuid()
-                else:
-                    deployment.retry_resize()
-
+                deployment.sdcard_mount()
                 db.session.add(deployment)
                 db.session.commit()
-
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
                 print(e)
@@ -520,77 +576,125 @@ def collect_partition_uuid():
 
 
 @celery.task()
-def deploy_public_key():
+def collect_partition_uuid():
+    print("Checking deployments in 'sdcard_mounted' state")
+
+    # Use lock in context
+    with RedLock("lock/deployments/sdcard_mounted"):
+        pending_deployments = Deployment.query.filter_by(state="sdcard_mounted").all()
+        print(len(pending_deployments))
+
+        for deployment in pending_deployments:
+            # Get description of the server that will be deployed
+            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                successful_step = True
+                # Check the size of the partition : if it is small, go back to 'environment_deployed' state
+                cmd = """lsblk | grep mmcblk0p2 | awk '{print $4}' | sed 's/G//g'"""
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                output = stdout.readlines()
+                partition_size = float(output[0].strip())
+                # Check if resize has been successful (partition's size should be larger than 4 GB)
+                if partition_size < 4.0:
+                    successful_step = False
+                # Unmount the boot partition of the SD CARD
+                cmd = "umount /mnt/sdcard_boot"
+                ssh.exec_command(cmd)
+                # Update the deployment
+                if successful_step:
+                    deployment.collect_partition_uuid()
+                else:
+                    deployment.retry_resize()
+                db.session.add(deployment)
+                db.session.commit()
+            except (BadHostKeyException, AuthenticationException,
+                    SSHException, socket.error) as e:
+                print(e)
+                print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
+
+
+@celery.task()
+def mount_public_key():
     print("Checking deployments in 'collected_partition_uuid' state")
 
     # Use lock in context
     with RedLock("lock/deployments/collected_partition_uuid"):
         pending_deployments = Deployment.query.filter_by(state="collected_partition_uuid").all()
         print(len(pending_deployments))
-
         for deployment in pending_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
                 print("Could connect to %s" % server.get("ip"))
-
                 # Unmount the file system
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
-
                 # Mount the file system of the SD CARD
                 cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
+                deployment.mount_public_key()
+                db.session.add(deployment)
+                db.session.commit()
+            except (BadHostKeyException, AuthenticationException,
+                    SSHException, socket.error) as e:
+                print(e)
+                print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
-                # Sleep 2 seconds
-                time.sleep(2)
+@celery.task()
+def deploy_public_key():
+    print("Checking deployments in 'mounted_public_key' state")
 
+    # Use lock in context
+    with RedLock("lock/deployments/mounted_public_key"):
+        pending_deployments = Deployment.query.filter_by(state="mounted_public_key").all()
+        print(len(pending_deployments))
+
+        for deployment in pending_deployments:
+            # Get description of the server that will be deployed
+            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                print("Could connect to %s" % server.get("ip"))
                 # Create a ssh folder in the root folder of the SD CARD's file system
                 cmd = "mkdir -p /mnt/sdcard_fs/root/.ssh"
                 ssh.exec_command(cmd)
-
                 # Add the public key of the server
                 cmd = "cp /root/.ssh/authorized_keys /mnt/sdcard_fs/root/.ssh/authorized_keys"
                 ssh.exec_command(cmd)
-
-                # Sleep 2 seconds
-                time.sleep(2)
-
+                ssh.exec_command("sync")
                 # Add the public key of the server (second try)
                 cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % CLUSTER_CONFIG.get("controller").get("public_key")
                 ssh.exec_command(cmd)
-
                 # Add the public key of the user
                 cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % deployment.public_key
                 ssh.exec_command(cmd)
-                
                 # Secure the cloud9 connection
                 cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9" % deployment.c9pwd
                 #% deployment.label
                 ssh.exec_command(cmd)
-                
                 successful_step = True
-
                 ftp = ssh.open_sftp()
                 print(ftp)
                 if "authorized_keys" not in ftp.listdir("/mnt/sdcard_fs/root/.ssh"):
                     successful_step = False
-
                 # Unmount the file system
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
-
                 # Update the deployment
                 if successful_step:
                     deployment.deploy_public_key()
                     db.session.add(deployment)
                     db.session.commit()
-
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
                 print(e)
@@ -606,67 +710,72 @@ def prepare_sdcard_boot():
     with RedLock("lock/deployments/public_key_deployed"):
         pending_deployments = Deployment.query.filter_by(state="public_key_deployed").all()
         print(len(pending_deployments))
-
         for deployment in pending_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
-
                 # Ensure 'sdcard_boot' exists
                 ssh.exec_command("mkdir -p /mnt/sdcard_boot")
-
                 # Unmount the boot partition of the SD CARD
                 cmd = "umount /mnt/sdcard_boot"
                 ssh.exec_command(cmd)
-
                 # Mount the boot partition of the SD CARD
                 cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
                 ssh.exec_command(cmd)
-
-                # Sleep 2 seconds
-                time.sleep(2)
-
-                # Get the partition UUID of the rootfs partition
-                (stdin, stdout, stderr) = ssh.exec_command(
-                    """blkid | grep '/dev/mmcblk0p2: LABEL="rootfs"' | sed 's/.*PARTUUID=//g' | sed 's/"//g'""")
-                partition_uuid = stdout.readlines()[0].strip()
-
-                # Create a folder containing network boot files that will be served via TFTP
-                # tftpboot_template_folder = "/tftpboot/rpiboot"
-                tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
-                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
-
-                if os.path.isdir(tftpboot_node_folder):
-                    shutil.rmtree(tftpboot_node_folder)
-                shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
-
-                cmd = f"""
-scp -o "StrictHostKeyChecking no" root@{server.get("ip")}:/mnt/sdcard_boot/kernel7.img {tftpboot_node_folder}/.
-scp -o "StrictHostKeyChecking no" -r root@{server.get("ip")}:/mnt/sdcard_boot/bcm2710-*.dtb {tftpboot_node_folder}/.
-                """
-
-                os.system(cmd)
-
-                # Modify the boot PXE configuration file to mount its file system via NFS
-                text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-                text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
-                text_file.close()
-
-                # Unmount the boot partition of the SD CARD
-                cmd = "umount /mnt/sdcard_boot"
-                ssh.exec_command(cmd)
-
                 # Update the deployment
                 deployment.prepare_sdcard_boot()
                 db.session.add(deployment)
                 db.session.commit()
+            except (BadHostKeyException, AuthenticationException,
+                    SSHException, socket.error) as e:
+                print(e)
+                print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
 
+@celery.task()
+def do_sdcard_boot():
+    print("Checking deployments in 'sdcard_boot_ready' state")
+
+    # Use lock in context
+    with RedLock("lock/deployments/sdcard_boot_ready"):
+        pending_deployments = Deployment.query.filter_by(state="sdcard_boot_ready").all()
+        print(len(pending_deployments))
+        for deployment in pending_deployments:
+            # Get description of the server that will be deployed
+            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                # Get the partition UUID of the rootfs partition
+                (stdin, stdout, stderr) = ssh.exec_command(
+                    """blkid | grep '/dev/mmcblk0p2: LABEL="rootfs"' | sed 's/.*PARTUUID=//g' | sed 's/"//g'""")
+                partition_uuid = stdout.readlines()[0].strip()
+                # Create a folder containing network boot files that will be served via TFTP
+                tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
+                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
+                if os.path.isdir(tftpboot_node_folder):
+                    shutil.rmtree(tftpboot_node_folder)
+                shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
+                cmd = f"""
+scp -o "StrictHostKeyChecking no" root@{server.get("ip")}:/mnt/sdcard_boot/kernel7.img {tftpboot_node_folder}/.
+scp -o "StrictHostKeyChecking no" -r root@{server.get("ip")}:/mnt/sdcard_boot/bcm2710-*.dtb {tftpboot_node_folder}/.
+                """
+                os.system(cmd)
+                # Modify the boot PXE configuration file to mount its file system via NFS
+                text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
+                text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
+                text_file.close()
+                # Unmount the boot partition of the SD CARD
+                cmd = "umount /mnt/sdcard_boot"
+                ssh.exec_command(cmd)
+                # Update the deployment
+                deployment.do_sdcard_boot()
+                db.session.add(deployment)
+                db.session.commit()
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
                 print(e)
@@ -675,30 +784,39 @@ scp -o "StrictHostKeyChecking no" -r root@{server.get("ip")}:/mnt/sdcard_boot/bc
 
 
 @celery.task()
-def init_reboot_sdcard():
+def off_reboot_sdcard():
     print("Checking deployments in 'configured_sdcard_boot' state")
 
     # Use lock in context
     with RedLock("lock/deployments/configured_sdcard_boot"):
         pending_deployments = Deployment.query.filter_by(state="configured_sdcard_boot").all()
         print(len(pending_deployments))
-
         for deployment in pending_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
             # Turn off port
             turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+            # Update the deployment
+            deployment.off_reboot_sdcard()
+            db.session.add(deployment)
+            db.session.commit()
+        db.session.remove()
 
-            # Wait 2 seconds
-            time.sleep(2)
+@celery.task()
+def on_reboot_sdcard():
+    print("Checking deployments in 'off_sdcard_boot' state")
 
+    # Use lock in context
+    with RedLock("lock/deployments/off_sdcard_boot"):
+        pending_deployments = Deployment.query.filter_by(state="off_sdcard_boot").all()
+        print(len(pending_deployments))
+        for deployment in pending_deployments:
+            # Get description of the server that will be deployed
+            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
             # Turn on port
             turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-
             # Update the deployment
-            deployment.init_reboot_sdcard()
+            deployment.on_reboot_sdcard()
             db.session.add(deployment)
             db.session.commit()
         db.session.remove()
@@ -866,22 +984,17 @@ def conclude_destruction():
 
 
 @celery.task()
-def check_stuck_deployments():
+def detect_stuck_deployments():
     print("Checking deployments with servers that failed to reboot")
-
     # Use lock in context
     with RedLock("lock/check/stuck_deployment"):
-        pending_deployments = Deployment.query.filter_by(state="destroying").all()
         rebooting_deployments = Deployment.query.filter(or_(Deployment.state == "nfs_rebooting",
                                                           Deployment.state == "nfs_rebooting_after_resize",
                                                           Deployment.state == "sdcard_rebooting")).all()
-        print(len(pending_deployments))
-
+        print(len(rebooting_deployments))
         for deployment in rebooting_deployments:
-
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-
             can_connect = True
             try:
                 ssh = paramiko.SSHClient()
@@ -891,23 +1004,22 @@ def check_stuck_deployments():
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
                 can_connect = False
-
             if not can_connect:
                 now = datetime.datetime.utcnow()
                 elapsed_time_since_last_update = (now - deployment.updated_at).total_seconds()
                 if elapsed_time_since_last_update > 90:
                     print(f"""Error: { elapsed_time_since_last_update } seconds since last update, I will force reboot { server.get("ip") }""")
                     deployment.updated_at = now
-
                     # Turn off port
                     turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                    rebooting_nodes.append(server)
 
-                    # Wait 2 seconds
-                    time.sleep(2)
-
-                    # Turn on port
-                    turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-
-                    db.session.add(deployment)
-                    db.session.commit()
-        db.session.remove()
+@celery.task()
+def boot_stuck_deployments():
+    # Use lock in context
+    with RedLock("lock/check/stuck_deployment"):
+        if len(rebooting_nodes) > 0:
+            print("Power on stuck nodes (#nodes: %d)" % len(rebooting_nodes))
+            for server in rebooting_nodes:
+                # Turn on port
+                turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
