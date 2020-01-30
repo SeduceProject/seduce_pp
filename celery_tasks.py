@@ -97,7 +97,7 @@ if __name__ == "__main__":
         prepare_nfs_boot()
 
         boot_stuck_deployments()
-        detect_stuck_deployments()
+        #detect_stuck_deployments()
 
         conclude_destruction()
         process_destruction()

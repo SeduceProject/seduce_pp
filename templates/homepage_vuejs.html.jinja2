@@ -31,8 +31,11 @@
                             <div v-bind:class="[[ s.state ]]">[[ s.state.substring(0,18) ]]</div>
                             <div v-if="[[ s.state ]] == 'free'" class="deployment-name">Ready to deploy</div>
                             <div v-if="[[ s.state ]] != 'free'" class="deployment-name">[[ s.dname.substring(0,18) ]]</div>
-                            <a v-if="[[ s.state ]] == 'deployed'" :href="'/server/reboot/' + s.id" class="shell-link">Reboot</a>
-                            <a v-if="[[ s.state ]] == 'deployed'" :href=s.public_address target="_blank" class="shell-link">Console</a>
+                            <!--
+                            <a v-if="[[ s.state ]] == 'deployed'" :href="'/server/reboot/' + s.id" class="shell-link">HardReboot</a>
+                            -->
+                            <a v-if="[[ s.state ]] == 'deployed' && ([[ s.env ]] == 'raspbian_cloud9' || [[ s.env ]] ==
+                            'raspbian_jupyter')" :href=s.public_address target="_blank" class="shell-link">Console</a>
                         </div>
                     </div>
                 </div>

@@ -100,6 +100,7 @@ def available_servers():
         if d.user_id == db_user.id:
             server_info[d.server_id]["state"] = d.state
             server_info[d.server_id]["dname"] = d.name
+            server_info[d.server_id]["env"] = d.environment
         else:
             server_info[d.server_id]["state"] = "in_use"
             if d.user_id not in id2email.keys():

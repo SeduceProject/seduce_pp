@@ -1,8 +1,19 @@
-import requests
+import requests, paramiko
+
+
+def check_ssh_is_ready(node_desc):
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(node_desc.get("ip"), username="root", timeout=1.0)
+        return True
+    except (BadHostKeyException, AuthenticationException,
+            SSHException, socket.error) as e:
+        print(e)
+        return False
 
 
 def check_cloud9_is_ready(node_desc):
-
     cloud9_ide_url = "%s/ide.html" % (node_desc.get("public_address"))
     result = requests.get(cloud9_ide_url)
     if result.status_code == 200:
@@ -11,19 +22,15 @@ def check_cloud9_is_ready(node_desc):
         return "Unauthorized" in result.text
     return False
 
-def check_jupyter_is_ready(node_desc):
 
+def check_jupyter_is_ready(node_desc):
     cloud9_ide_url = "%s/tree?" % (node_desc.get("public_address"))
     result = requests.get(cloud9_ide_url)
-
     if "<title>Home</title>" in result.text:
         return True
-
     if "/static/style/style.min.css" in result.text:
         return True
-
     return False
-
 
 
 CLUSTER_CONFIG = {
@@ -256,67 +263,19 @@ CLUSTER_CONFIG = {
         "password": b"seduce"
     },
     "environments": [
-        # {
-        #     "name": "raspbian",
-        #     "absolute_path": "/nfs/raspi1/environments/2018-11-13-raspbian-stretch-lite.zip",
-        #     "nfs_path": "/environments/2018-11-13-raspbian-stretch-lite.zip",
-        #     "buttons": {
-        #         "console": lambda node_desc: node_desc.get("public_address")
-        #     }
-        # },
-        # {
-        #     "name": "raspbian_new",
-        #     "absolute_path": "/nfs/raspi1/environments/image_2019-04-27-Raspbian-lite.zip",
-        #     "nfs_path": "/environments/image_2019-04-27-Raspbian-lite.zip",
-        #     "buttons": {
-        #         "console": lambda node_desc: node_desc.get("public_address")
-        #     }
-        # },
-        # {
-        #     "name": "raspbian_cloud9",
-        #     "absolute_path": "/nfs/raspi1/environments/image_raspbian_cloud9_11_05_2019.zip",
-        #     "nfs_path": "/environments/image_raspbian_cloud9_11_05_2019.zip",
-        #     "buttons": {
-        #         "cloud9": lambda node_desc: node_desc.get("public_address")
-        #     },
-        #     "ready": check_cloud9_is_ready
-        # },
-        # {
-        #     "name": "raspbian_jupyter",
-        #     "absolute_path": "/nfs/raspi1/environments/image_raspbian_jupyter_28_05_2019.zip",
-        #     "nfs_path": "/environments/image_raspbian_jupyter_28_05_2019.zip",
-        #     "buttons": {
-        #         "jupyter": lambda node_desc: node_desc.get("public_address")
-        #     },
-        #     "ready": check_jupyter_is_ready
-        # },
-        # {
-        #     "name": "buster",
-        #     "absolute_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img.zip",
-        #     "nfs_path": "/environments/2019-09-26-raspbian-buster-lite.img.zip",
-        #     # "buttons": {
-        #     #     "cloud9": lambda node_desc: node_desc.get("public_address")
-        #     # },
-        #     # "ready": check_cloud9_is_ready
-        # },
         {
             "name": "raspbian_cloud9",
-            "absolute_path": "/nfs/raspi1/environments/image_cloud9_19_09_2019.zip",
             "img_path": "/nfs/raspi1/environments/2019-09-19-Raspbian-lite.img",
-            "nfs_path": "/environments/image_cloud9_19_09_2019.zip",
-            "buttons": {
-                "cloud9": lambda node_desc: node_desc.get("public_address")
-            },
             "ready": check_cloud9_is_ready
         },
         {
+            "name": "raspbian_buster_beta",
+            "img_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img",
+            "ready": check_ssh_is_ready
+        },
+        {
             "name": "raspbian_jupyter",
-            "absolute_path": "/nfs/raspi1/environments/image_jupyter_20_09_2019.zip",
             "img_path": "/nfs/raspi1/environments/2019-09-20-Raspbian-lite.img",
-            "nfs_path": "/environments/image_jupyter_20_09_2019.zip",
-            "buttons": {
-                "jupyter": lambda node_desc: node_desc.get("public_address")
-            },
             "ready": check_jupyter_is_ready
         }
     ]

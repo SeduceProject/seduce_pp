@@ -17,6 +17,7 @@ import uuid
 from sqlalchemy import or_
 import datetime
 
+# Global variables
 sleeping_nodes = {}
 rebooting_nodes = []
 
@@ -185,9 +186,7 @@ def deploy_env():
             # Get description of the server that will be deployed
             server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
             environment = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment][0]
-            environment_local_path = environment.get("nfs_path")
             environment_img_path = environment.get("img_path")
-            print("environment_local_path: %s" % (environment_local_path))
             
             print(server)
 
@@ -386,7 +385,7 @@ def filesystem_check():
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
                 ftp = ssh.open_sftp()
                 successful_step = True
-                if "_bootcode.bin" not in ftp.listdir("/mnt/sdcard_boot"):
+                if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
                     print("bootcode.bin file has not been renamed!")
                     successful_step = False
                 if "ssh" not in ftp.listdir("/mnt/sdcard_boot"):
@@ -677,11 +676,13 @@ def deploy_public_key():
                 ssh.exec_command(cmd)
                 # Add the public key of the user
                 cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % deployment.public_key
-                ssh.exec_command(cmd)
+                stdin, stdout, stderr = ssh.exec_command(cmd)
+                print("#### %s" % server.get("ip"))
+                for line in stdout.read().splitlines():
+                    print(line)
                 # Secure the cloud9 connection
                 cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9" % deployment.c9pwd
-                #% deployment.label
-                ssh.exec_command(cmd)
+                stdin, stdout, stderr = ssh.exec_command(cmd)
                 ssh.exec_command("sync")
                 successful_step = True
                 ftp = ssh.open_sftp()
@@ -690,7 +691,7 @@ def deploy_public_key():
                     successful_step = False
                 # Unmount the file system
                 cmd = "umount /mnt/sdcard_fs"
-                ssh.exec_command(cmd)
+                stdin, stdout, stderr = ssh.exec_command(cmd)
                 # Update the deployment
                 if successful_step:
                     deployment.deploy_public_key()
@@ -1012,6 +1013,7 @@ def detect_stuck_deployments():
                     print(f"""Error: { elapsed_time_since_last_update } seconds since last update, I will force reboot { server.get("ip") }""")
                     deployment.updated_at = now
                     # Turn off port
+                    print("Turn off %s" % server.get("ip"))
                     turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
                     rebooting_nodes.append(server)
 
@@ -1024,3 +1026,5 @@ def boot_stuck_deployments():
             for server in rebooting_nodes:
                 # Turn on port
                 turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+            while len(rebooting_nodes) > 0:
+                rebooting_nodes.pop(0)
