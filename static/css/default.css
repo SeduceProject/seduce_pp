@@ -181,6 +181,12 @@
     margin: auto;
 }
 
+.authorized_keys {
+    width: 90%;
+    background-color: #A0D5B0;
+    margin: auto;
+}
+
 .public_key_deployed {
     width: 90%;
     background-color: #9CDAAC;

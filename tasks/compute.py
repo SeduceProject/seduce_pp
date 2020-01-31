@@ -360,7 +360,6 @@ def configure_sdcard_resize_boot():
                 deployment.configure_sdcard_resize_boot()
                 db.session.add(deployment)
                 db.session.commit()
-                print("%s"% ftp.listdir("/mnt/sdcard_boot"))
             except (BadHostKeyException, AuthenticationException,
                 SSHException, socket.error) as e:
                 print(e)
@@ -670,33 +669,57 @@ def deploy_public_key():
                 # Add the public key of the server
                 cmd = "cp /root/.ssh/authorized_keys /mnt/sdcard_fs/root/.ssh/authorized_keys"
                 ssh.exec_command(cmd)
-                ssh.exec_command("sync")
-                # Add the public key of the server (second try)
-                cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % CLUSTER_CONFIG.get("controller").get("public_key")
-                ssh.exec_command(cmd)
-                # Add the public key of the user
-                cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % deployment.public_key
+                deployment.deploy_public_key()
+                db.session.add(deployment)
+                db.session.commit()
+            except (BadHostKeyException, AuthenticationException,
+                    SSHException, socket.error) as e:
+                print(e)
+                print("Could not connect to %s" % server.get("ip"))
+        db.session.remove()
+
+
+@celery.task()
+def check_authorized_keys():
+    print("Checking deployments in 'authorized_keys' state")
+
+    # Use lock in context
+    with RedLock("lock/deployments/authorized_keys"):
+        pending_deployments = Deployment.query.filter_by(state="authorized_keys").all()
+        print(len(pending_deployments))
+
+        for deployment in pending_deployments:
+            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                # Check the number of lines of the authorized_keys file to ensure the SSH key copy
+                cmd = "cat /mnt/sdcard_fs/root/.ssh/authorized_keys | wc -l"
                 stdin, stdout, stderr = ssh.exec_command(cmd)
-                print("#### %s" % server.get("ip"))
-                for line in stdout.read().splitlines():
-                    print(line)
-                # Secure the cloud9 connection
-                cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9" % deployment.c9pwd
-                stdin, stdout, stderr = ssh.exec_command(cmd)
-                ssh.exec_command("sync")
-                successful_step = True
-                ftp = ssh.open_sftp()
-                print(ftp)
-                if "authorized_keys" not in ftp.listdir("/mnt/sdcard_fs/root/.ssh"):
-                    successful_step = False
-                # Unmount the file system
-                cmd = "umount /mnt/sdcard_fs"
-                stdin, stdout, stderr = ssh.exec_command(cmd)
-                # Update the deployment
-                if successful_step:
-                    deployment.deploy_public_key()
+                lines = stdout.read().splitlines()
+                # Convert bytes to ASCII to int
+                wc_lines = int.from_bytes(lines[0], byteorder='big') - 48
+                if wc_lines > 1:
+                    # Add the public key of the server (second try)
+                    cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % CLUSTER_CONFIG.get("controller").get("public_key")
+                    ssh.exec_command(cmd)
+                    # Add the public key of the user
+                    cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % deployment.public_key
+                    ssh.exec_command(cmd)
+                    # Secure the cloud9 connection
+                    if deployment.environment == 'raspbian_cloud9':
+                        cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9" % deployment.c9pwd
+                        ssh.exec_command(cmd)
+                    # Unmount the file system
+                    cmd = "umount /mnt/sdcard_fs"
+                    ssh.exec_command(cmd)
+                    # Update the deployment
+                    deployment.check_authorized_keys()
                     db.session.add(deployment)
                     db.session.commit()
+                else:
+                    print("%s: Bad copy of authorized_keys: nb. lines %s" % (server.get("ip"), wc_lines))
             except (BadHostKeyException, AuthenticationException,
                     SSHException, socket.error) as e:
                 print(e)

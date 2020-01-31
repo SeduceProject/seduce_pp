@@ -67,15 +67,20 @@ if __name__ == "__main__":
 
     while True:
         # DEFAULT
-        send_confirmation_email()
+        #send_confirmation_email()
 
-        # COMPUTE (the reverse order is crucial !)
+        # Start with the destruction of deployments
+        conclude_destruction()
+        process_destruction()
+
+        # Deploy new environments on nodes (the reverse order is crucial !)
         finish_deployment()
         conclude_reboot_sdcard()
         on_reboot_sdcard()
         off_reboot_sdcard()
         do_sdcard_boot()
         prepare_sdcard_boot()
+        check_authorized_keys()
         deploy_public_key()
         mount_public_key()
         collect_partition_uuid()
@@ -96,13 +101,8 @@ if __name__ == "__main__":
         init_reboot_nfs()
         prepare_nfs_boot()
 
-        boot_stuck_deployments()
+        #boot_stuck_deployments()
         #detect_stuck_deployments()
 
-        conclude_destruction()
-        process_destruction()
-
-        # Close the session
-        db.session.close()
         # Do not decrease the sleep time (the time is configured from the node reboot time)
         time.sleep(3)
