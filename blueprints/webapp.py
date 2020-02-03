@@ -79,6 +79,22 @@ def ask_reboot(server_id):
     return flask.redirect(flask.url_for("app.home"))
 
 
+@webapp_blueprint.route("/server/redeploy/<string:server_id>")
+@flask_login.login_required
+def ask_redeploy(server_id):
+    from database import Deployment, User
+    from database import db
+
+    db_user = User.query.filter_by(email=current_user.id).first()
+    # Verify the node belongs to my deployments
+    my_deployment = Deployment.query.filter(Deployment.user_id == db_user.id, Deployment.server_id == server_id,
+                                            Deployment.state != "destroyed").first();
+    my_deployment.state = "created"
+    db.session.commit()
+    db.session.close()
+    return flask.redirect(flask.url_for("app.home"))
+
+
 @webapp_blueprint.route("/deployment/destroy/<string:deployment_ids>")
 @flask_login.login_required
 def ask_destruction(deployment_ids):

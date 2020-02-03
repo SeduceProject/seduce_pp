@@ -10,9 +10,7 @@
     </style>
 
     <div id="app" v-cloak>
-
         <main role="main" class="container">
-
             <div class="my-3 p-3 bg-white rounded shadow-sm">
                 <div class="border-bottom border-gray pb-2 mb-0">
                     <div class="select-nodes">
@@ -31,11 +29,6 @@
                             <div v-bind:class="[[ s.state ]]">[[ s.state.substring(0,18) ]]</div>
                             <div v-if="[[ s.state ]] == 'free'" class="deployment-name">Ready to deploy</div>
                             <div v-if="[[ s.state ]] != 'free'" class="deployment-name">[[ s.dname.substring(0,18) ]]</div>
-                            <!--
-                            <a v-if="[[ s.state ]] == 'deployed'" :href="'/server/reboot/' + s.id" class="shell-link">HardReboot</a>
-                            -->
-                            <a v-if="[[ s.state ]] == 'deployed' && ([[ s.env ]] == 'raspbian_cloud9' || [[ s.env ]] ==
-                            'raspbian_jupyter')" :href=s.public_address target="_blank" class="shell-link">Console</a>
                         </div>
                     </div>
                 </div>
@@ -43,26 +36,70 @@
         </main>
 
         <main role="main" class="container">
-
             <div class="my-3 p-3 bg-white rounded shadow-sm">
                 <h6 class="border-bottom border-gray pb-2 mb-0">Deployments</h6>
-
-                <div v-for="deployment in user_deployments" class="media text-muted pt-3">
-                    <div class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray">
-                        <div class="d-flex justify-content-between align-items-center w-100">
-                            <h6 class="text-gray-dark">[[ deployment.name ]]: <span class="node-list">[[ deployment.server_names ]]</span></h6>
-                            <div v-if="[[ deployment.state ]] != 'destruction_requested' && [[ deployment.state ]] != 'destroying'">
-                                <a :href="'/deployment/destroy/' + deployment.ids">Destroy</a><br>
-                            </div>
+                <div class="accordion" id="accordionExample">
+                  <div v-for="deployment in user_deployments" class="card">
+                    <div class="card-header bg-white" v-bind:id="'heading-' + [[ deployment.ids[0] ]]" style="height: 4rem;">
+                        <div>
+                            [[ deployment.name ]]: <span class="node-list">[[ deployment.server_names ]]</span>
+                            <a v-if="[[ deployment.state ]] != 'destruction_requested' && [[ deployment.state ]] != 'destroying'" href="#" class="shadow-none btn btn-outline-info btn-size float-right" data-toggle="collapse" v-bind:data-target="'#collapse-' + [[ deployment.ids[0] ]]" aria-expanded="true" v-bind:aria-controls="'collapse-' + [[ deployment.ids[0] ]]">More Info</a>
+                            <a v-if="[[ deployment.state ]] != 'destruction_requested' && [[ deployment.state ]] != 'destroying'" :href="'/deployment/destroy/' + deployment.ids" class="btn btn-outline-danger btn-size float-right mr-3">Destroy</a>
                         </div>
                     </div>
+                    <div v-bind:id="'collapse-' + [[ deployment.ids[0] ]]" class="collapse" :aria-labelledby="'heading-' + [[ deployment.ids[0] ]]" data-parent="#accordionExample">
+                      <div class="card-body">
+							<table class="table">
+							  <thead>
+								<tr>
+								  <th scope="col">Name</th>
+								  <th scope="col">Identifier</th>
+								  <th scope="col">IP address</th>
+								  <th scope="col">Model</th>
+								  <th scope="col">Environement</th>
+								  <th scope="col">State</th>
+                                  <th scope="col" v-if="[[ deployment.server_infos[0].env ]] == 'raspbian_cloud9'">Password</a>
+								  <th scope="col">Actions</th>
+								</tr>
+							  </thead>
+							  <tbody>
+									<tr v-for="n in deployment.server_infos">
+										<th scope="row">[[ n.name ]]</td>
+										<td>[[ n.id ]]</td>
+										<td>[[ n.ip ]]</td>
+										<td>[[ n.model ]]</td>
+										<td>[[ n.env ]]</td>
+                                        <td v-if="[[ n.env ]] == 'raspbian_cloud9'">[[ n.state.substring(0, 20) ]]</td>
+                                        <td v-if="[[ n.env ]] != 'raspbian_cloud9'">[[ n.state ]]</td>
+                                        <td v-if="[[ n.env ]] == 'raspbian_cloud9'">
+                                            <button type="button" class="btn btn-outline-dark" data-toggle="tooltip"
+                                            data-placement="bottom" :title="[[ n.password ]]" onclick="copyToClipboard(this)">
+                                                Copy to clipboarb
+                                            </button>
+                                        </td>
+										<td>
+                                            <div class="dropdown">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                Actions
+                                              </button>
+                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                                <a class="dropdown-item" :href="'/server/redeploy/' + [[ n.id ]]">Deploy again</a>
+                                                <a v-if="[[ n.state ]] == 'deployed' && [[ n.env ]] == 'raspbian_cloud9'" :href=n.webui target="_blank" class="dropdown-item">C9 Interface</a>
+                                                <a v-if="[[ n.state ]] == 'deployed' && [[ n.env ]] == 'raspbian_jupyter'" :href=n.webui target="_blank" class="dropdown-item">Jupyter Interface</a>
+                                              </div>
+                                            </div>
+										</td>
+									</tr>
+							  </tbody>
+							</table>
+                      </div>
+                    </div>
+                  </div>
                 </div>
             </div>
         </main>
     </div>
-
     <script src="https://unpkg.com/vue"></script>
-
     <script>
         function selectNode(node) {
             var nodeState = node.children[0].children[2].className;
@@ -94,6 +131,16 @@
                     document.getElementById("deploy-fct").setAttribute('href', "/server/take/" + ids+";"+names);
                 }
             }
+        }
+        
+        function copyToClipboard(str) {
+            const el = document.createElement('textarea');
+            el.value = str.title;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            //alert('You can paste your password: ' + str.title)
         }
 
         Vue.filter('formatDate', function (d) {

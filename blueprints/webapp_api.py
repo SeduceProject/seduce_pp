@@ -62,13 +62,15 @@ def user_deployments():
     deployment_info = {}
     for d in deployments:
         if d.name not in deployment_info.keys():
-            deployment_info[d.name] = {"name": d.name, "ids": [], "server_ids": [], "server_names": [], "state": d.state, "user_id": d.user_id}
+            deployment_info[d.name] = {"name": d.name, "ids": [], "user_id": d.user_id, "state": d.state, "server_names": [],
+                    "server_infos": [] }
         deployment_info[d.name]["ids"].append(d.id)
-        deployment_info[d.name]["server_ids"].append(d.server_id)
         for s in CLUSTER_CONFIG["nodes"]:
             if s["id"] == d.server_id:
+                deployment_info[d.name]["server_infos"].append({ "name": s["name"], "id": s["id"], "env": d.environment,
+                    "state": d.state, "ip": s["ip"], "model": s["model"], "webui": s["public_address"],
+                    "password": d.c9pwd })
                 deployment_info[d.name]["server_names"].append(s["name"])
-
     if not deployments:
         return json.dumps({
             "status": "ko",
