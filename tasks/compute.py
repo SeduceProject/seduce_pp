@@ -18,7 +18,6 @@ from sqlalchemy import or_
 import datetime
 
 # Global variables
-sleeping_nodes = {}
 rebooting_nodes = []
 
 def collect_nodes(process, node_state):
@@ -233,7 +232,6 @@ def configure_sdcard_resize_boot(deployments):
             # Tweak: make sure that the ssh service will be enabled whenever /boot/ssh has been create
             cmd = "sed -i 's/ConditionPathExistsGlob.*//g' /mnt/sdcard_fs/etc/systemd/system/multi-user.target.wants/sshswitch.service"
             ssh.exec_command(cmd)
-            ssh.exec_command("sync")
             # Unmount the boot partition of the SD CARD
             cmd = "umount /mnt/sdcard_boot"
             ssh.exec_command(cmd)
@@ -262,6 +260,7 @@ def configure_sdcard_resize_boot(deployments):
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             print(e)
             print("Could not connect to %s" % server.get("ip"))
+
 
 def filesystem_check(deployments):
     for deployment in deployments:
@@ -314,7 +313,6 @@ def turn_on_after_resize(deployments):
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn on port
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-        sleeping_nodes[deployment.id] = { "time": datetime.datetime.now(), 'duration': 40 }
         # Update the deployment state
         deployment.turn_on_after_resize()
         db.session.add(deployment)
@@ -323,23 +321,23 @@ def turn_on_after_resize(deployments):
 
 def off_nfs_boot(deployments):
     for deployment in deployments:
-      if deployment.id in sleeping_nodes:
-          elapsedTime = (datetime.datetime.now() - sleeping_nodes[deployment.id]["time"]).total_seconds()
-          print("now: %s, time: %s, elapsedTime: %d" %
-                  (datetime.datetime.now(), sleeping_nodes[deployment.id]["time"], elapsedTime))
-          if elapsedTime >= sleeping_nodes[deployment.id]["duration"]:
-              # Get description of the server that will be deployed
-              server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-              # Modify the boot PXE configuration file to resize the FS
-              tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
-              text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-              text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
-              text_file.close()
-              # Turn off port
-              turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-              deployment.off_nfs_boot()
-              db.session.add(deployment)
-              db.session.commit()
+        updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
+        elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        if elapsedTime >= 40:
+            # Modify the boot PXE configuration file to resize the FS
+            tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
+            text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
+            text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
+            text_file.close()
+            # Turn off port
+            turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+            deployment.off_nfs_boot()
+            db.session.add(deployment)
+            db.session.commit()
+        else:
+            print("Waiting %s: %d/40s" % (server.get("ip"), elapsedTime))
 
 
 def on_nfs_boot(deployments):
