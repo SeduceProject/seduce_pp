@@ -223,6 +223,24 @@
     margin: auto;
 }
 
+.off_requested {
+    width: 90%;
+    background-color: #ffe496;
+    margin: auto;
+}
+
+.on_requested {
+    width: 90%;
+    background-color: #fffd96;
+    margin: auto;
+}
+
+.reboot_check {
+    width: 90%;
+    background-color: #e6ff96;
+    margin: auto;
+}
+
 .destruction_requested {
     width: 90%;
     background-color: #fd7dff;

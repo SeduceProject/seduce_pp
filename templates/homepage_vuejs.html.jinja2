@@ -83,7 +83,8 @@
                                                 Actions
                                               </button>
                                               <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                                                <a class="dropdown-item" :href="'/server/redeploy/' + [[ n.id ]]">Deploy again</a>
+                                                <a :href="'/server/redeploy/' + [[ n.id ]]" class="dropdown-item">Deploy again</a>
+                                                <a :href="'/server/reboot/' + [[ n.id ]]" class="dropdown-item">Hard Reboot</a>
                                                 <a v-if="[[ n.state ]] == 'deployed' && [[ n.env ]] == 'raspbian_cloud9'" :href=n.webui target="_blank" class="dropdown-item">C9 Interface</a>
                                                 <a v-if="[[ n.state ]] == 'deployed' && [[ n.env ]] == 'raspbian_jupyter'" :href=n.webui target="_blank" class="dropdown-item">Jupyter Interface</a>
                                               </div>

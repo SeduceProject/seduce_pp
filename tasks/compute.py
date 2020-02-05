@@ -692,6 +692,46 @@ def finish_deployment(deployments):
             db.session.commit()
 
 
+def off_requested_fct(deployments):
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        # Turn off port
+        turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+        deployment.off_requested_fct()
+        db.session.add(deployment)
+        db.session.commit()
+
+
+def on_requested_fct(deployments):
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        # Turn off port
+        turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+        deployment.on_requested_fct()
+        db.session.add(deployment)
+        db.session.commit()
+
+
+def reboot_check_fct(deployments):
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server.get("ip"), username="root", timeout=1.0)
+            print("Could connect to %s" % server.get("ip"))
+            # Update the deployment
+            deployment.reboot_check_fct()
+            db.session.add(deployment)
+            db.session.commit()
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            print(e)
+            print("Could not connect to %s" % server.get("ip"))
+
+
 def process_destruction(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
@@ -699,7 +739,6 @@ def process_destruction(deployments):
         # Turn off port
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         deployment.process_destruction()
-        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -719,7 +758,6 @@ def conclude_destruction(deployments):
             can_connect = False
         if not can_connect:
             deployment.conclude_destruction()
-            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
 

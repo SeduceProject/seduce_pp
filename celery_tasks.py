@@ -44,6 +44,11 @@ if __name__ == "__main__":
         collect_nodes(conclude_destruction, 'destroying')
         collect_nodes(process_destruction, 'destruction_requested')
 
+        # Reboot nodes from user requests
+        collect_nodes(reboot_check_fct, 'reboot_check')
+        collect_nodes(on_requested_fct, 'on_requested')
+        collect_nodes(off_requested_fct, 'off_requested')
+
         # Deploy new environments on nodes (the reverse order is crucial !)
         collect_nodes(finish_deployment, 'sdcard_rebooted')
         collect_nodes(conclude_reboot_sdcard, 'sdcard_rebooting')

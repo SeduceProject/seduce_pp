@@ -45,6 +45,10 @@ deployment_states = [deployment_initial_state,
                      'sdcard_rebooted',
                      'deployed',
 
+                     'off_requested',
+                     'on_requested',
+                     'reboot_check',
+
                      'destruction_requested',
                      'destroying',
                      'destroyed']
@@ -78,9 +82,12 @@ deployment_transitions = [
     {'trigger': 'conclude_reboot_sdcard', 'source': 'sdcard_rebooting', 'dest': 'sdcard_rebooted'},
     {'trigger': 'finish_deployment', 'source': 'sdcard_rebooted', 'dest': 'deployed'},
 
-    #{'trigger': 'retry_configure_sdcard', 'source': 'filesystem_ready', 'dest': 'filesystem_mounted'},
     {'trigger': 'retry_resize', 'source': 'nfs_rebooted_after_resize', 'dest': 'environment_deployed'},
 
+    {'trigger': 'init_reboot', 'source': '*', 'dest': 'off_requested'},
+    {'trigger': 'off_requested_fct', 'source': 'off_requested', 'dest': 'on_requested'},
+    {'trigger': 'on_requested_fct', 'source': 'on_requested', 'dest': 'reboot_check'},
+    {'trigger': 'reboot_check_fct', 'source': 'reboot_check', 'dest': 'deployed'},
 
     {'trigger': 'ask_destruction', 'source': '*', 'dest': 'destruction_requested'},
     {'trigger': 'process_destruction', 'source': 'destruction_requested', 'dest': 'destroying'},

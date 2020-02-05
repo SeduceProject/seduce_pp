@@ -73,9 +73,10 @@ def ask_reboot(server_id):
     my_deployment = Deployment.query.filter(Deployment.user_id == db_user.id, Deployment.server_id == server_id,
                                             Deployment.state != "destroyed").first();
     if my_deployment is not None:
-        my_deployment.init_reboot_sdcard()
+        my_deployment.init_reboot()
         db.session.add(my_deployment)
         db.session.commit()
+    db.session.remove()
     return flask.redirect(flask.url_for("app.home"))
 
 
