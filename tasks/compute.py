@@ -513,6 +513,9 @@ def check_authorized_keys(deployments):
                 if deployment.environment == 'raspbian_cloud9':
                     cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9" % deployment.c9pwd
                     ssh.exec_command(cmd)
+                if deployment.environment == 'raspbian_buster':
+                    cmd = "chroot /mnt/sdcard_fs/ update-rc.d ssh enable"
+                    ssh.exec_command(cmd)
                 # Unmount the file system
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)

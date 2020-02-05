@@ -269,7 +269,7 @@ CLUSTER_CONFIG = {
             "ready": check_cloud9_is_ready
         },
         {
-            "name": "raspbian_buster_beta",
+            "name": "raspbian_buster",
             "img_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img",
             "ready": check_ssh_is_ready
         },
