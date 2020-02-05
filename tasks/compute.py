@@ -34,7 +34,7 @@ def collect_nodes(process, node_state):
             traceback.print_exc(file=sys.stdout)
 
 
-def prepare_nfs_boot(deployments):
+def nfs_boot_conf_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -50,80 +50,39 @@ def prepare_nfs_boot(deployments):
         text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
         text_file.close()
         # Update the deployment
-        deployment.prepare_nfs_boot()
+        deployment.nfs_boot_conf_fct()
         deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
 
-def init_reboot_nfs(deployments):
+def nfs_boot_off_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn off port
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment
-        deployment.init_reboot_nfs()
+        deployment.nfs_boot_off_fct()
         deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
 
-def start_reboot_nfs(deployments):
+def nfs_boot_on_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn on port
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment
-        deployment.start_reboot_nfs()
+        deployment.nfs_boot_on_fct()
         deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
 
-def conclude_reboot_nfs(deployments):
-    for deployment in deployments:
-        # Get description of the server that will be deployed
-        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
-            # Update the deployment
-            deployment.conclude_reboot_nfs()
-            deployment.updated_at = datetime.datetime.utcnow()
-            db.session.add(deployment)
-            db.session.commit()
-        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
-
-
-def prepare_deployment(deployments):
-    for deployment in deployments:
-        # Get description of the server that will be deployed
-        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(server.get("ip"), username="root")
-            print("Could connect to %s" % server.get("ip"))
-            # Create folder for mounting the sd card
-            ssh.exec_command("mkdir -p /mnt/sdcard_boot")
-            ssh.exec_command("mkdir -p /mnt/sdcard_fs")
-            # Update the deployment
-            deployment.prepared_deployment()
-            deployment.updated_at = datetime.datetime.utcnow()
-            db.session.add(deployment)
-            db.session.commit()
-        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
-
-
-def deploy_env(deployments):
+def env_copy_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -140,10 +99,9 @@ def deploy_env(deployments):
             # Write the image of the environment on SD card
             deploy_cmd = f"""rm -f /tmp/done_{server['id']}.txt /tmp/progress_{server['id']}.txt; rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress_{server['id']}.txt; touch /tmp/done_{server['id']}.txt;""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"))
             screen_deploy_cmd = "screen -d -m bash -c '%s'" % deploy_cmd
-            print("execute cmd: %s" % screen_deploy_cmd)
             ssh.exec_command(screen_deploy_cmd)
             # Update the deployment
-            deployment.deploy_env()
+            deployment.env_copy_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -152,7 +110,7 @@ def deploy_env(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def deploy_env_finished(deployments):
+def env_check_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -166,7 +124,7 @@ def deploy_env_finished(deployments):
             print(f"Looking for done_{server['id']}.txt") 
             if f"done_{server['id']}.txt" in ftp.listdir("/tmp"):
                 # Update the deployment
-                deployment.deploy_env_finished()
+                deployment.env_check_fct()
                 deployment.updated_at = datetime.datetime.utcnow()
             else:
                 # Get the progress
@@ -189,7 +147,7 @@ def deploy_env_finished(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def mount_filesystem(deployments):
+def fs_mount_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -200,12 +158,6 @@ def mount_filesystem(deployments):
             # Ensure 'sdcard_boot' and 'sdcard_fs' exists
             ssh.exec_command("mkdir -p /mnt/sdcard_boot")
             ssh.exec_command("mkdir -p /mnt/sdcard_fs")
-            # Unmount the boot file system
-            cmd = "umount /mnt/sdcard_boot"
-            ssh.exec_command(cmd)
-            # Unmount the root file system
-            cmd = "umount /mnt/sdcard_fs"
-            ssh.exec_command(cmd)
             # Mount the boot partition of the SD CARD
             cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
             ssh.exec_command(cmd)
@@ -213,7 +165,7 @@ def mount_filesystem(deployments):
             cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
             # Update the deployment
-            deployment.mount_filesystem()
+            deployment.fs_mount_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -222,7 +174,7 @@ def mount_filesystem(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def configure_sdcard_resize_boot(deployments):
+def fs_conf_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -231,9 +183,7 @@ def configure_sdcard_resize_boot(deployments):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             # Short circuit the bootcode.bin file on the SD CARD
-            ftp = ssh.open_sftp()
-            if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
-                ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
+            ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
             # Create a ssh file on the SD Card
             cmd = "echo '1' > /mnt/sdcard_boot/ssh"
             ssh.exec_command(cmd)
@@ -241,8 +191,6 @@ def configure_sdcard_resize_boot(deployments):
             cmd = "sed -i 's/ConditionPathExistsGlob.*//g' /mnt/sdcard_fs/etc/systemd/system/multi-user.target.wants/sshswitch.service"
             ssh.exec_command(cmd)
             # Unmount the boot partition of the SD CARD
-            cmd = "umount /mnt/sdcard_boot"
-            ssh.exec_command(cmd)
             cmd = "umount /mnt/sdcard_fs"
             ssh.exec_command(cmd)
             # Create a folder containing network boot files that will be served via TFTP
@@ -257,12 +205,8 @@ def configure_sdcard_resize_boot(deployments):
             text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
             text_file.write(get_sdcard_resize_boot_cmdline())
             text_file.close()
-            # /!\ here we check that changes have been committed to the SD card
-            # Mount the boot partition of the SD CARD
-            cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
-            ssh.exec_command(cmd)
             # Update the deployment
-            deployment.configure_sdcard_resize_boot()
+            deployment.fs_conf_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -271,7 +215,7 @@ def configure_sdcard_resize_boot(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def filesystem_check(deployments):
+def fs_check_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -287,57 +231,53 @@ def filesystem_check(deployments):
             if "ssh" not in ftp.listdir("/mnt/sdcard_boot"):
                 print("ssh file has not been created!")
                 successful_step = False
-            # Unmount the boot partition of the SD CARD
-            cmd = "umount /mnt/sdcard_boot"
-            ssh.exec_command(cmd)
             # Update the deployment
             if successful_step:
-                deployment.filesystem_check()
+                # Unmount the boot partition of the SD CARD
+                cmd = "umount /mnt/sdcard_boot"
+                ssh.exec_command(cmd)
+                deployment.fs_check_fct()
                 deployment.updated_at = datetime.datetime.utcnow()
                 db.session.add(deployment)
                 db.session.commit()
-            #else:
-            #    deployment.retry_configure_sdcard()
-            #    db.session.add(deployment)
-            #    db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             print(e)
             print("Could not connect to %s" % server.get("ip"))
 
 
-def turn_off_after_resize(deployments):
+def resize_off_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn off port
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment state
-        deployment.turn_off_after_resize()
+        deployment.resize_off_fct()
         deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
 
-def turn_on_after_resize(deployments):
+def resize_on_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn on port
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment state
-        deployment.turn_on_after_resize()
+        deployment.resize_on_fct()
         deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
 
-def off_nfs_boot(deployments):
+def resize_inprogress_fct(deployments):
     for deployment in deployments:
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        if elapsedTime >= 60:
+        if elapsedTime >= 40:
             # Modify the boot PXE configuration file to resize the FS
             tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
             text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
@@ -345,7 +285,7 @@ def off_nfs_boot(deployments):
             text_file.close()
             # Turn off port
             turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-            deployment.off_nfs_boot()
+            deployment.resize_inprogress_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -353,62 +293,18 @@ def off_nfs_boot(deployments):
             print("Waiting %s: %d/40s" % (server.get("ip"), elapsedTime))
 
 
-def on_nfs_boot(deployments):
+def resize_done_fct(deployments):
     for deployment in deployments:
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn on port
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-        deployment.on_nfs_boot()
+        deployment.resize_done_fct()
         deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
 
-def conclude_reboot_nfs_after_resize(deployments):
-    for deployment in deployments:
-        # Get description of the server that will be deployed
-        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
-            # Update the deployment
-            deployment.conclude_reboot_nfs_after_resize()
-            deployment.updated_at = datetime.datetime.utcnow()
-            db.session.add(deployment)
-            db.session.commit()
-        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
-
-
-def sdcard_mount(deployments):
-    for deployment in deployments:
-        # Get description of the server that will be deployed
-        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            # Ensure 'sdcard_boot' exists
-            ssh.exec_command("mkdir -p /mnt/sdcard_boot")
-            # Unmount the boot file system
-            cmd = "umount /mnt/sdcard_fs"
-            ssh.exec_command(cmd)
-            # Mount the boot partition of the SD CARD
-            cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
-            ssh.exec_command(cmd)
-            deployment.sdcard_mount()
-            deployment.updated_at = datetime.datetime.utcnow()
-            db.session.add(deployment)
-            db.session.commit()
-        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
-
-
-def collect_partition_uuid(deployments):
+def resize_check_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -426,12 +322,9 @@ def collect_partition_uuid(deployments):
             print("partition_size: %f" % partition_size)
             if partition_size < 4.0:
                 successful_step = False
-            # Unmount the boot partition of the SD CARD
-            cmd = "umount /mnt/sdcard_boot"
-            ssh.exec_command(cmd)
             # Update the deployment
             if successful_step:
-                deployment.collect_partition_uuid()
+                deployment.resize_check_fct()
             else:
                 deployment.retry_resize()
             deployment.updated_at = datetime.datetime.utcnow()
@@ -442,7 +335,7 @@ def collect_partition_uuid(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def mount_public_key(deployments):
+def ssh_key_mount_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -451,13 +344,10 @@ def mount_public_key(deployments):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             print("Could connect to %s" % server.get("ip"))
-            # Unmount the file system
-            cmd = "umount /mnt/sdcard_fs"
-            ssh.exec_command(cmd)
             # Mount the file system of the SD CARD
             cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
-            deployment.mount_public_key()
+            deployment.ssh_key_mount_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -465,7 +355,7 @@ def mount_public_key(deployments):
             print(e)
             print("Could not connect to %s" % server.get("ip"))
 
-def deploy_public_key(deployments):
+def ssh_key_copy_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -480,7 +370,7 @@ def deploy_public_key(deployments):
             # Add the public key of the server
             cmd = "cp /root/.ssh/authorized_keys /mnt/sdcard_fs/root/.ssh/authorized_keys"
             ssh.exec_command(cmd)
-            deployment.deploy_public_key()
+            deployment.ssh_key_copy_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -489,7 +379,7 @@ def deploy_public_key(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def check_authorized_keys(deployments):
+def ssh_key_user_fct(deployments):
     for deployment in deployments:
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         try:
@@ -503,9 +393,6 @@ def check_authorized_keys(deployments):
             # Convert bytes to ASCII to int
             wc_lines = int.from_bytes(lines[0], byteorder='big') - 48
             if wc_lines > 1:
-                # Add the public key of the server (second try)
-                cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % CLUSTER_CONFIG.get("controller").get("public_key")
-                ssh.exec_command(cmd)
                 # Add the public key of the user
                 cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % deployment.public_key
                 ssh.exec_command(cmd)
@@ -520,7 +407,7 @@ def check_authorized_keys(deployments):
                 cmd = "umount /mnt/sdcard_fs"
                 ssh.exec_command(cmd)
                 # Update the deployment
-                deployment.check_authorized_keys()
+                deployment.ssh_key_user_fct()
                 deployment.updated_at = datetime.datetime.utcnow()
                 db.session.add(deployment)
                 db.session.commit()
@@ -531,33 +418,7 @@ def check_authorized_keys(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def prepare_sdcard_boot(deployments):
-    for deployment in deployments:
-        # Get description of the server that will be deployed
-        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            # Ensure 'sdcard_boot' exists
-            ssh.exec_command("mkdir -p /mnt/sdcard_boot")
-            # Unmount the boot partition of the SD CARD
-            cmd = "umount /mnt/sdcard_boot"
-            ssh.exec_command(cmd)
-            # Mount the boot partition of the SD CARD
-            cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
-            ssh.exec_command(cmd)
-            # Update the deployment
-            deployment.prepare_sdcard_boot()
-            deployment.updated_at = datetime.datetime.utcnow()
-            db.session.add(deployment)
-            db.session.commit()
-        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
-
-
-def do_sdcard_boot(deployments):
+def fs_boot_conf_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -585,11 +446,8 @@ def do_sdcard_boot(deployments):
             text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
             text_file.write(get_sdcard_boot_cmdline() % {"partition_uuid": partition_uuid})
             text_file.close()
-            # Unmount the boot partition of the SD CARD
-            cmd = "umount /mnt/sdcard_boot"
-            ssh.exec_command(cmd)
             # Update the deployment
-            deployment.do_sdcard_boot()
+            deployment.fs_boot_conf_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -598,32 +456,32 @@ def do_sdcard_boot(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def off_reboot_sdcard(deployments):
+def fs_boot_off_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn off port
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment
-        deployment.off_reboot_sdcard()
+        deployment.fs_boot_off_fct()
         deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
-def on_reboot_sdcard(deployments):
+def fs_boot_on_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn on port
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment
-        deployment.on_reboot_sdcard()
+        deployment.fs_boot_on_fct()
         deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
 
-def conclude_reboot_sdcard(deployments):
+def fs_boot_check_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -633,7 +491,7 @@ def conclude_reboot_sdcard(deployments):
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             print("Could connect to %s" % server.get("ip"))
             # Update the deployment
-            deployment.conclude_reboot_sdcard()
+            deployment.fs_boot_check_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -642,7 +500,7 @@ def conclude_reboot_sdcard(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def finish_deployment(deployments):
+def last_check_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -689,7 +547,7 @@ def finish_deployment(deployments):
         print("finish_init %s" % finish_init)
         print("finish_deployment %s" % finish_deployment)
         if finish_deployment and finish_init:
-            deployment.finish_deployment()
+            deployment.last_check_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
@@ -735,18 +593,18 @@ def reboot_check_fct(deployments):
             print("Could not connect to %s" % server.get("ip"))
 
 
-def process_destruction(deployments):
+def destroy_request_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn off port
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-        deployment.process_destruction()
+        deployment.destroy_request_fct()
         db.session.add(deployment)
         db.session.commit()
 
 
-def conclude_destruction(deployments):
+def destroying_fct(deployments):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -760,52 +618,6 @@ def conclude_destruction(deployments):
                 SSHException, socket.error) as e:
             can_connect = False
         if not can_connect:
-            deployment.conclude_destruction()
+            deployment.destroying_fct()
             db.session.add(deployment)
             db.session.commit()
-
-""" Not currently used...
-@celery.task()
-def detect_stuck_deployments():
-    print("Checking deployments with servers that failed to reboot")
-    # Use lock in context
-    with RedLock("lock/check/stuck_deployment"):
-        rebooting_deployments = Deployment.query.filter(or_(Deployment.state == "nfs_rebooting",
-                                                          Deployment.state == "nfs_rebooting_after_resize",
-                                                          Deployment.state == "sdcard_rebooting")).all()
-        print(len(rebooting_deployments))
-        for deployment in rebooting_deployments:
-            # Get description of the server that will be deployed
-            server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-            can_connect = True
-            try:
-                ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
-            except (BadHostKeyException, AuthenticationException,
-                    SSHException, socket.error) as e:
-                can_connect = False
-            if not can_connect:
-                now = datetime.datetime.utcnow()
-                elapsed_time_since_last_update = (now - deployment.updated_at).total_seconds()
-                if elapsed_time_since_last_update > 90:
-                    deployment.updated_at = now
-                    # Turn off port
-                    print("Turn off %s" % server.get("ip"))
-                    turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-                    rebooting_nodes.append(server)
-
-@celery.task()
-def boot_stuck_deployments():
-    # Use lock in context
-    with RedLock("lock/check/stuck_deployment"):
-        if len(rebooting_nodes) > 0:
-            print("Power on stuck nodes (#nodes: %d)" % len(rebooting_nodes))
-            for server in rebooting_nodes:
-                # Turn on port
-                turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
-            while len(rebooting_nodes) > 0:
-                rebooting_nodes.pop(0)
-"""
-

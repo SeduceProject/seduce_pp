@@ -3,6 +3,7 @@ import flask
 import datetime
 import flask_login
 from flask_login import current_user
+from fsm import deployment_initial_state
 
 webapp_blueprint = Blueprint('app', __name__,
                              template_folder='templates')
@@ -56,7 +57,7 @@ def process_take():
         d.environment = flask.request.form.get("environment")
         d.duration = flask.request.form.get("duration")
         d.start_date = datetime.datetime.utcnow()
-        d.state = "created"
+        d.state = deployment_initial_state
     db.session.commit()
 
     return flask.redirect(flask.url_for("app.home"))

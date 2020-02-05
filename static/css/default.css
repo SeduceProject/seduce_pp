@@ -61,159 +61,135 @@
     margin: auto;
 }
 
-.created {
+.in_use {
     width: 90%;
-    background-color: #E582FB;
+    background-color: #ff7d7d;
     margin: auto;
 }
 
-.configured_nfs_boot {
+.nfs_boot_conf {
     width: 90%;
-    background-color: #E186F7;
+    background-color: #E97DFF;
     margin: auto;
 }
 
-.turn_on_nfs_boot {
+.nfs_boot_off {
     width: 90%;
-    background-color: #DD8BF3;
+    background-color: #E483FA;
     margin: auto;
 }
 
-.nfs_rebooting {
+.nfs_boot_on {
     width: 90%;
-    background-color: #DA90EE;
+    background-color: #E088F5;
     margin: auto;
 }
 
-.nfs_rebooted {
+.env_copy {
     width: 90%;
-    background-color: #D694EA;
+    background-color: #DB8EF0;
     margin: auto;
 }
 
-.ready_deploy {
+.env_check {
+    width: 90%;
+    background-color: #D694EB;
+    margin: auto;
+}
+
+.fs_mount {
     width: 90%;
     background-color: #D299E6;
     margin: auto;
 }
 
-.environment_deploying {
+.fs_conf {
     width: 90%;
-    background-color: #CE9EE2;
+    background-color: #CD9FE1;
     margin: auto;
 }
 
-.environment_deployed {
+.fs_check {
     width: 90%;
-    background-color: #CAA2DE;
+    background-color: #C8A5DC;
     margin: auto;
 }
 
-.filesystem_mounted {
+.resize_off {
     width: 90%;
-    background-color: #C6A7DA;
+    background-color: #C3AAD7;
     margin: auto;
 }
 
-.filesystem_ready {
+.resize_on {
     width: 90%;
-    background-color: #C2ABD6;
+    background-color: #BFB0D2;
     margin: auto;
 }
 
-.configured_sdcard_resize_boot {
+.resize_inprogress {
     width: 90%;
-    background-color: #BFB0D1;
+    background-color: #BAB6CD;
     margin: auto;
 }
 
-.off_after_resize {
+.resize_done {
     width: 90%;
-    background-color: #BBB5CD;
+    background-color: #B5BBC8;
     margin: auto;
 }
 
-.sdcard_resizing {
+.resize_check {
     width: 90%;
-    background-color: #B7B9C9;
+    background-color: #B1C1C2;
     margin: auto;
 }
 
-.off_sdcard_resize {
+.ssh_key_mount {
     width: 90%;
-    background-color: #B3BEC5;
+    background-color: #ACC6BD;
     margin: auto;
 }
 
-.nfs_rebooting_after_resize {
+.ssh_key_copy {
     width: 90%;
-    background-color: #AFC3C1;
+    background-color: #A7CCB8;
     margin: auto;
 }
 
-.nfs_rebooted_after_resize {
+.ssh_key_user {
     width: 90%;
-    background-color: #ABC7BD;
+    background-color: #A3D2B3;
     margin: auto;
 }
 
-.sdcard_mounted {
+.fs_boot_conf {
     width: 90%;
-    background-color: #A7CCB9;
+    background-color: #9ED7AE;
     margin: auto;
 }
 
-.collected_partition_uuid {
+.fs_boot_off {
     width: 90%;
-    background-color: #A4D1B4;
+    background-color: #99DDA9;
     margin: auto;
 }
 
-.mounted_public_key {
-    width: 90%;
-    background-color: #A0D5B0;
-    margin: auto;
-}
-
-.authorized_keys {
-    width: 90%;
-    background-color: #A0D5B0;
-    margin: auto;
-}
-
-.public_key_deployed {
-    width: 90%;
-    background-color: #9CDAAC;
-    margin: auto;
-}
-
-.sdcard_boot_ready {
-    width: 90%;
-    background-color: #98DEA8;
-    margin: auto;
-}
-
-.configured_sdcard_boot {
+.fs_boot_on {
     width: 90%;
     background-color: #94E3A4;
     margin: auto;
 }
 
-.off_sdcard_boot {
+.fs_boot_check {
     width: 90%;
-    background-color: #90E8A0;
+    background-color: #90E89F;
     margin: auto;
 }
 
-.sdcard_rebooting {
+.last_check {
     width: 90%;
-    background-color: #8CEC9C;
-    margin: auto;
-}
-
-.sdcard_rebooted {
-    width: 90%;
-    background-color: #89F197;
+    background-color: #8BEE9A;
     margin: auto;
 }
 
@@ -241,7 +217,7 @@
     margin: auto;
 }
 
-.destruction_requested {
+.destroy_request {
     width: 90%;
     background-color: #fd7dff;
     margin: auto;
@@ -256,12 +232,6 @@
 .destroyed {
     width: 90%;
     background-color: #b67dff;
-    margin: auto;
-}
-
-.in_use {
-    width: 90%;
-    background-color: #ff7d7d;
     margin: auto;
 }
 /* End of state colors */
