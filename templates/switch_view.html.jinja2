@@ -13,6 +13,7 @@
 
 {% block content %}
     <table class="table table-bordered table-sm">
+    <!-- This page overloads the switch, do not use it before upgrading the switch
         <thead>
             <tr>
                 <th>port</th>
@@ -53,10 +54,14 @@
             </tr>
             {% endfor %}
         </tbody>
+        <!-- -->
     </table>
 
+    <!-- This page overloads the switch, do not use it before upgrading the switch
     <script>
         setInterval(function(){
+            alert("Not found");
+            /**
             $.ajax({
                url : '{{ url_for("switch_api.get_updated_port_data") }}',
                type : 'GET',
@@ -81,6 +86,8 @@
                    });
                }
             });
+            **/
         }, 10000);
     </script>
+    <!-- -->
 {% endblock %}
