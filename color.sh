@@ -9,7 +9,7 @@ R_TO=0x7d
 G_TO=0xff
 B_TO=0x8b
 
-NB_COLOR=27
+NB_COLOR=22
 HTML_PAGE="color.html"
 
 # Convert to decimal
@@ -34,7 +34,7 @@ echo "Copy/paste the following color codes:"
 color_from=$(printf "%X%X%X" $r_from $g_from $b_from)
 echo $color_from
 
-for i in $(seq 1 $NB_COLOR); do
+for i in $(seq 1 $(( $NB_COLOR - 2)) ); do
   r_new=$(bc <<< "$r_from + $i * $r_step")
   r_new=$(printf "%.0f" $r_new)
   g_new=$(bc <<< "$g_from + $i * $g_step")
