@@ -51,6 +51,7 @@ def prepare_nfs_boot(deployments):
         text_file.close()
         # Update the deployment
         deployment.prepare_nfs_boot()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -63,6 +64,7 @@ def init_reboot_nfs(deployments):
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment
         deployment.init_reboot_nfs()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -75,6 +77,7 @@ def start_reboot_nfs(deployments):
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment
         deployment.start_reboot_nfs()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -90,6 +93,7 @@ def conclude_reboot_nfs(deployments):
             print("Could connect to %s" % server.get("ip"))
             # Update the deployment
             deployment.conclude_reboot_nfs()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -111,6 +115,7 @@ def prepare_deployment(deployments):
             ssh.exec_command("mkdir -p /mnt/sdcard_fs")
             # Update the deployment
             deployment.prepared_deployment()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -139,6 +144,7 @@ def deploy_env(deployments):
             ssh.exec_command(screen_deploy_cmd)
             # Update the deployment
             deployment.deploy_env()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -161,6 +167,7 @@ def deploy_env_finished(deployments):
             if f"done_{server['id']}.txt" in ftp.listdir("/tmp"):
                 # Update the deployment
                 deployment.deploy_env_finished()
+                deployment.updated_at = datetime.datetime.utcnow()
             else:
                 # Get the progress
                 if f"progress_{server['id']}.txt" in ftp.listdir("/tmp"):
@@ -207,6 +214,7 @@ def mount_filesystem(deployments):
             ssh.exec_command(cmd)
             # Update the deployment
             deployment.mount_filesystem()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SHException, socket.error) as e:
@@ -255,6 +263,7 @@ def configure_sdcard_resize_boot(deployments):
             ssh.exec_command(cmd)
             # Update the deployment
             deployment.configure_sdcard_resize_boot()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -284,6 +293,7 @@ def filesystem_check(deployments):
             # Update the deployment
             if successful_step:
                 deployment.filesystem_check()
+                deployment.updated_at = datetime.datetime.utcnow()
                 db.session.add(deployment)
                 db.session.commit()
             #else:
@@ -303,6 +313,7 @@ def turn_off_after_resize(deployments):
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment state
         deployment.turn_off_after_resize()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -315,6 +326,7 @@ def turn_on_after_resize(deployments):
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment state
         deployment.turn_on_after_resize()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -325,7 +337,7 @@ def off_nfs_boot(deployments):
         elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        if elapsedTime >= 40:
+        if elapsedTime >= 60:
             # Modify the boot PXE configuration file to resize the FS
             tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
             text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
@@ -334,6 +346,7 @@ def off_nfs_boot(deployments):
             # Turn off port
             turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
             deployment.off_nfs_boot()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         else:
@@ -346,6 +359,7 @@ def on_nfs_boot(deployments):
         # Turn on port
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         deployment.on_nfs_boot()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -361,6 +375,7 @@ def conclude_reboot_nfs_after_resize(deployments):
             print("Could connect to %s" % server.get("ip"))
             # Update the deployment
             deployment.conclude_reboot_nfs_after_resize()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -385,6 +400,7 @@ def sdcard_mount(deployments):
             cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
             deployment.sdcard_mount()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -407,6 +423,7 @@ def collect_partition_uuid(deployments):
             output = stdout.readlines()
             partition_size = float(output[0].strip())
             # Check if resize has been successful (partition's size should be larger than 4 GB)
+            print("partition_size: %f" % partition_size)
             if partition_size < 4.0:
                 successful_step = False
             # Unmount the boot partition of the SD CARD
@@ -417,6 +434,7 @@ def collect_partition_uuid(deployments):
                 deployment.collect_partition_uuid()
             else:
                 deployment.retry_resize()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -440,6 +458,7 @@ def mount_public_key(deployments):
             cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
             deployment.mount_public_key()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -462,6 +481,7 @@ def deploy_public_key(deployments):
             cmd = "cp /root/.ssh/authorized_keys /mnt/sdcard_fs/root/.ssh/authorized_keys"
             ssh.exec_command(cmd)
             deployment.deploy_public_key()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -498,6 +518,7 @@ def check_authorized_keys(deployments):
                 ssh.exec_command(cmd)
                 # Update the deployment
                 deployment.check_authorized_keys()
+                deployment.updated_at = datetime.datetime.utcnow()
                 db.session.add(deployment)
                 db.session.commit()
             else:
@@ -525,6 +546,7 @@ def prepare_sdcard_boot(deployments):
             ssh.exec_command(cmd)
             # Update the deployment
             deployment.prepare_sdcard_boot()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -553,6 +575,7 @@ def do_sdcard_boot(deployments):
             cmd = f"""
                 scp -o "StrictHostKeyChecking no" root@{server.get("ip")}:/mnt/sdcard_boot/kernel7.img {tftpboot_node_folder}/.
                 scp -o "StrictHostKeyChecking no" -r root@{server.get("ip")}:/mnt/sdcard_boot/bcm2710-*.dtb {tftpboot_node_folder}/.
+                sync
             """
             os.system(cmd)
             # Modify the boot PXE configuration file to mount its file system via NFS
@@ -564,6 +587,7 @@ def do_sdcard_boot(deployments):
             ssh.exec_command(cmd)
             # Update the deployment
             deployment.do_sdcard_boot()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -579,6 +603,7 @@ def off_reboot_sdcard(deployments):
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment
         deployment.off_reboot_sdcard()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -590,6 +615,7 @@ def on_reboot_sdcard(deployments):
         turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         # Update the deployment
         deployment.on_reboot_sdcard()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -605,6 +631,7 @@ def conclude_reboot_sdcard(deployments):
             print("Could connect to %s" % server.get("ip"))
             # Update the deployment
             deployment.conclude_reboot_sdcard()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -660,6 +687,7 @@ def finish_deployment(deployments):
         print("finish_deployment %s" % finish_deployment)
         if finish_deployment and finish_init:
             deployment.finish_deployment()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
 
@@ -671,6 +699,7 @@ def process_destruction(deployments):
         # Turn off port
         turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
         deployment.process_destruction()
+        deployment.updated_at = datetime.datetime.utcnow()
         db.session.add(deployment)
         db.session.commit()
 
@@ -690,6 +719,7 @@ def conclude_destruction(deployments):
             can_connect = False
         if not can_connect:
             deployment.conclude_destruction()
+            deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
 
