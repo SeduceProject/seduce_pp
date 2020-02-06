@@ -37,6 +37,7 @@ deployment_states = [deployment_initial_state,
                      'fs_boot_off',
                      'fs_boot_on',
                      'fs_boot_check',
+                     'ssh_config_2',
                      'last_check',
                      'deployed',
 
@@ -70,6 +71,8 @@ deployment_transitions = [
     {'trigger': 'fs_boot_off_fct', 'source': 'fs_boot_off', 'dest': 'fs_boot_on'},
     {'trigger': 'fs_boot_on_fct', 'source': 'fs_boot_on', 'dest': 'fs_boot_check'},
     {'trigger': 'fs_boot_check_fct', 'source': 'fs_boot_check', 'dest': 'last_check'},
+    {'trigger': 'fs_boot_check_fct2', 'source': 'fs_boot_check', 'dest': 'ssh_config_2'},
+    {'trigger': 'resize_check_fct', 'source': 'ssh_config_2', 'dest': 'ssh_key_mount'},
     {'trigger': 'last_check_fct', 'source': 'last_check', 'dest': 'deployed'},
 
     {'trigger': 'retry_resize', 'source': 'resize_check', 'dest': 'fs_mount'},

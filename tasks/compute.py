@@ -187,12 +187,6 @@ def fs_conf_fct(deployments):
             # Create a ssh file on the SD Card
             cmd = "echo '1' > /mnt/sdcard_boot/ssh"
             ssh.exec_command(cmd)
-            # Tweak: make sure that the ssh service will be enabled whenever /boot/ssh has been create
-            cmd = "sed -i 's/ConditionPathExistsGlob.*//g' /mnt/sdcard_fs/etc/systemd/system/multi-user.target.wants/sshswitch.service"
-            ssh.exec_command(cmd)
-            # Unmount the boot partition of the SD CARD
-            cmd = "umount /mnt/sdcard_fs"
-            ssh.exec_command(cmd)
             # Create a folder containing network boot files that will be served via TFTP
             tftpboot_template_folder = "/tftpboot/rpiboot"
             # tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
@@ -233,9 +227,6 @@ def fs_check_fct(deployments):
                 successful_step = False
             # Update the deployment
             if successful_step:
-                # Unmount the boot partition of the SD CARD
-                cmd = "umount /mnt/sdcard_boot"
-                ssh.exec_command(cmd)
                 deployment.fs_check_fct()
                 deployment.updated_at = datetime.datetime.utcnow()
                 db.session.add(deployment)
@@ -368,7 +359,7 @@ def ssh_key_copy_fct(deployments):
             cmd = "mkdir -p /mnt/sdcard_fs/root/.ssh"
             ssh.exec_command(cmd)
             # Add the public key of the server
-            cmd = "cp /root/.ssh/authorized_keys /mnt/sdcard_fs/root/.ssh/authorized_keys"
+            cmd = "cp /root/.ssh/authorized_keys /mnt/sdcard_fs/root/.ssh/authorized_keys && sync"
             ssh.exec_command(cmd)
             deployment.ssh_key_copy_fct()
             deployment.updated_at = datetime.datetime.utcnow()
@@ -386,33 +377,22 @@ def ssh_key_user_fct(deployments):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            # Check the number of lines of the authorized_keys file to ensure the SSH key copy
-            cmd = "cat /mnt/sdcard_fs/root/.ssh/authorized_keys | wc -l"
-            stdin, stdout, stderr = ssh.exec_command(cmd)
-            lines = stdout.read().splitlines()
-            # Convert bytes to ASCII to int
-            wc_lines = int.from_bytes(lines[0], byteorder='big') - 48
-            if wc_lines > 1:
-                # Add the public key of the user
-                cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys" % deployment.public_key
+            # Secure the cloud9 connection
+            if deployment.environment == 'raspbian_cloud9':
+                cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9" % deployment.c9pwd
                 ssh.exec_command(cmd)
-                # Secure the cloud9 connection
-                if deployment.environment == 'raspbian_cloud9':
-                    cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > /mnt/sdcard_fs/usr/local/bin/c9" % deployment.c9pwd
-                    ssh.exec_command(cmd)
-                if deployment.environment == 'raspbian_buster':
-                    cmd = "chroot /mnt/sdcard_fs/ update-rc.d ssh enable"
-                    ssh.exec_command(cmd)
-                # Unmount the file system
-                cmd = "umount /mnt/sdcard_fs"
+            # Start the SSH server on startup
+            if deployment.environment == 'raspbian_buster':
+                cmd = "chroot /mnt/sdcard_fs/ update-rc.d ssh enable"
                 ssh.exec_command(cmd)
-                # Update the deployment
-                deployment.ssh_key_user_fct()
-                deployment.updated_at = datetime.datetime.utcnow()
-                db.session.add(deployment)
-                db.session.commit()
-            else:
-                print("%s: Bad copy of authorized_keys: nb. lines %s" % (server.get("ip"), wc_lines))
+            # Add the public key of the user
+            cmd = "echo '\n%s' >> /mnt/sdcard_fs/root/.ssh/authorized_keys && sync && umount /mnt/sdcard_fs" % deployment.public_key
+            ssh.exec_command(cmd)
+            # Update the deployment
+            deployment.ssh_key_user_fct()
+            deployment.updated_at = datetime.datetime.utcnow()
+            db.session.add(deployment)
+            db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             print(e)
             print("Could not connect to %s" % server.get("ip"))
@@ -439,7 +419,6 @@ def fs_boot_conf_fct(deployments):
             cmd = f"""
                 scp -o "StrictHostKeyChecking no" root@{server.get("ip")}:/mnt/sdcard_boot/kernel7.img {tftpboot_node_folder}/.
                 scp -o "StrictHostKeyChecking no" -r root@{server.get("ip")}:/mnt/sdcard_boot/bcm2710-*.dtb {tftpboot_node_folder}/.
-                sync
             """
             os.system(cmd)
             # Modify the boot PXE configuration file to mount its file system via NFS
@@ -489,15 +468,45 @@ def fs_boot_check_fct(deployments):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
+            updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
+            elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+            print("Could connect to %s after %s seconds" % (server.get("ip"), elapsedTime))
             # Update the deployment
             deployment.fs_boot_check_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
+            elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+            print("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
+            if elapsedTime > 90:
+                print("Retry the SSH configuration")
+                # Modify the boot PXE configuration file to boot from NFS
+                tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
+                text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
+                text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
+                text_file.close()
+                # Turn off port
+                turn_off_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+                # Update the deployment
+                deployment.fs_boot_check_fct2()
+                deployment.updated_at = datetime.datetime.utcnow()
+                db.session.add(deployment)
+                db.session.commit()
+
+
+def ssh_config_2_fct(deployments):
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        # Turn on port
+        turn_on_port(CLUSTER_CONFIG.get("switch").get("address"), server.get("port_number"))
+        # Update the deployment
+        deployment.resize_check_fct()
+        deployment.updated_at = datetime.datetime.utcnow()
+        db.session.add(deployment)
+        db.session.commit()
 
 
 def last_check_fct(deployments):

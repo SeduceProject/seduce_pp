@@ -51,6 +51,7 @@ if __name__ == "__main__":
 
         # Deploy new environments on nodes (the reverse order is crucial !)
         collect_nodes(last_check_fct, 'last_check')
+        collect_nodes(ssh_config_2_fct, 'ssh_config_2')
         collect_nodes(fs_boot_check_fct, 'fs_boot_check')
         collect_nodes(fs_boot_on_fct, 'fs_boot_on')
         collect_nodes(fs_boot_off_fct, 'fs_boot_off')
