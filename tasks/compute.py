@@ -338,6 +338,8 @@ def ssh_key_mount_fct(deployments):
             # Mount the file system of the SD CARD
             cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
+            cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
+            ssh.exec_command(cmd)
             deployment.ssh_key_mount_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
