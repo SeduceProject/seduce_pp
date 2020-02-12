@@ -1,40 +1,31 @@
-import celery
-from database import db
-from database import Deployment
+import celery, datetime, logging, os, paramiko, re, random, uuid, shutil, socket, sys, time, traceback
+from database import db, Deployment
 from lib.config.cluster_config import CLUSTER_CONFIG
-from redlock import RedLock
-import os, traceback, sys
-import shutil
-from lib.dgs121028p import turn_on_port, turn_off_port
-import time
-import paramiko
-from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
-import socket
 from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
-import re
-import random
-import uuid
+from lib.dgs121028p import turn_on_port, turn_off_port
+from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
+from redlock import RedLock
 from sqlalchemy import or_
-import datetime
+
 
 # Global variables
 rebooting_nodes = []
 
 def collect_nodes(process, node_state):
     try:
+        logger_compute = logging.getLogger("COMPUTE")
         pending_deployments = Deployment.query.filter_by(state=node_state).all()
         if len(pending_deployments) > 0:
-            print("### Processing %d deployments in '%s' state:" % (len(pending_deployments), node_state))
-            print([d.server_id for d in pending_deployments])
+            logger_compute.info("### Processing %d deployments in '%s' state:" % (len(pending_deployments), node_state))
+            logger_compute.info([d.server_id for d in pending_deployments])
             with RedLock("lock/deployments/%s" % node_state):
-                process(pending_deployments)
+                process(pending_deployments, logger_compute)
         db.session.remove()
     except Exception:
-            print("Exception in '%s' state:" % node_state)
-            traceback.print_exc(file=sys.stdout)
+        logger_compute.exception("Exception in '%s' state:" % node_state)
 
 
-def nfs_boot_conf_fct(deployments):
+def nfs_boot_conf_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -56,7 +47,7 @@ def nfs_boot_conf_fct(deployments):
         db.session.commit()
 
 
-def nfs_boot_off_fct(deployments):
+def nfs_boot_off_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -69,7 +60,7 @@ def nfs_boot_off_fct(deployments):
         db.session.commit()
 
 
-def nfs_boot_on_fct(deployments):
+def nfs_boot_on_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -82,18 +73,18 @@ def nfs_boot_on_fct(deployments):
         db.session.commit()
 
 
-def env_copy_fct(deployments):
+def env_copy_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         environment = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment][0]
         environment_img_path = environment.get("img_path")
-        print(server)
+        logger.info("%s: %s" % (server, environment_img_path))
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
+            logger.info("Could connect to %s" % server.get("ip"))
             # Configure the screen tool
             ssh.exec_command("chmod -R 777 /run/screen;")
             # Write the image of the environment on SD card
@@ -106,11 +97,10 @@ def env_copy_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
 
-def env_check_fct(deployments):
+def env_check_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -118,10 +108,10 @@ def env_check_fct(deployments):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
+            logger.info("Could connect to %s" % server.get("ip"))
             # Write the image of the environment on SD card
             ftp = ssh.open_sftp()
-            print(f"Looking for done_{server['id']}.txt") 
+            logger.info(f"Looking for done_{server['id']}.txt") 
             if f"done_{server['id']}.txt" in ftp.listdir("/tmp"):
                 # Update the deployment
                 deployment.env_check_fct()
@@ -136,18 +126,17 @@ def env_check_fct(deployments):
                     if len(sublines) > 1:
                         output = re.sub('[^ a-zA-Z0-9./,()]', '', sublines[-1])
                         deployment.label = output
-                        print(f"{server.get('ip')} ({deployment.id}) => {output}")
+                        logger.info(f"{server.get('ip')} ({deployment.id}) => {output}")
                 else:
-                    print(f"{server.get('ip')} ({deployment.id}) : NO /tmp/progress_{server['id']}.txt file!!!")
+                    logger.warning(f"{server.get('ip')} ({deployment.id}) : NO /tmp/progress_{server['id']}.txt file!!!")
             ssh.close()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
 
-def fs_mount_fct(deployments):
+def fs_mount_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -170,11 +159,10 @@ def fs_mount_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
 
-def fs_conf_fct(deployments):
+def fs_conf_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -205,11 +193,10 @@ def fs_conf_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
 
-def fs_check_fct(deployments):
+def fs_check_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -220,10 +207,10 @@ def fs_check_fct(deployments):
             ftp = ssh.open_sftp()
             successful_step = True
             if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
-                print("bootcode.bin file has not been renamed!")
+                logger.error("bootcode.bin file has not been renamed!")
                 successful_step = False
             if "ssh" not in ftp.listdir("/mnt/sdcard_boot"):
-                print("ssh file has not been created!")
+                logger.error("ssh file has not been created!")
                 successful_step = False
             # Update the deployment
             if successful_step:
@@ -232,11 +219,10 @@ def fs_check_fct(deployments):
                 db.session.add(deployment)
                 db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
 
-def resize_off_fct(deployments):
+def resize_off_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -249,7 +235,7 @@ def resize_off_fct(deployments):
         db.session.commit()
 
 
-def resize_on_fct(deployments):
+def resize_on_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -262,7 +248,7 @@ def resize_on_fct(deployments):
         db.session.commit()
 
 
-def resize_inprogress_fct(deployments):
+def resize_inprogress_fct(deployments, logger):
     for deployment in deployments:
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
@@ -281,10 +267,10 @@ def resize_inprogress_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         else:
-            print("Waiting %s: %d/40s" % (server.get("ip"), elapsedTime))
+            logger.info("Waiting %s: %d/40s" % (server.get("ip"), elapsedTime))
 
 
-def resize_done_fct(deployments):
+def resize_done_fct(deployments, logger):
     for deployment in deployments:
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Turn on port
@@ -295,7 +281,7 @@ def resize_done_fct(deployments):
         db.session.commit()
 
 
-def resize_check_fct(deployments):
+def resize_check_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -310,7 +296,7 @@ def resize_check_fct(deployments):
             output = stdout.readlines()
             partition_size = float(output[0].strip())
             # Check if resize has been successful (partition's size should be larger than 4 GB)
-            print("partition_size: %f" % partition_size)
+            logger.info("partition_size: %f" % partition_size)
             if partition_size < 4.0:
                 successful_step = False
             # Update the deployment
@@ -322,11 +308,10 @@ def resize_check_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
 
-def ssh_key_mount_fct(deployments):
+def ssh_key_mount_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -334,7 +319,7 @@ def ssh_key_mount_fct(deployments):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
+            logger.info("Could connect to %s" % server.get("ip"))
             # Mount the file system of the SD CARD
             cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
@@ -345,10 +330,9 @@ def ssh_key_mount_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
-def ssh_key_copy_fct(deployments):
+def ssh_key_copy_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -356,7 +340,7 @@ def ssh_key_copy_fct(deployments):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
+            logger.info("Could connect to %s" % server.get("ip"))
             # Create a ssh folder in the root folder of the SD CARD's file system
             cmd = "mkdir -p /mnt/sdcard_fs/root/.ssh"
             ssh.exec_command(cmd)
@@ -368,11 +352,10 @@ def ssh_key_copy_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logging.warning("Could not connect to %s" % server.get("ip"))
 
 
-def ssh_key_user_fct(deployments):
+def ssh_key_user_fct(deployments, logger):
     for deployment in deployments:
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         try:
@@ -396,11 +379,10 @@ def ssh_key_user_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
 
-def fs_boot_conf_fct(deployments):
+def fs_boot_conf_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -433,11 +415,10 @@ def fs_boot_conf_fct(deployments):
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            logger.warning("Could not connect to %s" % server.get("ip"))
 
 
-def fs_boot_off_fct(deployments):
+def fs_boot_off_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -449,7 +430,7 @@ def fs_boot_off_fct(deployments):
         db.session.add(deployment)
         db.session.commit()
 
-def fs_boot_on_fct(deployments):
+def fs_boot_on_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -462,7 +443,7 @@ def fs_boot_on_fct(deployments):
         db.session.commit()
 
 
-def fs_boot_check_fct(deployments):
+def fs_boot_check_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -472,7 +453,7 @@ def fs_boot_check_fct(deployments):
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
             elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
-            print("Could connect to %s after %s seconds" % (server.get("ip"), elapsedTime))
+            logger.info("Could connect to %s after %s seconds" % (server.get("ip"), elapsedTime))
             # Update the deployment
             deployment.fs_boot_check_fct()
             deployment.updated_at = datetime.datetime.utcnow()
@@ -481,9 +462,9 @@ def fs_boot_check_fct(deployments):
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
             elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
-            print("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
+            logger.info("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
             if elapsedTime > 90:
-                print("Retry the SSH configuration")
+                logger.error("Retry the SSH configuration")
                 # Modify the boot PXE configuration file to boot from NFS
                 tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
                 text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
@@ -498,7 +479,7 @@ def fs_boot_check_fct(deployments):
                 db.session.commit()
 
 
-def ssh_config_2_fct(deployments):
+def ssh_config_2_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -511,7 +492,7 @@ def ssh_config_2_fct(deployments):
         db.session.commit()
 
 
-def last_check_fct(deployments):
+def last_check_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -527,10 +508,8 @@ def last_check_fct(deployments):
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                print("Could connect to %s" % server.get("ip"))
-
+                logger.info("Could connect to %s" % server.get("ip"))
                 ftp = ssh.open_sftp()
-                print(ftp)
                 if "started_init_script" not in ftp.listdir("/tmp/"):
                     # Generate random title
                     random_file_name = str(uuid.uuid1())
@@ -540,7 +519,7 @@ def last_check_fct(deployments):
                         f.write(deployment.init_script)
                     ftp.put(random_file_path, "/tmp/init_script.sh")
                     if "init_script.sh" not in ftp.listdir("/tmp"):
-                        print(f"ERROR: \"init_script.sh\" not in /tmp")
+                        logger.error(f"\"init_script.sh\" not in /tmp")
                         continue
                     # Launch init script
                     cmd = "touch /tmp/started_init_script; sed -i 's/\r$//' /tmp/init_script.sh; bash /tmp/init_script.sh; touch /tmp/finished_init_script"
@@ -555,8 +534,8 @@ def last_check_fct(deployments):
         # then the result of the function will be used
         if "ready" in environment:
             finish_deployment = environment.get("ready")(server)
-        print("finish_init %s" % finish_init)
-        print("finish_deployment %s" % finish_deployment)
+        logger.info("finish_init %s" % finish_init)
+        logger.info("finish_deployment %s" % finish_deployment)
         if finish_deployment and finish_init:
             deployment.last_check_fct()
             deployment.updated_at = datetime.datetime.utcnow()
@@ -564,7 +543,7 @@ def last_check_fct(deployments):
             db.session.commit()
 
 
-def off_requested_fct(deployments):
+def off_requested_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -575,7 +554,7 @@ def off_requested_fct(deployments):
         db.session.commit()
 
 
-def on_requested_fct(deployments):
+def on_requested_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -586,7 +565,7 @@ def on_requested_fct(deployments):
         db.session.commit()
 
 
-def reboot_check_fct(deployments):
+def reboot_check_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -594,17 +573,18 @@ def reboot_check_fct(deployments):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
+            logger.info("Could connect to %s" % server.get("ip"))
             # Update the deployment
             deployment.reboot_check_fct()
             db.session.add(deployment)
             db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            print(e)
-            print("Could not connect to %s" % server.get("ip"))
+            updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
+            elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+            logger.info("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
 
 
-def destroy_request_fct(deployments):
+def destroy_request_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -615,7 +595,7 @@ def destroy_request_fct(deployments):
         db.session.commit()
 
 
-def destroying_fct(deployments):
+def destroying_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -624,7 +604,7 @@ def destroying_fct(deployments):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            print("Could connect to %s" % server.get("ip"))
+            logger.info("Could connect to %s" % server.get("ip"))
         except (BadHostKeyException, AuthenticationException,
                 SSHException, socket.error) as e:
             can_connect = False

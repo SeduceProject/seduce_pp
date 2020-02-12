@@ -1,12 +1,7 @@
-import requests
-import time
-import re
-import dukpy
+import base64, dukpy, re, requests, subprocess, time
 
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
-import base64
-import os
 
 
 def acquire_gambit(address, username, password):
@@ -65,7 +60,8 @@ def login_required(response):
 
 def set_power_port(address, port, value):
     snmp_address = "1.3.6.1.2.1.105.1.1.1.3.1.%s" % port
-    os.system("snmpset -v2c -c private %s %s i %s" % (address, snmp_address, value))
+    cmd = "snmpset -v2c -c private %s %s i %s" % (address, snmp_address, value)
+    subprocess.run(cmd.split(), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return True
 
 

@@ -1,10 +1,7 @@
+import flask, flask_login, json, logging, uuid
+
 from flask import Blueprint
 from flask_login import current_user
-import flask_login
-import json
-import flask
-import logging
-import uuid
 
 webappapp_api_blueprint = Blueprint('app_api', __name__,
                                     template_folder='templates')
@@ -12,9 +9,10 @@ webappapp_api_blueprint = Blueprint('app_api', __name__,
 
 @webappapp_api_blueprint.route("/api/authorized")
 def authorized():
-    print(current_user, flush=True)
-    print(flask.request, flush=True)
-    print(flask.request.headers, flush=True)
+    logger = logging.getLogger("WEBAPP_API")
+    logger.info(current_user, flush=True)
+    logger.info(flask.request, flush=True)
+    logger.info(flask.request.headers, flush=True)
     if current_user.is_authenticated:
         return "You are logged in! Sweet!"
     else:

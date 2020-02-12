@@ -1,15 +1,16 @@
-import requests, paramiko
+import logging, paramiko, requests
 
 
 def check_ssh_is_ready(node_desc):
     try:
+        logging.getLogger("CLUSTER_CONFIG")
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(node_desc.get("ip"), username="root", timeout=1.0)
         return True
     except (BadHostKeyException, AuthenticationException,
             SSHException, socket.error) as e:
-        print(e)
+        logger.warning("Could not connect to %s" % server.get("ip"))
         return False
 
 
@@ -271,6 +272,11 @@ CLUSTER_CONFIG = {
         {
             "name": "raspbian_buster",
             "img_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img",
+            "ready": check_ssh_is_ready
+        },
+        {
+            "name": "pi_core",
+            "img_path": "/nfs/raspi1/environments/piCore-9.0.3.img",
             "ready": check_ssh_is_ready
         },
         {

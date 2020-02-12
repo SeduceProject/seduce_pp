@@ -1,12 +1,14 @@
-import flask_login
-from flask import Flask
-import datetime
+import datetime, flask, flask_login, logging, logging.config
 from blueprints.login import login_blueprint
+from blueprints.switch_api import switch_api_blueprint
 from blueprints.webapp import webapp_blueprint
 from blueprints.webapp_admin import webapp_admin_blueprint
-from blueprints.switch_api import switch_api_blueprint
 from blueprints.webapp_api import webappapp_api_blueprint
-import flask
+from flask import Flask
+
+def logging_config():
+    logging.config.fileConfig('logging-frontend.conf', disable_existing_loggers=1)
+
 
 login_manager = flask_login.LoginManager()
 
@@ -99,11 +101,12 @@ def timesince(dt, default="just now"):
 
 
 if __name__ == '__main__':
+    logging_config()
+    logger = logging.getLogger("APP")
     # Create DB
-    print("Creating database")
+    logger.info("Creating database")
     from database import db
 
     db.create_all()
 
-    debug = True
-    app.run(debug=debug, port=9000, host="0.0.0.0")
+    app.run(debug=True, port=9000, host="0.0.0.0")

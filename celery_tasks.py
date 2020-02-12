@@ -1,6 +1,12 @@
+import logging, logging.config, time
 from celery import Celery
-from tasks.email import *
 from tasks.compute import *
+from tasks.email import *
+
+
+def logging_config():
+    logging.config.fileConfig('logging-tasks.conf', disable_existing_loggers=1)
+    logging.getLogger("paramiko").setLevel(logging.ERROR)
 
 
 def make_celery(app):
@@ -34,7 +40,10 @@ celery = make_celery(flask_app)
 
 
 if __name__ == "__main__":
-    import time
+    logging_config()
+    logger = logging.getLogger("CELERY_TASKS")
+    logger.info("Analyzing the node states")
+
 
     while True:
         # DEFAULT
