@@ -41,6 +41,12 @@ deployment_states = [deployment_initial_state,
                      'last_check',
                      'deployed',
 
+                     'tc_conf',
+                     'tc_reboot',
+                     'tc_fdisk',
+                     'tc_resize',
+                     'tc_ssh_user',
+
                      'off_requested',
                      'on_requested',
                      'reboot_check',
@@ -57,6 +63,7 @@ deployment_transitions = [
     {'trigger': 'env_copy_fct', 'source': 'env_copy', 'dest': 'env_check'},
     {'trigger': 'env_check_fct', 'source': 'env_check', 'dest': 'fs_mount'},
     {'trigger': 'fs_mount_fct', 'source': 'fs_mount', 'dest': 'fs_conf'},
+    {'trigger': 'fs_mount_fct2', 'source': 'fs_mount', 'dest': 'tc_conf'},
     {'trigger': 'fs_conf_fct', 'source': 'fs_conf', 'dest': 'fs_check'},
     {'trigger': 'fs_check_fct', 'source': 'fs_check', 'dest': 'resize_off'},
     {'trigger': 'resize_off_fct', 'source': 'resize_off', 'dest': 'resize_on'},
@@ -76,6 +83,12 @@ deployment_transitions = [
     {'trigger': 'last_check_fct', 'source': 'last_check', 'dest': 'deployed'},
 
     {'trigger': 'retry_resize', 'source': 'resize_check', 'dest': 'fs_mount'},
+
+    {'trigger': 'tc_conf_fct', 'source': 'tc_conf', 'dest': 'tc_reboot'},
+    {'trigger': 'tc_reboot_fct', 'source': 'tc_reboot', 'dest': 'tc_fdisk'},
+    {'trigger': 'tc_fdisk_fct', 'source': 'tc_fdisk', 'dest': 'tc_resize'},
+    {'trigger': 'tc_resize_fct', 'source': 'tc_resize', 'dest': 'tc_ssh_user'},
+    {'trigger': 'tc_ssh_user_fct', 'source': 'tc_ssh_user', 'dest': 'last_check'},
 
     {'trigger': 'init_reboot', 'source': '*', 'dest': 'off_requested'},
     {'trigger': 'off_requested_fct', 'source': 'off_requested', 'dest': 'on_requested'},

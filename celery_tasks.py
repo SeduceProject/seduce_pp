@@ -6,7 +6,7 @@ from tasks.email import *
 
 def logging_config():
     logging.config.fileConfig('logging-tasks.conf', disable_existing_loggers=1)
-    logging.getLogger("paramiko").setLevel(logging.ERROR)
+    logging.getLogger("paramiko").setLevel(logging.CRITICAL)
 
 
 def make_celery(app):
@@ -46,8 +46,10 @@ if __name__ == "__main__":
 
 
     while True:
-        # DEFAULT
+        # User management
         #send_confirmation_email()
+
+        ## WARNING: Deployment node states (the reverse order is crucial !)
 
         # Start with the destruction of deployments
         collect_nodes(destroying_fct, 'destroying')
@@ -58,7 +60,14 @@ if __name__ == "__main__":
         collect_nodes(on_requested_fct, 'on_requested')
         collect_nodes(off_requested_fct, 'off_requested')
 
-        # Deploy new environments on nodes (the reverse order is crucial !)
+        # Deploy picore environements
+        collect_nodes(tc_ssh_user_fct, 'tc_ssh_user')
+        collect_nodes(tc_resize_fct, 'tc_resize')
+        collect_nodes(tc_fdisk_fct, 'tc_fdisk')
+        collect_nodes(tc_reboot_fct, 'tc_reboot')
+        collect_nodes(tc_conf_fct, 'tc_conf')
+
+        # Deploy new environments on nodes
         collect_nodes(last_check_fct, 'last_check')
         collect_nodes(ssh_config_2_fct, 'ssh_config_2')
         collect_nodes(fs_boot_check_fct, 'fs_boot_check')

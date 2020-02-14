@@ -1,20 +1,19 @@
 import logging, paramiko, requests
 
 
-def check_ssh_is_ready(node_desc):
+def check_ssh_is_ready(node_desc, env_desc):
     try:
-        logging.getLogger("CLUSTER_CONFIG")
+        logger = logging.getLogger("CLUSTER_CONFIG")
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(node_desc.get("ip"), username="root", timeout=1.0)
+        ssh.connect(node_desc.get("ip"), username=env_desc.get("ssh_user"), timeout=1.0)
         return True
-    except (BadHostKeyException, AuthenticationException,
-            SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+    except:
+        logger.warning("Could not connect to %s" % node_desc.get("ip"))
         return False
 
 
-def check_cloud9_is_ready(node_desc):
+def check_cloud9_is_ready(node_desc, env_desc):
     cloud9_ide_url = "%s/ide.html" % (node_desc.get("public_address"))
     result = requests.get(cloud9_ide_url)
     if result.status_code == 200:
@@ -24,7 +23,7 @@ def check_cloud9_is_ready(node_desc):
     return False
 
 
-def check_jupyter_is_ready(node_desc):
+def check_jupyter_is_ready(node_desc, env_desc):
     cloud9_ide_url = "%s/tree?" % (node_desc.get("public_address"))
     result = requests.get(cloud9_ide_url)
     if "<title>Home</title>" in result.text:
@@ -267,21 +266,29 @@ CLUSTER_CONFIG = {
         {
             "name": "raspbian_cloud9",
             "img_path": "/nfs/raspi1/environments/2019-09-19-Raspbian-lite.img",
+            "ssh_user": "root",
+            "shell": "bash",
             "ready": check_cloud9_is_ready
         },
         {
             "name": "raspbian_buster",
             "img_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img",
+            "ssh_user": "root",
+            "shell": "bash",
             "ready": check_ssh_is_ready
         },
         {
-            "name": "pi_core",
-            "img_path": "/nfs/raspi1/environments/piCore-9.0.3.img",
+            "name": "picore_nodeploy",
+            "img_path": "/nfs/raspi1/environments/piCore-10.0beta12b.img",
+            "ssh_user": "tc",
+            "shell": "sh",
             "ready": check_ssh_is_ready
         },
         {
             "name": "raspbian_jupyter",
             "img_path": "/nfs/raspi1/environments/2019-09-20-Raspbian-lite.img",
+            "ssh_user": "root",
+            "shell": "bash",
             "ready": check_jupyter_is_ready
         }
     ]

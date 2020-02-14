@@ -205,6 +205,36 @@
     margin: auto;
 }
 
+.tc_conf {
+    width: 90%;
+    background-color: #CD9FE1;
+    margin: auto;
+}
+
+.tc_reboot {
+    width: 90%;
+    background-color: #C3AAD7;
+    margin: auto;
+}
+
+.tc_fdisk {
+    width: 90%;
+    background-color: #B5BBC8;
+    margin: auto;
+}
+
+.tc_resize {
+    width: 90%;
+    background-color: #A3D2B3;
+    margin: auto;
+}
+
+.tc_ssh_user {
+    width: 90%;
+    background-color: #94E3A4;
+    margin: auto;
+}
+
 .off_requested {
     width: 90%;
     background-color: #ffe496;

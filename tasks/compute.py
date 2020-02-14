@@ -1,4 +1,4 @@
-import celery, datetime, logging, os, paramiko, re, random, uuid, shutil, socket, sys, time, traceback
+import celery, datetime, logging, os, paramiko, re, random, shutil, socket, subprocess, sys, time, traceback, uuid
 from database import db, Deployment
 from lib.config.cluster_config import CLUSTER_CONFIG
 from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
@@ -8,21 +8,35 @@ from redlock import RedLock
 from sqlalchemy import or_
 
 
-# Global variables
-rebooting_nodes = []
-
 def collect_nodes(process, node_state):
     try:
         logger_compute = logging.getLogger("COMPUTE")
         pending_deployments = Deployment.query.filter_by(state=node_state).all()
         if len(pending_deployments) > 0:
-            logger_compute.info("### Processing %d deployments in '%s' state:" % (len(pending_deployments), node_state))
-            logger_compute.info([d.server_id for d in pending_deployments])
+            for d in pending_deployments:
+                if d.updated_at is not None:
+                    last_update = datetime.datetime.strptime(str(d.updated_at), '%Y-%m-%d %H:%M:%S')
+                else:
+                    last_update = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                logger_compute.info("### Node '%s' enters in '%s' state at %s" %
+                        (d.server_id, node_state, last_update))
             with RedLock("lock/deployments/%s" % node_state):
                 process(pending_deployments, logger_compute)
         db.session.remove()
     except Exception:
         logger_compute.exception("Exception in '%s' state:" % node_state)
+
+
+def is_file_ssh(ssh_user, ssh_ip, path_file):
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(ssh_ip, username=ssh_user, timeout=1.0)
+        (stdin, stdout, stderr) = ssh.exec_command("cat %s | wc -l" % path_file)
+        output = stdout.readlines()
+        return int(output[0].strip())
+    except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+        return -1
 
 
 def nfs_boot_conf_fct(deployments, logger):
@@ -77,20 +91,18 @@ def env_copy_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        environment = [environment for environment in CLUSTER_CONFIG.get("environments") if environment.get("name") == deployment.environment][0]
-        environment_img_path = environment.get("img_path")
-        logger.info("%s: %s" % (server, environment_img_path))
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            logger.info("Could connect to %s" % server.get("ip"))
-            # Configure the screen tool
-            ssh.exec_command("chmod -R 777 /run/screen;")
+            # Get the path to the IMG file
+            environment = [environment for environment in CLUSTER_CONFIG.get("environments")
+                    if environment.get("name") == deployment.environment][0]
+            environment_img_path = environment.get("img_path")
+            logger.info("%s: copy %s to the SDCARD" % (server.get("id"), environment_img_path))
             # Write the image of the environment on SD card
-            deploy_cmd = f"""rm -f /tmp/done_{server['id']}.txt /tmp/progress_{server['id']}.txt; rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | dd of=/dev/mmcblk0 bs=4M conv=fsync status=progress 2>&1 | tee /tmp/progress_{server['id']}.txt; touch /tmp/done_{server['id']}.txt;""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"))
-            screen_deploy_cmd = "screen -d -m bash -c '%s'" % deploy_cmd
-            ssh.exec_command(screen_deploy_cmd)
+            deploy_cmd = f"""rm -f /tmp/done_{server['id']}.txt; rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | dd of=/dev/mmcblk0 bs=4M conv=fsync; touch /tmp/done_{server['id']}.txt;""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"))
+            (stdin, stdout, stderr) = ssh.exec_command(deploy_cmd)
             # Update the deployment
             deployment.env_copy_fct()
             deployment.updated_at = datetime.datetime.utcnow()
@@ -108,7 +120,6 @@ def env_check_fct(deployments, logger):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            logger.info("Could connect to %s" % server.get("ip"))
             # Write the image of the environment on SD card
             ftp = ssh.open_sftp()
             logger.info(f"Looking for done_{server['id']}.txt") 
@@ -116,22 +127,8 @@ def env_check_fct(deployments, logger):
                 # Update the deployment
                 deployment.env_check_fct()
                 deployment.updated_at = datetime.datetime.utcnow()
-            else:
-                # Get the progress
-                if f"progress_{server['id']}.txt" in ftp.listdir("/tmp"):
-                    cmd = f"""cat /tmp/progress_{server['id']}.txt"""
-                    (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                    lines = stdout.readlines()
-                    sublines = [sl.strip() for l in lines for sl in l.split("\r")]
-                    if len(sublines) > 1:
-                        output = re.sub('[^ a-zA-Z0-9./,()]', '', sublines[-1])
-                        deployment.label = output
-                        logger.info(f"{server.get('ip')} ({deployment.id}) => {output}")
-                else:
-                    logger.warning(f"{server.get('ip')} ({deployment.id}) : NO /tmp/progress_{server['id']}.txt file!!!")
-            ssh.close()
-            db.session.add(deployment)
-            db.session.commit()
+                db.session.add(deployment)
+                db.session.commit()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -144,20 +141,23 @@ def fs_mount_fct(deployments, logger):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            # Ensure 'sdcard_boot' and 'sdcard_fs' exists
-            ssh.exec_command("mkdir -p /mnt/sdcard_boot")
-            ssh.exec_command("mkdir -p /mnt/sdcard_fs")
             # Mount the boot partition of the SD CARD
-            cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot"
+            cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot; mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
-            # Mount the root partition of the SD CARD
-            cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
-            ssh.exec_command(cmd)
-            # Update the deployment
-            deployment.fs_mount_fct()
-            deployment.updated_at = datetime.datetime.utcnow()
-            db.session.add(deployment)
-            db.session.commit()
+            (stdin, stdout, stderr) = ssh.exec_command("mount -f | grep mmcblk0 | wc -l")
+            output = stdout.readlines()
+            nb_mount = int(output[0].strip())
+            if nb_mount == 2:
+                # Update the deployment
+                if deployment.environment == "picore_nodeploy":
+                    deployment.fs_mount_fct2()
+                else:
+                    deployment.fs_mount_fct()
+                deployment.updated_at = datetime.datetime.utcnow()
+                db.session.add(deployment)
+                db.session.commit()
+            else:
+                logger.warning("%s: Wrong number of mounted partitions. %d detected partition(s)" % (server.get("id"), nb_mount))
         except (BadHostKeyException, AuthenticationException, SHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -171,7 +171,7 @@ def fs_conf_fct(deployments, logger):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             # Short circuit the bootcode.bin file on the SD CARD
-            ssh.exec_command("mv /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_boot/_bootcode.bin")
+            ssh.exec_command("rm /mnt/sdcard_boot/bootcode.bin")
             # Create a ssh file on the SD Card
             cmd = "echo '1' > /mnt/sdcard_boot/ssh"
             ssh.exec_command(cmd)
@@ -207,7 +207,7 @@ def fs_check_fct(deployments, logger):
             ftp = ssh.open_sftp()
             successful_step = True
             if "bootcode.bin" in ftp.listdir("/mnt/sdcard_boot"):
-                logger.error("bootcode.bin file has not been renamed!")
+                logger.error("bootcode.bin file has not been removed!")
                 successful_step = False
             if "ssh" not in ftp.listdir("/mnt/sdcard_boot"):
                 logger.error("ssh file has not been created!")
@@ -319,7 +319,6 @@ def ssh_key_mount_fct(deployments, logger):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            logger.info("Could connect to %s" % server.get("ip"))
             # Mount the file system of the SD CARD
             cmd = "mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
@@ -340,7 +339,6 @@ def ssh_key_copy_fct(deployments, logger):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            logger.info("Could connect to %s" % server.get("ip"))
             # Create a ssh folder in the root folder of the SD CARD's file system
             cmd = "mkdir -p /mnt/sdcard_fs/root/.ssh"
             ssh.exec_command(cmd)
@@ -496,8 +494,8 @@ def last_check_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
-        environment = [environment for environment in CLUSTER_CONFIG.get("environments") if
-                       environment.get("name") == deployment.environment][0]
+        environment = [environment for environment in CLUSTER_CONFIG.get("environments")
+                if environment.get("name") == deployment.environment][0]
         # By default the deployment should be concluded
         finish_init = True
         finish_deployment = True
@@ -507,8 +505,7 @@ def last_check_fct(deployments, logger):
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(server.get("ip"), username="root", timeout=1.0)
-                logger.info("Could connect to %s" % server.get("ip"))
+                ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
                 ftp = ssh.open_sftp()
                 if "started_init_script" not in ftp.listdir("/tmp/"):
                     # Generate random title
@@ -522,7 +519,7 @@ def last_check_fct(deployments, logger):
                         logger.error(f"\"init_script.sh\" not in /tmp")
                         continue
                     # Launch init script
-                    cmd = "touch /tmp/started_init_script; sed -i 's/\r$//' /tmp/init_script.sh; bash /tmp/init_script.sh; touch /tmp/finished_init_script"
+                    cmd = "touch /tmp/started_init_script; sed -i 's/\r$//' /tmp/init_script.sh; %s /tmp/init_script.sh; touch /tmp/finished_init_script" % environment.get("shell")
                     ssh.exec_command(cmd)
                 if "finished_init_script" in ftp.listdir("/tmp/"):
                     finish_init = True
@@ -533,7 +530,7 @@ def last_check_fct(deployments, logger):
         # a service must be started before concluding the deployment
         # then the result of the function will be used
         if "ready" in environment:
-            finish_deployment = environment.get("ready")(server)
+            finish_deployment = environment.get("ready")(server, environment)
         logger.info("finish_init %s" % finish_init)
         logger.info("finish_deployment %s" % finish_deployment)
         if finish_deployment and finish_init:
@@ -543,6 +540,133 @@ def last_check_fct(deployments, logger):
             db.session.commit()
 
 
+# Deploy picore system
+def tc_conf_fct(deployments, logger):
+    # mount -f | grep mmcblk0 | wc -l
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server.get("ip"), username="root", timeout=1.0)
+            # Configure the SDCARD in order to reboot on it
+            ssh.exec_command("rm /mnt/sdcard_boot/bootcode.bin && rm /mnt/sdcard_fs/tce/mydata.tgz && cp /environments/mydata.tgz /mnt/sdcard_fs/tce/")
+            # Copy boot files to the tftp folder
+            tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
+            cmd = f"scp -o 'StrictHostKeyChecking no' -r root@{server.get('ip')}:/mnt/sdcard_boot/* {tftpboot_node_folder}/"
+            subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            deployment.tc_conf_fct()
+            deployment.updated_at = datetime.datetime.utcnow()
+            db.session.add(deployment)
+            db.session.commit()
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            logger.exception("Could not connect to %s" % server.get("ip"))
+
+
+def tc_reboot_fct(deployments, logger):
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server.get("ip"), username="root", timeout=1.0)
+            successful_step = True
+            if is_file_ssh("root", server.get("ip"), "/mnt/sdcard_boot/bootcode.bin") != 0:
+                successful_step = False
+                logger.warning("%s: bootcode.bin is still here!. Can not reboot." % server.get("id"))
+            if successful_step:
+                logger.info("Reboot the node '%s' to start on the tinyCore system" % server.get("id"))
+                ssh.exec_command("reboot")
+                deployment.tc_reboot_fct()
+                deployment.updated_at = datetime.datetime.utcnow()
+                db.session.add(deployment)
+                db.session.commit()
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            logger.warning("Could not connect to %s" % server.get("ip"))
+
+
+def tc_fdisk_fct(deployments, logger):
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        environment = [environment for environment in CLUSTER_CONFIG.get("environments")
+                if environment.get("name") == deployment.environment][0]
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+            (stdin, stdout, stderr) = ssh.exec_command("fdisk -l | grep mmcblk0 | wc -l")
+            nb_partition = int(stdout.readlines()[0]) - 1
+            logger.info("%s: %d detected partitions" % (server.get("id"), nb_partition))
+            if nb_partition == 2:
+                # Delete the second partition
+                subprocess.run("ssh -o 'StrictHostKeyChecking no' tc@%s \"(echo d; echo 2; echo w; echo q) | sudo fdisk -u /dev/mmcblk0\"" % server.get("ip"), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # Create a partition with the whole free space
+                subprocess.run("ssh -o 'StrictHostKeyChecking no' tc@%s \"(echo n; echo p; echo 2; echo '92160'; echo ''; echo w; echo q) | sudo fdisk -u /dev/mmcblk0; sudo reboot\"" % server.get("ip"), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            deployment.tc_fdisk_fct()
+            deployment.updated_at = datetime.datetime.utcnow()
+            db.session.add(deployment)
+            db.session.commit()
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            logger.warning("Could not connect to %s" % server.get("ip"))
+
+
+def tc_resize_fct(deployments, logger):
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        environment = [environment for environment in CLUSTER_CONFIG.get("environments")
+                if environment.get("name") == deployment.environment][0]
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+            ssh.exec_command("sudo resize2fs /dev/mmcblk0p2")
+            (stdin, stdout, stderr) = ssh.exec_command("df -h /dev/mmcblk0p2 | tail -n 1 | awk '{print $4}'")
+            output = stdout.readlines()[0].strip()
+            unit = output[-1:]
+            partition_size = float(output[:-1])
+            # Check if resize has been successful (partition's size should be larger than 4 GB)
+            if unit == 'G':
+                deployment.tc_resize_fct()
+                deployment.updated_at = datetime.datetime.utcnow()
+                db.session.add(deployment)
+                db.session.commit()
+            else:
+                logger.warning("Wrong partition size for %s: %s" % (server.get("id"), output))
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            logger.warning("Could not connect to %s" % server.get("ip"))
+
+
+def tc_ssh_user_fct(deployments, logger):
+    for deployment in deployments:
+        # Get description of the server that will be deployed
+        server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        environment = [environment for environment in CLUSTER_CONFIG.get("environments")
+                if environment.get("name") == deployment.environment][0]
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+            if len(deployment.public_key) > 0:
+                # Add the public key of the user
+                cmd = "echo '\n%s' >> /home/tc/.ssh/authorized_keys && filetool.sh -b && sudo reboot" % deployment.public_key
+                ssh.exec_command(cmd)
+            if deployment.c9pwd is not None and len(deployment.c9pwd) > 0:
+                # Change the tc password
+                cmd = "echo -e '%s\n%s' | sudo passwd tc" % (deployment.c9pwd, deployment.c9pwd)
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            logger.warning("Could not connect to %s" % server.get("ip"))
+        deployment.tc_ssh_user_fct()
+        deployment.updated_at = datetime.datetime.utcnow()
+        db.session.add(deployment)
+        db.session.commit()
+
+
+# Hard Reboot nodes (off -> on -> check SSH)
 def off_requested_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
@@ -569,11 +693,12 @@ def reboot_check_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        environment = [environment for environment in CLUSTER_CONFIG.get("environments")
+                if environment.get("name") == deployment.environment][0]
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            logger.info("Could connect to %s" % server.get("ip"))
+            ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
             # Update the deployment
             deployment.reboot_check_fct()
             db.session.add(deployment)
@@ -584,6 +709,7 @@ def reboot_check_fct(deployments, logger):
             logger.info("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
 
 
+# Destroying deployments
 def destroy_request_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
@@ -604,7 +730,6 @@ def destroying_fct(deployments, logger):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            logger.info("Could connect to %s" % server.get("ip"))
         except (BadHostKeyException, AuthenticationException,
                 SSHException, socket.error) as e:
             can_connect = False
