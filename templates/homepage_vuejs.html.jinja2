@@ -49,11 +49,13 @@
                 <h6 class="border-bottom border-gray pb-2 mb-0">Deployments</h6>
                 <div class="accordion" id="accordionExample">
                   <div v-for="deployment in user_deployments" class="card">
-                    <div class="card-header bg-white" v-bind:id="'heading-' + [[ deployment.ids[0] ]]" style="height: 4rem;">
-                        <div>
+                    <div class="card-header bg-white" v-bind:id="'heading-' + [[ deployment.ids[0] ]]">
+                        <div class="card-title">
                             [[ deployment.name ]]: <span class="node-list">[[ deployment.server_names ]]</span>
-                            <a v-if="[[ deployment.state ]] != 'destruction_requested' && [[ deployment.state ]] != 'destroying'" href="#" class="shadow-none btn btn-outline-info btn-size float-right" data-toggle="collapse" v-bind:data-target="'#collapse-' + [[ deployment.ids[0] ]]" aria-expanded="true" v-bind:aria-controls="'collapse-' + [[ deployment.ids[0] ]]">More Info</a>
-                            <a v-if="[[ deployment.state ]] != 'destruction_requested' && [[ deployment.state ]] != 'destroying'" :href="'/deployment/destroy/' + deployment.ids" class="btn btn-outline-danger btn-size float-right mr-3">Destroy</a>
+                        </div>
+                        <div class="card-text text-center">
+                            <a v-if="[[ deployment.state ]] != 'destroy_request' && [[ deployment.state ]] != 'destroying'" :href="'/deployment/destroy/' + deployment.ids" class="btn btn-outline-danger btn-size">Destroy</a>
+                            <a v-if="[[ deployment.state ]] != 'destroy_request' && [[ deployment.state ]] != 'destroying'" href="#" class="shadow-none btn btn-outline-info btn-size" data-toggle="collapse" v-bind:data-target="'#collapse-' + [[ deployment.ids[0] ]]" aria-expanded="true" v-bind:aria-controls="'collapse-' + [[ deployment.ids[0] ]]">More Info</a>
                         </div>
                     </div>
                     <div v-bind:id="'collapse-' + [[ deployment.ids[0] ]]" class="collapse" :aria-labelledby="'heading-' + [[ deployment.ids[0] ]]" data-parent="#accordionExample">
