@@ -60,7 +60,7 @@ if __name__ == "__main__":
         collect_nodes(on_requested_fct, 'on_requested')
         collect_nodes(off_requested_fct, 'off_requested')
 
-        # Deploy picore environements
+        # Deploy tinycore environements
         collect_nodes(tc_ssh_user_fct, 'tc_ssh_user')
         collect_nodes(tc_resize_fct, 'tc_resize')
         collect_nodes(tc_fdisk_fct, 'tc_fdisk')

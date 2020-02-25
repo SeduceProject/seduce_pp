@@ -27,15 +27,30 @@ def collect_nodes(process, node_state):
         logger_compute.exception("Exception in '%s' state:" % node_state)
 
 
-def is_file_ssh(ssh_user, ssh_ip, path_file):
+def is_file_ssh(ssh_session, path_file):
     try:
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(ssh_ip, username=ssh_user, timeout=1.0)
-        (stdin, stdout, stderr) = ssh.exec_command("cat %s | wc -l" % path_file)
+        (stdin, stdout, stderr) = ssh_session.exec_command("cat %s | wc -l" % path_file)
         output = stdout.readlines()
         return int(output[0].strip())
-    except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+    except SSHException:
+        return -1
+
+
+def md5sum_ssh(ssh_session, path_file):
+    try:
+        (stdin, stdout, stderr) = ssh_session.exec_command("md5sum %s | cut -d ' ' -f1" % path_file)
+        output = stdout.readlines()
+        return output[0].strip()
+    except SSHException:
+        return "error"
+
+
+def ps_ssh(ssh_session, bash_cmd):
+    try:
+        (stdin, stdout, stderr) = ssh_session.exec_command("ps aux | grep %s | grep -v grep | wc -l" % bash_cmd)
+        output = stdout.readlines()
+        return int(output[0].strip())
+    except SSHException:
         return -1
 
 
@@ -142,14 +157,14 @@ def fs_mount_fct(deployments, logger):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             # Mount the boot partition of the SD CARD
-            cmd = "mount /dev/mmcblk0p1 /mnt/sdcard_boot; mount /dev/mmcblk0p2 /mnt/sdcard_fs"
+            cmd = "partprobe; mount /dev/mmcblk0p1 /mnt/sdcard_boot; mount /dev/mmcblk0p2 /mnt/sdcard_fs"
             ssh.exec_command(cmd)
             (stdin, stdout, stderr) = ssh.exec_command("mount -f | grep mmcblk0 | wc -l")
             output = stdout.readlines()
             nb_mount = int(output[0].strip())
             if nb_mount == 2:
                 # Update the deployment
-                if deployment.environment == "picore_nodeploy":
+                if deployment.environment == "tiny_core":
                     deployment.fs_mount_fct2()
                 else:
                     deployment.fs_mount_fct()
@@ -157,7 +172,8 @@ def fs_mount_fct(deployments, logger):
                 db.session.add(deployment)
                 db.session.commit()
             else:
-                logger.warning("%s: Wrong number of mounted partitions. %d detected partition(s)" % (server.get("id"), nb_mount))
+                logger.warning("%s: Wrong number of mounted partitions. %d detected partition(s)" %
+                        (server.get("id"), nb_mount))
         except (BadHostKeyException, AuthenticationException, SHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -540,9 +556,8 @@ def last_check_fct(deployments, logger):
             db.session.commit()
 
 
-# Deploy picore system
+# Deploy tinycore system
 def tc_conf_fct(deployments, logger):
-    # mount -f | grep mmcblk0 | wc -l
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -551,15 +566,20 @@ def tc_conf_fct(deployments, logger):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             # Configure the SDCARD in order to reboot on it
-            ssh.exec_command("rm /mnt/sdcard_boot/bootcode.bin && rm /mnt/sdcard_fs/tce/mydata.tgz && cp /environments/mydata.tgz /mnt/sdcard_fs/tce/")
+            (stdin, stdout, stderr) = ssh.exec_command("rm /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_fs/tce/mydata.tgz; cp /environments/mydata.tgz /mnt/sdcard_fs/tce/; sync")
             # Copy boot files to the tftp folder
             tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
             cmd = f"scp -o 'StrictHostKeyChecking no' -r root@{server.get('ip')}:/mnt/sdcard_boot/* {tftpboot_node_folder}/"
             subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            deployment.tc_conf_fct()
-            deployment.updated_at = datetime.datetime.utcnow()
-            db.session.add(deployment)
-            db.session.commit()
+            # Check the mydata.tgz copy
+            md5sum = md5sum_ssh(ssh, "/mnt/sdcard_fs/tce/mydata.tgz")
+            if md5sum == '5fe96e4822be6b1965be8de12b11916c':
+                deployment.tc_conf_fct()
+                deployment.updated_at = datetime.datetime.utcnow()
+                db.session.add(deployment)
+                db.session.commit()
+            else:
+                logger.warning("%s: Wrong md5sum for mydata.tgz: %s" % (server.get("id"), md5sum))
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.exception("Could not connect to %s" % server.get("ip"))
 
@@ -573,7 +593,7 @@ def tc_reboot_fct(deployments, logger):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             successful_step = True
-            if is_file_ssh("root", server.get("ip"), "/mnt/sdcard_boot/bootcode.bin") != 0:
+            if is_file_ssh(ssh, "/mnt/sdcard_boot/bootcode.bin") != 0:
                 successful_step = False
                 logger.warning("%s: bootcode.bin is still here!. Can not reboot." % server.get("id"))
             if successful_step:

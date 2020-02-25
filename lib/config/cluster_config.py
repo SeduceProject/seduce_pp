@@ -278,7 +278,7 @@ CLUSTER_CONFIG = {
             "ready": check_ssh_is_ready
         },
         {
-            "name": "picore_nodeploy",
+            "name": "tiny_core",
             "img_path": "/nfs/raspi1/environments/piCore-10.0beta12b.img",
             "ssh_user": "tc",
             "shell": "sh",
