@@ -1,0 +1,17 @@
+[Unit]
+Description=PiSeduce Tasks
+ 
+[Service]
+Type=simple
+User=pipi
+Group=pipi
+WorkingDirectory=/home/pipi/seduce_pp
+ExecStart=/usr/bin/python3 /home/pipi/seduce_pp/celery_tasks.py
+ExecStop=/usr/bin/touch tasksstop
+TimeoutStopSec=400
+ 
+Restart=on-failure
+# Configures the time to wait before service is stopped forcefully.
+ 
+[Install]
+WantedBy=multi-user.target

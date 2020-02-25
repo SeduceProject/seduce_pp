@@ -1,7 +1,8 @@
-import logging, logging.config, time
+import logging, logging.config, os, time
 from celery import Celery
 from tasks.compute import *
 from tasks.email import *
+
 
 
 def logging_config():
@@ -40,12 +41,13 @@ celery = make_celery(flask_app)
 
 
 if __name__ == "__main__":
+    STOP_FILE = 'tasksstop'
     logging_config()
     logger = logging.getLogger("CELERY_TASKS")
     logger.info("Analyzing the node states")
 
 
-    while True:
+    while not os.path.isfile(STOP_FILE):
         # User management
         #send_confirmation_email()
 
@@ -93,3 +95,6 @@ if __name__ == "__main__":
 
         # Do not decrease the sleep time (the time is configured from the node reboot time)
         time.sleep(3)
+    if os.path.isfile(STOP_FILE):
+        os.remove(STOP_FILE)
+    logger.info("The tasks service is stopped.")

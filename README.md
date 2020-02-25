@@ -272,3 +272,13 @@ chmod ... /etc/ssh
   * `mysql -upipi -ptoto piseduce_new < user.sql`
 * Start the tasks `python3 celery_tasks.py`
 * Reserve the nodes from the main frontend and use them to test your new feature
+
+## Configure tasks as a init.d service
+* Documentation: http://manpages.ubuntu.com/manpages/cosmic/man5/systemd.service.5.html
+```
+sudo cp admin/tasks.service /etc/systemd/system/
+sudo systemctl enable tasks.service
+sudo service tasks start
+# After editing tasks.service, reload the tasks service
+sudo systemctl daemon-reload
+```
