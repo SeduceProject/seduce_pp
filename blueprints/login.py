@@ -14,9 +14,9 @@ def login(msg=None):
         next_url = flask.request.args.get("next")
         return render_template("login/login.html", next_url=next_url, msg=msg)
     from lib.login.login_management import User, authenticate
-    email = flask.request.form['email']
-    password = flask.request.form['password']
-    next_url = flask.request.form['next_url']
+    email = flask.request.form.get('email', "")
+    password = flask.request.form.get('password', "")
+    next_url = flask.request.form.get('next_url', "/")
     if authenticate(email, password):
         user = User()
         user.id = email

@@ -24,6 +24,10 @@ def authorized_user(user):
 
 def authenticate(email, password):
     from database import bcrypt
+
+    if email == "" or password == "" or email is None or password is None:
+        return False
+    
     user = DbUser.query.filter_by(email=email).first()
     if user is not None:
         if bcrypt.check_password_hash(user.password, password):
