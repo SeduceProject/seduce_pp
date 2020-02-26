@@ -7,6 +7,7 @@ class User(flask_login.UserMixin):
 
 
 authorized_domains = [
+    "@mines-nantes.fr",
     "@inria.fr",
     "@imt-atlantique.fr",
     # "@imt-atlantique.net", # Students are not allowed yet

@@ -3,8 +3,7 @@ import flask
 import flask_login
 from lib.decorators.admin_login_required import admin_login_required
 
-login_blueprint = Blueprint('login', __name__,
-                            template_folder='templates')
+login_blueprint = Blueprint('login', __name__, template_folder='templates')
 
 
 @login_blueprint.route('/login', methods=['GET', 'POST'])
@@ -39,21 +38,21 @@ def signup():
     lastname = flask.request.form['lastname']
     password = flask.request.form['password']
     confirm_password = flask.request.form['confirm_password']
-    if password == confirm_password:
-        user = User()
-        user.email = email
-        user.firstname = firstname
-        user.lastname = lastname
-        # The password is ciphered and salted in the database.py file
-        user._set_password = password
-
-        db.session.add(user)
-        db.session.commit()
-
-        redirect_url = flask.url_for("login.confirmation_account_creation")
-        return flask.redirect(redirect_url)
-
-    return 'Bad login'
+    existing_email = User.query.filter_by(email=email).all()
+    if password != confirm_password:
+        return 'The two passwords are not identical!<a href="/signup">Try again</a>'
+    if len(existing_email) > 0:
+        return "Your email address '%s' already exists. <a href='/'>Try to login</a>" % email
+    user = User()
+    user.email = email
+    user.firstname = firstname
+    user.lastname = lastname
+    # The password is ciphered and salted in the database.py file
+    user._set_password = password
+    db.session.add(user)
+    db.session.commit()
+    redirect_url = flask.url_for("login.confirmation_account_creation")
+    return flask.redirect(redirect_url)
 
 
 @login_blueprint.route('/confirmation_account_creation')

@@ -8,16 +8,16 @@ def send_confirmation_email():
     from lib.email.notification import send_confirmation_request
 
     logger = logging.getLogger("EMAIL")
-    logger.info("Checking users in 'created' state")
-    users = User.query.filter_by(state="created").all()
-    logger.info(len(users))
-    for user in users:
-
-        result = send_confirmation_request(user)
-
-        if result.get("success", False):
-            user.email_confirmation_token = result["token"]
-            user.email_sent()
-
-            db.session.add(user)
-            db.session.commit()
+    try:
+        users = User.query.filter_by(state="created").all()
+        for user in users:
+            logger.info("### User %s enters in 'created' state" % user.email)
+            result = send_confirmation_request(user)
+            logger.info(result)
+            if result.get("success", False):
+                user.email_confirmation_token = result["token"]
+                user.email_sent()
+                db.session.add(user)
+                db.session.commit()
+    except:
+        logger.exception("Failed to send the confirmation email:")

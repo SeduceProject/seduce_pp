@@ -4,7 +4,6 @@ from tasks.compute import *
 from tasks.email import *
 
 
-
 def logging_config():
     logging.config.fileConfig('logging-tasks.conf', disable_existing_loggers=1)
     logging.getLogger("paramiko").setLevel(logging.CRITICAL)
@@ -49,7 +48,7 @@ if __name__ == "__main__":
 
     while not os.path.isfile(STOP_FILE):
         # User management
-        #send_confirmation_email()
+        send_confirmation_email()
 
         ## WARNING: Deployment node states (the reverse order is crucial !)
 
