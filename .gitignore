@@ -1,3 +1,5 @@
+*stats_tests.json
+deployment_results.txt
 *.log
 TODO
 test.db

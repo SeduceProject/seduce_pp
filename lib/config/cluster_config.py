@@ -268,6 +268,7 @@ CLUSTER_CONFIG = {
             "img_path": "/nfs/raspi1/environments/2019-09-19-Raspbian-lite.img",
             "ssh_user": "root",
             "shell": "bash",
+            "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
             "ready": check_cloud9_is_ready
         },
         {
@@ -275,6 +276,7 @@ CLUSTER_CONFIG = {
             "img_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img",
             "ssh_user": "root",
             "shell": "bash",
+            "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
             "ready": check_ssh_is_ready
         },
         {
@@ -282,6 +284,7 @@ CLUSTER_CONFIG = {
             "img_path": "/nfs/raspi1/environments/piCore-10.0beta12b.img",
             "ssh_user": "tc",
             "shell": "sh",
+            "script_test": "echo 'riri\nfifi\nloulou' > /home/tc/picsou.txt",
             "ready": check_ssh_is_ready
         },
         {
@@ -289,6 +292,7 @@ CLUSTER_CONFIG = {
             "img_path": "/nfs/raspi1/environments/2019-09-20-Raspbian-lite.img",
             "ssh_user": "root",
             "shell": "bash",
+            "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
             "ready": check_jupyter_is_ready
         }
     ]
