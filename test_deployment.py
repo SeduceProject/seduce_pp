@@ -1,4 +1,4 @@
-import json, os, random, subprocess, sys, time
+import json, logging, logging.config, os, random, subprocess, sys, time
 from database import db, Deployment, User
 from datetime import datetime
 from lib.config.cluster_config import CLUSTER_CONFIG
@@ -6,9 +6,12 @@ from lib.config.cluster_config import CLUSTER_CONFIG
 test_email = 'test@imt-atlantique.fr'
 test_deployment_name = 'automatic testing'
 pubkey_file = 'ssh_key/test-piseduce.pub'
-early_end_state = 'deployed'
-# Uncomment to only the NFS boot
+# Use this environment to only test the NFS boot process
 boot_test_environment = 'boot_test'
+
+# Beautiful logger
+logging.config.fileConfig('logging-test.conf', disable_existing_loggers=1)
+logger = logging.getLogger("MAIN")
 
 def destroy_test_deployment(test_user_id):
     db.session.query(Deployment).filter(
@@ -22,7 +25,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
     deployments = db.session.query(Deployment).filter(
             Deployment.state != "destroyed").all()
     used_nodes = [ d.server_id for d in deployments ]
-    print("  . Used nodes: %s" % used_nodes)
+    logger.info("Used nodes: %s" % used_nodes)
     free_nodes = []
     ssh_user_env = None
     shell_env = None
@@ -34,7 +37,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
                 shell_env = env['shell']
                 script_env = env['script_test']
         if ssh_user_env is None or shell_env is None:
-            print("Environment '%s' not found!" % test_env)
+            logger.error("Environment '%s' not found!" % test_env)
             sys.exit(13)
     for server in CLUSTER_CONFIG["nodes"]:
         if server.get("id") not in used_nodes:
@@ -64,7 +67,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
                 stats[test_env][node['id']] = []
         else:
             stats[test_env] = { node['id']: [] }
-        stats[test_env][node['id']].append({ 'start_date': str(datetime.utcnow()), 
+        stats[test_env][node['id']].append({ 'ip': node['ip'], 'start_date': str(datetime.utcnow()), 
             'states': { 'last_state': '', 'last_date': None }, 'total': 0, 'ping': False, 'ssh': False, 'init_script': False })
     db.session.commit()
     db.session.remove()
@@ -76,19 +79,24 @@ def state_register(dep, stats):
     # Remember the start of the new state
     last_state = state_info['last_state']
     last_date = state_info['last_date']
-    if dep.state != 'env_check' and dep.updated_at is not None:
+    if dep.updated_at is not None:
         last_change = datetime.strptime(str(dep.updated_at), '%Y-%m-%d %H:%M:%S')
         from_change = (datetime.utcnow() - last_change).total_seconds()
         if dep.state == 'env_check':
-            if from_change > 2000:
+            logger.info("Time in env_check %s %d" % (stats[dep.environment][dep.server_id][-1]['ip'], from_change))
+            if from_change > 600:
                 state_info[last_state] = from_change
-                return True;
+                logger.warning("Detected stuck deployment for the node '%s'" %
+                        stats[dep.environment][dep.server_id][-1]['ip'])
+                return True
         else:
             if from_change > 180:
                 state_info[last_state] = from_change
-                return True;
+                logger.warning("Detected stuck deployment for the node '%s'" %
+                        stats[dep.environment][dep.server_id][-1]['ip'])
+                return True
     if last_state != dep.state:
-        print("  . id: %d, state: %s, updated_at: %s" % (dep.id, dep.state, dep.updated_at))
+        logger.info("id: %d, state: %s, updated_at: %s" % (dep.id, dep.state, dep.updated_at))
         if len(last_state) > 0:
             enter_date = datetime.strptime(state_info['last_date'], '%Y-%m-%d %H:%M:%S')
             exit_date = datetime.strptime(str(dep.updated_at), '%Y-%m-%d %H:%M:%S')
@@ -111,9 +119,7 @@ def state_register(dep, stats):
 
 def exec_bash(cmd):
     try:
-        print(cmd)
         process = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(process)
         return True
     except:
         return False
@@ -136,11 +142,11 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
                 "VALUES('confirmed', '%s', 'Test','Test', "
                 "'$2b$12$PJCxhXp6vwLkEm8y2hctVudY/EQCfq2njV0SuFbglZoJMar0FDm6i', 1, 0, 0);" % test_email)
     test_user_id = test_user[0].id
-    print(" - Destroy older deployments")
+    logger.info("Destroy older deployments")
     destroy_test_deployment(test_user_id)
-    print(" - Start a new deployment")
+    logger.info("Start a new deployment")
     nodes = reserve_free_nodes(test_user_id, dep_stats, nb_nodes, dep_env)
-    print(" - Waiting the end of deployments")
+    logger.info("Waiting the end of deployments")
     deployed_env = []
     while len(deployed_env) < len(nodes):
         deployments = db.session.query(Deployment).filter(
@@ -149,9 +155,10 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
             my_state = d.state
             if d.id not in deployed_env:
                 if state_register(d, dep_stats):
+                    logger.warning("Stop monitoring the node '%s'" % d.server_id)
                     deployed_env.append(d.id)
             if d.state != my_state:
-                print("  . The deployment state has been modified for the node '%s'" % d.server_id)
+                logger.info("The deployment state has been modified for the node '%s'" % d.server_id)
                 db.session.add(d)
                 db.session.commit()
         db.session.remove()
@@ -160,16 +167,16 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
         sleep_time = 50
     else:
         sleep_time = 10
-    print(" - Waiting %d seconds before starting additional tests" % sleep_time)
+    logger.info("Waiting %d seconds before starting additional tests" % sleep_time)
     time.sleep(sleep_time)
-    print(" - Check the deployment of %d nodes: %s" % (len(nodes), [ n['ip'] for n in nodes] ))
+    logger.info("Check the deployment of %d nodes: %s" % (len(nodes), [ n['ip'] for n in nodes] ))
     for n in nodes:
         n_stats = dep_stats[n['env']][n['id']][-1]
         if dep_env == boot_test_environment:
             if n_stats['states']['last_state'] == 'env_copy':
-                print("+ %s: Ping connection" % n['ip'])
+                logger.info("%s: Ping connection" % n['ip'])
                 n_stats['ping'] = exec_bash('ping -c 1 -w 1 %s' % n['ip'])
-                print("+ %s: SSH connection" % n['ip'])
+                logger.info("%s: SSH connection" % n['ip'])
                 n_stats['ssh'] = exec_bash(
                         'ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no root@%s echo "testing"' % n['ip'])
             if not (n_stats['ping'] and n_stats['ssh']):
@@ -177,13 +184,13 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
         else:
             if n_stats['states']['last_state'] == 'deployed':
                 success_nodes += 1
-                print("+ %s: Ping connection" % n['ip'])
+                logger.info("%s: Ping connection" % n['ip'])
                 n_stats['ping'] = exec_bash('ping -c 1 -w 1 %s' % n['ip'])
-                print("+ %s: SSH connection" % n['ip'])
+                logger.info("%s: SSH connection" % n['ip'])
                 n_stats['ssh'] = exec_bash(
                         'ssh -i ssh_key/test-piseduce -o ConnectTimeout=2 -o StrictHostKeyChecking=no %s@%s echo "testing"' % 
                         (n['ssh_user'], n['ip']))
-                print("+ %s: Init script execution" % n['ip'])
+                logger.info("%s: Init script execution" % n['ip'])
                 n_stats['init_script'] = exec_bash(
                         'ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no %s@%s ls picsou.txt' % 
                         (n['ssh_user'], n['ip']))
@@ -191,12 +198,14 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
                     active_nodes += 1
             else:
                 failed_nodes += 1
-                print(" - %s is not deployed. Skip the connection tests!" % n['ip'])
+                logger.info("%s is not deployed. Skip the connection tests!" % n['ip'])
     if dep_env == boot_test_environment:
         if len(inactive_node_ip) > 0:
-            print("Inactive detected nodes: %s" % inactive_node_ip)
+            logger.warning("Inactive detected nodes: %s" % inactive_node_ip)
+        else:
+            logger.info("All nodes are properly configured!")
     else:
-        print(" - Write the statistics to the '%s'" % file_summary)
+        logger.info("Write the statistics to the '%s'" % file_summary)
         if not os.path.isfile(file_summary):
             with open(file_summary, 'w') as fsum:
                 fsum.write('date_environment failed_deployments complete_deployments active_nodes environment_name\n')
@@ -207,14 +216,13 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
 
 if __name__ == "__main__":
     file_id = datetime.utcnow().strftime("%y_%m_%d_%H_%M")
-    file_stats = '%s_stats_tests.json' % file_id
+    file_stats = 'json_test/%s_stats_tests.json' % file_id
     stats_data = {}
-    # Check the boot of the nodes
-    for env in [ { 'name': 'boot_test' } ]:
-    #for env in [ { 'name': 'tiny_core' } ]:
-    #for env in CLUSTER_CONFIG["environments"]:
-        print("+ Deploying the '%s' environment" % env['name'])
-        testing_environment(env['name'], file_id, stats_data, 3)
-    print("+ Write the statistics to the '%s'" % file_stats)
+    #for env in [ { 'name': boot_test_environment } ]:
+    #for env in [ { 'name': 'raspbian_buster' } ]:
+    for env in CLUSTER_CONFIG["environments"]:
+        logger.info("Deploying the '%s' environment" % env['name'])
+        testing_environment(env['name'], file_id, stats_data, 6)
+    logger.info("Write the detailed statistics to the '%s'" % file_stats)
     with open(file_stats, 'w') as json_file:
         json.dump(stats_data, json_file, indent=4)
