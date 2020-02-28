@@ -116,13 +116,15 @@ def env_copy_fct(deployments, logger):
             environment_img_path = environment.get("img_path")
             logger.info("%s: copy %s to the SDCARD" % (server.get("id"), environment_img_path))
             # Write the image of the environment on SD card
+            # rsh pipi@192.168.122.236 "cat 500MB.img" | pv -n -p -s 524m 2> /tmp/progress_{server['id']}.txt | dd of=/dev/mmcblk0 conv=fsync bs=4M
             deploy_cmd = f"""rm -f /tmp/done_{server['id']}.txt; rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | dd of=/dev/mmcblk0 bs=4M conv=fsync; touch /tmp/done_{server['id']}.txt;""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"))
-            (stdin, stdout, stderr) = ssh.exec_command(deploy_cmd)
+            ssh.exec_command(deploy_cmd)
             # Update the deployment
             deployment.env_copy_fct()
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -137,13 +139,14 @@ def env_check_fct(deployments, logger):
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             # Write the image of the environment on SD card
             ftp = ssh.open_sftp()
-            logger.info(f"Looking for done_{server['id']}.txt") 
+            logger.info(f"Looking for done_{server['id']}.txt")
             if f"done_{server['id']}.txt" in ftp.listdir("/tmp"):
                 # Update the deployment
                 deployment.env_check_fct()
                 deployment.updated_at = datetime.datetime.utcnow()
                 db.session.add(deployment)
                 db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -174,6 +177,7 @@ def fs_mount_fct(deployments, logger):
             else:
                 logger.warning("%s: Wrong number of mounted partitions. %d detected partition(s)" %
                         (server.get("id"), nb_mount))
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -208,6 +212,7 @@ def fs_conf_fct(deployments, logger):
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -234,6 +239,7 @@ def fs_check_fct(deployments, logger):
                 deployment.updated_at = datetime.datetime.utcnow()
                 db.session.add(deployment)
                 db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -323,6 +329,7 @@ def resize_check_fct(deployments, logger):
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -344,6 +351,7 @@ def ssh_key_mount_fct(deployments, logger):
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -365,6 +373,7 @@ def ssh_key_copy_fct(deployments, logger):
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logging.warning("Could not connect to %s" % server.get("ip"))
 
@@ -428,6 +437,7 @@ def fs_boot_conf_fct(deployments, logger):
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -473,6 +483,7 @@ def fs_boot_check_fct(deployments, logger):
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
             elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
@@ -566,7 +577,7 @@ def tc_conf_fct(deployments, logger):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             # Configure the SDCARD in order to reboot on it
-            (stdin, stdout, stderr) = ssh.exec_command("rm /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_fs/tce/mydata.tgz; cp /environments/mydata.tgz /mnt/sdcard_fs/tce/; sync")
+            ssh.exec_command("rm /mnt/sdcard_boot/bootcode.bin /mnt/sdcard_fs/tce/mydata.tgz; cp /environments/mydata.tgz /mnt/sdcard_fs/tce/; sync")
             # Copy boot files to the tftp folder
             tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
             cmd = f"scp -o 'StrictHostKeyChecking no' -r root@{server.get('ip')}:/mnt/sdcard_boot/* {tftpboot_node_folder}/"
@@ -580,6 +591,7 @@ def tc_conf_fct(deployments, logger):
                 db.session.commit()
             else:
                 logger.warning("%s: Wrong md5sum for mydata.tgz: %s" % (server.get("id"), md5sum))
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.exception("Could not connect to %s" % server.get("ip"))
 
@@ -603,6 +615,7 @@ def tc_reboot_fct(deployments, logger):
                 deployment.updated_at = datetime.datetime.utcnow()
                 db.session.add(deployment)
                 db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -629,6 +642,7 @@ def tc_fdisk_fct(deployments, logger):
             deployment.updated_at = datetime.datetime.utcnow()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -656,6 +670,7 @@ def tc_resize_fct(deployments, logger):
                 db.session.commit()
             else:
                 logger.warning("Wrong partition size for %s: %s" % (server.get("id"), output))
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
 
@@ -677,13 +692,14 @@ def tc_ssh_user_fct(deployments, logger):
             if deployment.c9pwd is not None and len(deployment.c9pwd) > 0:
                 # Change the tc password
                 cmd = "echo -e '%s\n%s' | sudo passwd tc" % (deployment.c9pwd, deployment.c9pwd)
-                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                ssh.exec_command(cmd)
+            deployment.tc_ssh_user_fct()
+            deployment.updated_at = datetime.datetime.utcnow()
+            db.session.add(deployment)
+            db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("Could not connect to %s" % server.get("ip"))
-        deployment.tc_ssh_user_fct()
-        deployment.updated_at = datetime.datetime.utcnow()
-        db.session.add(deployment)
-        db.session.commit()
 
 
 # Hard Reboot nodes (off -> on -> check SSH)
@@ -723,6 +739,7 @@ def reboot_check_fct(deployments, logger):
             deployment.reboot_check_fct()
             db.session.add(deployment)
             db.session.commit()
+            ssh.close()
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
             elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
@@ -750,6 +767,7 @@ def destroying_fct(deployments, logger):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
+            ssh.close()
         except (BadHostKeyException, AuthenticationException,
                 SSHException, socket.error) as e:
             can_connect = False

@@ -83,7 +83,6 @@ def state_register(dep, stats):
         last_change = datetime.strptime(str(dep.updated_at), '%Y-%m-%d %H:%M:%S')
         from_change = (datetime.utcnow() - last_change).total_seconds()
         if dep.state == 'env_check':
-            logger.info("Time in env_check %s %d" % (stats[dep.environment][dep.server_id][-1]['ip'], from_change))
             if from_change > 600:
                 state_info[last_state] = from_change
                 logger.warning("Detected stuck deployment for the node '%s'" %
