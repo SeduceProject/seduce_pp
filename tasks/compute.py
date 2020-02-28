@@ -117,7 +117,7 @@ def env_copy_fct(deployments, logger):
             logger.info("%s: copy %s to the SDCARD" % (server.get("id"), environment_img_path))
             # Write the image of the environment on SD card
             # rsh pipi@192.168.122.236 "cat 500MB.img" | pv -n -p -s 524m 2> /tmp/progress_{server['id']}.txt | dd of=/dev/mmcblk0 conv=fsync bs=4M
-            deploy_cmd = f"""rm -f /tmp/done_{server['id']}.txt; rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | dd of=/dev/mmcblk0 bs=4M conv=fsync; touch /tmp/done_{server['id']}.txt;""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"))
+            deploy_cmd = f"""rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | dd of=/dev/mmcblk0 bs=4M conv=fsync""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"))
             ssh.exec_command(deploy_cmd)
             # Update the deployment
             deployment.env_copy_fct()
@@ -137,10 +137,8 @@ def env_check_fct(deployments, logger):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            # Write the image of the environment on SD card
-            ftp = ssh.open_sftp()
-            logger.info(f"Looking for done_{server['id']}.txt")
-            if f"done_{server['id']}.txt" in ftp.listdir("/tmp"):
+            logger.info("ps_ssh %d" % ps_ssh(ssh, 'mmcblk0'))
+            if ps_ssh(ssh, 'mmcblk0') == 0:
                 # Update the deployment
                 deployment.env_check_fct()
                 deployment.updated_at = datetime.datetime.utcnow()
