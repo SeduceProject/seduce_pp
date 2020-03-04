@@ -218,10 +218,12 @@ if __name__ == "__main__":
     file_stats = 'json_test/%s_stats_tests.json' % file_id
     stats_data = {}
     #for env in [ { 'name': boot_test_environment } ]:
-    #for env in [ { 'name': 'raspbian_buster' } ]:
+    #for env in [ { 'name': 'raspbian_buster' }, {'name': 'tiny_core'} ]:
     for env in CLUSTER_CONFIG["environments"]:
         logger.info("Deploying the '%s' environment" % env['name'])
-        testing_environment(env['name'], file_id, stats_data, 6)
+        testing_environment(env['name'], file_id, stats_data, 3)
+    logger.info("Destroy older deployments")
+    destroy_test_deployment(test_user_id)
     logger.info("Write the detailed statistics to the '%s'" % file_stats)
     with open(file_stats, 'w') as json_file:
         json.dump(stats_data, json_file, indent=4)
