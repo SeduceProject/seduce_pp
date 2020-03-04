@@ -57,6 +57,9 @@
                             <div v-if="[[ s.state ]] != 'free'" class="deployment-name">
                                 [[ s.dname.substring(0,18) ]]
                             </div>
+                            <div v-if="[[ s.state ]] == 'in_use'" class="deployment-name">
+                                <a :href="'mailto:' + [[ s.email ]]">[[ s.email.substring(0,18) ]]</a>
+                            </div>
                         </div>
                     </div>
                 </div>

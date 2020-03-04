@@ -111,7 +111,8 @@ def available_servers():
             if d.user_id not in id2email.keys():
                 foreign = User.query.filter_by(id=d.user_id).first()
                 id2email[foreign.id] = foreign.email
-            server_info[d.server_id]["dname"] = id2email[d.user_id]
+            server_info[d.server_id]["dname"] = d.name
+            server_info[d.server_id]["email"] = id2email[d.user_id]
 
     if not deployment:
         return json.dumps({
