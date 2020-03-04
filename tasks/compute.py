@@ -115,7 +115,10 @@ def env_copy_fct(deployments, logger):
             environment_img_path = environment.get("img_path")
             logger.info("%s: copy %s to the SDCARD" % (server.get("id"), environment_img_path))
             # Write the image of the environment on SD card
-            deploy_cmd = f"""rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | pv -n -p -s %s 2> /tmp/progress_{server['id']}.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"), environment.get("img_size"))
+            deploy_cmd = f"""rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | \
+                    pv -n -p -s %s 2> /tmp/progress_{server['id']}.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync""" % (
+                            CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"),
+                            environment.get("img_size"))
             ssh.exec_command(deploy_cmd)
             # Update the deployment
             deployment.env_copy_fct()
@@ -188,7 +191,8 @@ def create_partition_fct(deployments, logger):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
             # Create a partition with the whole free space
-            cmd = "(echo n; echo p; echo 2; echo '%s'; echo ''; echo w; echo q) | fdisk -u /dev/mmcblk0" % environment.get("sector_start")
+            cmd = ("(echo n; echo p; echo 2; echo '%s'; echo ''; echo w; echo q) | fdisk -u /dev/mmcblk0" %
+                    environment.get("sector_start"))
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
             cmd = "partprobe"
@@ -289,8 +293,6 @@ def system_conf_fct(deployments, logger):
                 cmd = "touch boot_dir/ssh"
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
-                # Write the boot configuration
-                #cmd = "echo 'dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=PARTUUID=%s rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet' > boot_dir/cmdline.txt" % partition_uuid
                 # Avoid the execution of the expand/resize script
                 cmd = "sed -i 's:init=.*$::' boot_dir/cmdline.txt"
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
@@ -304,7 +306,8 @@ def system_conf_fct(deployments, logger):
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
             if deployment.environment == 'raspbian_cloud9':
-                cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 -a admin:%s -w /workspace' > fs_dir/usr/local/bin/c9" % deployment.c9pwd
+                cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 \
+                        -a admin:%s -w /workspace' > fs_dir/usr/local/bin/c9" % deployment.c9pwd
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
             if deployment.environment == 'raspbian_buster':
@@ -314,7 +317,8 @@ def system_conf_fct(deployments, logger):
             # Copy boot files to the tftp folder
             tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
             # Do NOT copy the *.dat files of the boot partition, they immensely slow down the raspberry
-            cmd = f"scp -o 'StrictHostKeyChecking no' -r root@{server.get('ip')}:\"boot_dir/*.gz boot_dir/*.dtb boot_dir/*.img boot_dir/*.txt boot_dir/overlays/\" {tftpboot_node_folder}/"
+            cmd = f"scp -o 'StrictHostKeyChecking no' -r root@{server.get('ip')}:\"boot_dir/*.gz boot_dir/*.dtb \
+                    boot_dir/*.img boot_dir/*.txt boot_dir/overlays/\" {tftpboot_node_folder}/"
             subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             # Reboot to initialize the operating system
             (stdin, stdout, stderr) = ssh.exec_command("reboot")
@@ -398,7 +402,8 @@ def last_check_fct(deployments, logger):
                         logger.error(f"\"init_script.sh\" not in /tmp")
                         continue
                     # Launch init script
-                    cmd = "touch /tmp/started_init_script; sed -i 's/\r$//' /tmp/init_script.sh; %s /tmp/init_script.sh; touch /tmp/finished_init_script" % environment.get("shell")
+                    cmd = "touch /tmp/started_init_script; sed -i 's/\r$//' /tmp/init_script.sh; \
+                            %s /tmp/init_script.sh; touch /tmp/finished_init_script" % environment.get("shell")
                     ssh.exec_command(cmd)
                 if "finished_init_script" in ftp.listdir("/tmp/"):
                     finish_init = True

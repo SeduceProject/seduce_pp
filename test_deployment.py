@@ -68,7 +68,8 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
         else:
             stats[test_env] = { node['id']: [] }
         stats[test_env][node['id']].append({ 'ip': node['ip'], 'start_date': str(datetime.utcnow()), 
-            'states': { 'last_state': '', 'last_date': None }, 'total': 0, 'ping': False, 'ssh': False, 'init_script': False })
+            'states': { 'last_state': '', 'last_date': None }, 'total': 0,
+            'ping': False, 'ssh': False, 'init_script': False })
     db.session.commit()
     db.session.remove()
     return selected_nodes
@@ -118,7 +119,8 @@ def state_register(dep, stats):
 
 def exec_bash(cmd):
     try:
-        process = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        process = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL)
         return True
     except:
         return False
@@ -186,8 +188,8 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
                 logger.info("%s: Ping connection" % n['ip'])
                 n_stats['ping'] = exec_bash('ping -c 1 -w 1 %s' % n['ip'])
                 logger.info("%s: SSH connection" % n['ip'])
-                n_stats['ssh'] = exec_bash(
-                        'ssh -i ssh_key/test-piseduce -o ConnectTimeout=2 -o StrictHostKeyChecking=no %s@%s echo "testing"' % 
+                n_stats['ssh'] = exec_bash('ssh -i ssh_key/test-piseduce -o ConnectTimeout=2 \
+                        -o StrictHostKeyChecking=no %s@%s echo "testing"' % 
                         (n['ssh_user'], n['ip']))
                 logger.info("%s: Init script execution" % n['ip'])
                 n_stats['init_script'] = exec_bash(
