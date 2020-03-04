@@ -284,13 +284,13 @@ CLUSTER_CONFIG = {
         },
         {
             "name": "raspbian_buster",
-            "img_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img",
-            "img_size": 2248146944,
+            "img_path": "/nfs/raspi1/environments/2020-02-13-raspbian-buster-lite.img",
+            "img_size": 1849688064,
             "sector_start": 532480,
             "ssh_user": "root",
             "shell": "bash",
             "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
-            "kernel": "4.19.75-v8+",
+            "kernel": "4.19.97-v8+",
             "ready": check_ssh_is_ready
         },
         {
