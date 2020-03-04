@@ -14,23 +14,31 @@ def check_ssh_is_ready(node_desc, env_desc):
 
 
 def check_cloud9_is_ready(node_desc, env_desc):
+    logger = logging.getLogger("CLUSTER_CONFIG")
+    ret_bool = False
     cloud9_ide_url = "%s/ide.html" % (node_desc.get("public_address"))
     result = requests.get(cloud9_ide_url)
-    if result.status_code == 200:
-        return "<title>Cloud9</title>" in result.text
-    if result.status_code == 401:
-        return "Unauthorized" in result.text
-    return False
+    if result.status_code == 200 and "<title>Cloud9</title>" in result.text:
+        ret_bool = True
+    if result.status_code == 401 and "Unauthorized" in result.text:
+        ret_bool = True
+    if not ret_bool:
+        logger.error("%s: status code %d" % (node_desc.get("ip"), result.status_code))
+    return ret_bool
 
 
 def check_jupyter_is_ready(node_desc, env_desc):
+    logger = logging.getLogger("CLUSTER_CONFIG")
+    ret_bool = False
     cloud9_ide_url = "%s/tree?" % (node_desc.get("public_address"))
     result = requests.get(cloud9_ide_url)
     if "<title>Home</title>" in result.text:
-        return True
+        ret_bool = True
     if "/static/style/style.min.css" in result.text:
-        return True
-    return False
+        ret_bool = True
+    if not ret_bool:
+        logger.error("%s: status code %d" % (node_desc.get("ip"), result.status_code))
+    return ret_bool
 
 
 CLUSTER_CONFIG = {
@@ -266,33 +274,41 @@ CLUSTER_CONFIG = {
         {
             "name": "raspbian_cloud9",
             "img_path": "/nfs/raspi1/environments/2019-09-19-Raspbian-lite.img",
+            "sector_start": 106496,
             "ssh_user": "root",
             "shell": "bash",
             "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
+            "kernel": '4.19.66-v7+',
             "ready": check_cloud9_is_ready
         },
         {
             "name": "raspbian_buster",
             "img_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img",
+            "sector_start": 532480,
             "ssh_user": "root",
             "shell": "bash",
             "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
+            "kernel": "4.19.75-v8+",
             "ready": check_ssh_is_ready
         },
         {
             "name": "tiny_core",
             "img_path": "/nfs/raspi1/environments/piCore-10.0beta12b.img",
+            "sector_start": 92160,
             "ssh_user": "tc",
             "shell": "sh",
             "script_test": "echo 'riri\nfifi\nloulou' > /home/tc/picsou.txt",
+            "kernel": "4.19.13-piCore-v7",
             "ready": check_ssh_is_ready
         },
         {
             "name": "raspbian_jupyter",
             "img_path": "/nfs/raspi1/environments/2019-09-20-Raspbian-lite.img",
+            "sector_start": 106496,
             "ssh_user": "root",
             "shell": "bash",
             "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
+            "kernel": "4.19.66-v7+",
             "ready": check_jupyter_is_ready
         }
     ]
