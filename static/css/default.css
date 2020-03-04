@@ -75,163 +75,79 @@
 
 .nfs_boot_off {
     width: 90%;
-    background-color: #E483FA;
+    background-color: #E286F7;
     margin: auto;
 }
 
 .nfs_boot_on {
     width: 90%;
-    background-color: #E088F5;
+    background-color: #DB8EF0;
     margin: auto;
 }
 
 .env_copy {
     width: 90%;
-    background-color: #DB8EF0;
+    background-color: #D397E8;
     margin: auto;
 }
 
 .env_check {
     width: 90%;
-    background-color: #D694EB;
+    background-color: #CCA0E0;
     margin: auto;
 }
 
-.fs_mount {
+.delete_partition {
     width: 90%;
-    background-color: #D299E6;
+    background-color: #C5A8D8;
     margin: auto;
 }
 
-.fs_conf {
+.create_partition {
     width: 90%;
-    background-color: #CD9FE1;
+    background-color: #BEB1D1;
     margin: auto;
 }
 
-.fs_check {
+.mount_partition {
     width: 90%;
-    background-color: #C8A5DC;
+    background-color: #B7BAC9;
     margin: auto;
 }
 
-.resize_off {
+.resize_partition {
     width: 90%;
-    background-color: #C3AAD7;
+    background-color: #AFC2C1;
     margin: auto;
 }
 
-.resize_on {
+.wait_resizing {
     width: 90%;
-    background-color: #BFB0D2;
+    background-color: #A8CBB9;
     margin: auto;
 }
 
-.resize_inprogress {
+.system_conf {
     width: 90%;
-    background-color: #BAB6CD;
+    background-color: #A1D4B2;
     margin: auto;
 }
 
-.resize_done {
+.user_conf {
     width: 90%;
-    background-color: #B5BBC8;
-    margin: auto;
-}
-
-.resize_check {
-    width: 90%;
-    background-color: #B1C1C2;
-    margin: auto;
-}
-
-.ssh_key_mount {
-    width: 90%;
-    background-color: #ACC6BD;
-    margin: auto;
-}
-
-.ssh_key_copy {
-    width: 90%;
-    background-color: #A7CCB8;
-    margin: auto;
-}
-
-.ssh_key_user {
-    width: 90%;
-    background-color: #A3D2B3;
-    margin: auto;
-}
-
-.fs_boot_conf {
-    width: 90%;
-    background-color: #9ED7AE;
-    margin: auto;
-}
-
-.fs_boot_off {
-    width: 90%;
-    background-color: #99DDA9;
-    margin: auto;
-}
-
-.fs_boot_on {
-    width: 90%;
-    background-color: #94E3A4;
-    margin: auto;
-}
-
-.fs_boot_check {
-    width: 90%;
-    background-color: #90E89F;
-    margin: auto;
-}
-
-.ssh_config_2 {
-    width: 90%;
-    background-color: #ACC6BD;
+    background-color: #9ADCAA;
     margin: auto;
 }
 
 .last_check {
     width: 90%;
-    background-color: #8BEE9A;
+    background-color: #93E5A2;
     margin: auto;
 }
 
 .deployed {
     width: 90%;
     background-color: #7DFF8B;
-    margin: auto;
-}
-
-.tc_conf {
-    width: 90%;
-    background-color: #CD9FE1;
-    margin: auto;
-}
-
-.tc_reboot {
-    width: 90%;
-    background-color: #C3AAD7;
-    margin: auto;
-}
-
-.tc_fdisk {
-    width: 90%;
-    background-color: #B5BBC8;
-    margin: auto;
-}
-
-.tc_resize {
-    width: 90%;
-    background-color: #A3D2B3;
-    margin: auto;
-}
-
-.tc_ssh_user {
-    width: 90%;
-    background-color: #94E3A4;
     margin: auto;
 }
 
