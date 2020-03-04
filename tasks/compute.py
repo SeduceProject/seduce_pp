@@ -149,8 +149,13 @@ def env_check_fct(deployments, logger):
                 ssh.exec_command(cmd)
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
-                percent = stdout.readlines()[0].strip()
-                deployment.label = percent
+                output = stdout.readlines()
+                if len(output) == 0:
+                    logger.warning("%s: No progress value for the running environment copy" % server.get("ip"))
+                    deployment.label = 0
+                else:
+                    percent = output[0].strip()
+                    deployment.label = percent
                 db.session.add(deployment)
                 db.session.commit()
             ssh.close()
