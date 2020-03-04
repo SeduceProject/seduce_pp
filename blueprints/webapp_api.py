@@ -101,8 +101,13 @@ def available_servers():
             server_info[d.server_id]["state"] = d.state
             server_info[d.server_id]["dname"] = d.name
             server_info[d.server_id]["env"] = d.environment
+            if d.state == 'env_check':
+                server_info[d.server_id]["progress"] = d.label
+            else:
+                server_info[d.server_id]["progress"] = 100
         else:
             server_info[d.server_id]["state"] = "in_use"
+            server_info[d.server_id]["progress"] = 100
             if d.user_id not in id2email.keys():
                 foreign = User.query.filter_by(id=d.user_id).first()
                 id2email[foreign.id] = foreign.email

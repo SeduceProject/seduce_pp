@@ -274,6 +274,7 @@ CLUSTER_CONFIG = {
         {
             "name": "raspbian_cloud9",
             "img_path": "/nfs/raspi1/environments/2019-09-19-Raspbian-lite.img",
+            "img_size": 2277507072,
             "sector_start": 106496,
             "ssh_user": "root",
             "shell": "bash",
@@ -284,6 +285,7 @@ CLUSTER_CONFIG = {
         {
             "name": "raspbian_buster",
             "img_path": "/nfs/raspi1/environments/2019-09-26-raspbian-buster-lite.img",
+            "img_size": 2248146944,
             "sector_start": 532480,
             "ssh_user": "root",
             "shell": "bash",
@@ -294,6 +296,7 @@ CLUSTER_CONFIG = {
         {
             "name": "tiny_core",
             "img_path": "/nfs/raspi1/environments/piCore-10.0beta12b.img",
+            "img_size": 67186688,
             "sector_start": 92160,
             "ssh_user": "tc",
             "shell": "sh",
@@ -304,6 +307,7 @@ CLUSTER_CONFIG = {
         {
             "name": "raspbian_jupyter",
             "img_path": "/nfs/raspi1/environments/2019-09-20-Raspbian-lite.img",
+            "img_size": 2025848832,
             "sector_start": 106496,
             "ssh_user": "root",
             "shell": "bash",

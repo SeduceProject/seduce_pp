@@ -59,7 +59,6 @@ def nfs_boot_conf_fct(deployments, logger):
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
         # Create a folder containing network boot files that will be served via TFTP
-        # tftpboot_template_folder = "/tftpboot/rpiboot"
         tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
         tftpboot_node_folder = "/tftpboot/%s" % server.get("id")
         if os.path.isdir(tftpboot_node_folder):
@@ -116,8 +115,7 @@ def env_copy_fct(deployments, logger):
             environment_img_path = environment.get("img_path")
             logger.info("%s: copy %s to the SDCARD" % (server.get("id"), environment_img_path))
             # Write the image of the environment on SD card
-            # rsh pipi@192.168.122.236 "cat 500MB.img" | pv -n -p -s 524m 2> /tmp/progress_{server['id']}.txt | dd of=/dev/mmcblk0 conv=fsync bs=4M
-            deploy_cmd = f"""rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | pv -n -p -s 2248146944 2> /tmp/progress_{server['id']}.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"))
+            deploy_cmd = f"""rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | pv -n -p -s %s 2> /tmp/progress_{server['id']}.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync""" % (CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"), environment.get("img_size"))
             ssh.exec_command(deploy_cmd)
             # Update the deployment
             deployment.env_copy_fct()
@@ -141,6 +139,15 @@ def env_check_fct(deployments, logger):
                 # Update the deployment
                 deployment.env_check_fct()
                 deployment.updated_at = datetime.datetime.utcnow()
+                db.session.add(deployment)
+                db.session.commit()
+            else:
+                cmd = f"tail -n 1 /tmp/progress_{server['id']}.txt"
+                ssh.exec_command(cmd)
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+                percent = stdout.readlines()[0].strip()
+                deployment.label = percent
                 db.session.add(deployment)
                 db.session.commit()
             ssh.close()

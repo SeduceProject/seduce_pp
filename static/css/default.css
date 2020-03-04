@@ -44,146 +44,98 @@
 
 /* state colors */
 .in_selection {
-    width: 90%;
     background-color: #7d9bff;
-    margin: auto;
 }
 
 .initialized {
-    width: 90%;
     background-color: #ece4ff;
-    margin: auto;
 }
 
 .free {
-    width: 90%;
     background-color: #17a2b8;
-    margin: auto;
 }
 
 .in_use {
-    width: 90%;
     background-color: #ff7d7d;
-    margin: auto;
 }
 
 .nfs_boot_conf {
-    width: 90%;
     background-color: #E97DFF;
-    margin: auto;
 }
 
 .nfs_boot_off {
-    width: 90%;
     background-color: #E286F7;
-    margin: auto;
 }
 
 .nfs_boot_on {
-    width: 90%;
     background-color: #DB8EF0;
-    margin: auto;
 }
 
 .env_copy {
-    width: 90%;
     background-color: #D397E8;
-    margin: auto;
 }
 
 .env_check {
-    width: 90%;
     background-color: #CCA0E0;
-    margin: auto;
 }
 
 .delete_partition {
-    width: 90%;
     background-color: #C5A8D8;
-    margin: auto;
 }
 
 .create_partition {
-    width: 90%;
     background-color: #BEB1D1;
-    margin: auto;
 }
 
 .mount_partition {
-    width: 90%;
     background-color: #B7BAC9;
-    margin: auto;
 }
 
 .resize_partition {
-    width: 90%;
     background-color: #AFC2C1;
-    margin: auto;
 }
 
 .wait_resizing {
-    width: 90%;
     background-color: #A8CBB9;
-    margin: auto;
 }
 
 .system_conf {
-    width: 90%;
     background-color: #A1D4B2;
-    margin: auto;
 }
 
 .user_conf {
-    width: 90%;
     background-color: #9ADCAA;
-    margin: auto;
 }
 
 .last_check {
-    width: 90%;
     background-color: #93E5A2;
-    margin: auto;
 }
 
 .deployed {
-    width: 90%;
     background-color: #7DFF8B;
-    margin: auto;
 }
 
 .off_requested {
-    width: 90%;
     background-color: #ffe496;
-    margin: auto;
 }
 
 .on_requested {
-    width: 90%;
     background-color: #fffd96;
-    margin: auto;
 }
 
 .reboot_check {
-    width: 90%;
     background-color: #e6ff96;
-    margin: auto;
 }
 
 .destroy_request {
-    width: 90%;
     background-color: #fd7dff;
-    margin: auto;
 }
 
 .destroying {
-    width: 90%;
     background-color: #da7dff;
-    margin: auto;
 }
 
 .destroyed {
-    width: 90%;
     background-color: #b67dff;
-    margin: auto;
 }
 /* End of state colors */
