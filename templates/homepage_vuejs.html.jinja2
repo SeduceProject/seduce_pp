@@ -23,7 +23,8 @@
             <div class="my-3 p-3 bg-white rounded shadow-sm">
                 <div class="border-bottom border-gray pb-2 mb-0">
                     <div class="select-nodes">
-                        <h6>Selected nodes (click on free nodes to select/unselect them): <span id="mynodes" class="node-list"></span></h6>
+                        <h6>Selected nodes (click on free nodes to select/unselect them):
+                        <span id="mynodes" class="node-list"></span></h6>
                     </div>
                     <a id="deploy-fct">
                         <center><button type="button" class="btn btn-outline-info">Deploy</button></center>
@@ -36,16 +37,17 @@
                             <div>[[ s.name ]]</div>
                             <div>[[ s.ip ]]</div>
                             <div class="progress position-relative" style="width: 90%; height: 24px; margin: auto;">
-                                <div v-if="[[ s.state ]] != 'free'" v-bind:class="'progress-bar text-dark ' + [[ s.state ]]"
-                                    role="progressbar" v-bind:style="'width: ' + [[ s.progress ]] + '%; font-size: 16px'"
+                                <div v-if="[[ s.state ]] != 'free'"
+                                    v-bind:class="'progress-bar text-dark ' + [[ s.state ]]" role="progressbar"
+                                    v-bind:style="'width: ' + [[ s.progress ]] + '%; font-size: 16px'"
                                     v-bind:aria-valuenow="[[ s.progress ]]" aria-valuemin="0" aria-valuemax="100">
                                     <span class="justify-content-center position-absolute w-100">
                                         [[ s.state.substring(0,18) ]]
                                     </span>
                                 </div>
-                                <div v-if="[[ s.state ]] == 'free'" class="progress-bar text-dark free" role="progressbar"
-                                    style="width: 100%; font-size: 16px" aria-valuenow="100" aria-valuemin="0"
-                                    aria-valuemax="100">
+                                <div v-if="[[ s.state ]] == 'free'" class="progress-bar text-dark free"
+                                    role="progressbar" style="width: 100%; font-size: 16px"
+                                    aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
                                     [[ s.state.substring(0,18) ]]
                                 </div>
                             </div>
@@ -71,11 +73,18 @@
                             [[ deployment.name ]]: <span class="node-list">[[ deployment.server_names ]]</span>
                         </div>
                         <div class="card-text text-center">
-                            <a v-if="[[ deployment.state ]] != 'destroy_request' && [[ deployment.state ]] != 'destroying'" :href="'/deployment/destroy/' + deployment.ids" class="btn btn-outline-danger btn-size">Destroy</a>
-                            <a v-if="[[ deployment.state ]] != 'destroy_request' && [[ deployment.state ]] != 'destroying'" href="#" class="shadow-none btn btn-outline-info btn-size" data-toggle="collapse" v-bind:data-target="'#collapse-' + [[ deployment.ids[0] ]]" aria-expanded="true" v-bind:aria-controls="'collapse-' + [[ deployment.ids[0] ]]">More Info</a>
+                            <a v-if="[[ deployment.state ]] != 'destroy_request' &&
+                                [[ deployment.state ]] != 'destroying'" :href="'/deployment/destroy/' + deployment.ids"
+                                class="btn btn-outline-danger btn-size">Destroy</a>
+                            <a v-if="[[ deployment.state ]] != 'destroy_request' &&
+                                [[ deployment.state ]] != 'destroying'" href="#"
+                                class="shadow-none btn btn-outline-info btn-size" data-toggle="collapse"
+                                v-bind:data-target="'#collapse-' + [[ deployment.ids[0] ]]" aria-expanded="true"
+                                v-bind:aria-controls="'collapse-' + [[ deployment.ids[0] ]]">More Info</a>
                         </div>
                     </div>
-                    <div v-bind:id="'collapse-' + [[ deployment.ids[0] ]]" class="collapse" :aria-labelledby="'heading-' + [[ deployment.ids[0] ]]" data-parent="#accordionExample">
+                    <div v-bind:id="'collapse-' + [[ deployment.ids[0] ]]" class="collapse"
+                        :aria-labelledby="'heading-' + [[ deployment.ids[0] ]]" data-parent="#accordionExample">
                       <div class="card-body">
 							<table class="table">
 							  <thead>
@@ -86,7 +95,9 @@
 								  <th scope="col">Model</th>
 								  <th scope="col">Environement</th>
 								  <th scope="col">State</th>
-                                  <th scope="col" v-if="[[ deployment.server_infos[0].env ]] == 'raspbian_cloud9'">Password</a>
+                                  <th scope="col" v-if="[[ deployment.server_infos[0].env ]] == 'raspbian_cloud9'">
+                                    Password
+                                  </th>
 								  <th scope="col">Actions</th>
 								</tr>
 							  </thead>
@@ -101,20 +112,35 @@
                                         <td v-if="[[ n.env ]] != 'raspbian_cloud9'">[[ n.state ]]</td>
                                         <td v-if="[[ n.env ]] == 'raspbian_cloud9'">
                                             <button type="button" class="btn btn-outline-dark" data-toggle="tooltip"
-                                            data-placement="bottom" :title="[[ n.password ]]" onclick="copyToClipboard(this)">
+                                                data-placement="bottom" :title="[[ n.password ]]"
+                                                onclick="copyToClipboard(this)">
                                                 Copy to clipboarb
                                             </button>
                                         </td>
 										<td>
                                             <div class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
+                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
                                                 Actions
                                               </button>
                                               <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                                                <a :href="'/server/redeploy/' + [[ n.id ]]" class="dropdown-item">Deploy again</a>
-                                                <a :href="'/server/reboot/' + [[ n.id ]]" class="dropdown-item">Hard Reboot</a>
-                                                <a v-if="[[ n.state ]] == 'deployed' && [[ n.env ]] == 'raspbian_cloud9'" :href=n.webui target="_blank" class="dropdown-item">C9 Interface</a>
-                                                <a v-if="[[ n.state ]] == 'deployed' && [[ n.env ]] == 'raspbian_jupyter'" :href=n.webui target="_blank" class="dropdown-item">Jupyter Interface</a>
+                                                <a :href="'/server/redeploy/' + [[ n.id ]]" class="dropdown-item">
+                                                    Deploy again
+                                                </a>
+                                                <a :href="'/server/reboot/' + [[ n.id ]]" class="dropdown-item">
+                                                    Hard Reboot
+                                                </a>
+                                                <a v-if="[[ n.state ]] == 'deployed' &&
+                                                    [[ n.env ]] == 'raspbian_cloud9'"
+                                                    :href=n.webui target="_blank" class="dropdown-item">
+                                                    C9 Interface
+                                                </a>
+                                                <a v-if="[[ n.state ]] == 'deployed' &&
+                                                    [[ n.env ]] == 'raspbian_jupyter'"
+                                                    :href=n.webui target="_blank" class="dropdown-item">
+                                                    Jupyter Interface
+                                                </a>
                                               </div>
                                             </div>
 										</td>

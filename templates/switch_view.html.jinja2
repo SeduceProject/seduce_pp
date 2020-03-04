@@ -50,7 +50,11 @@
                 <td id="row_port_{{ port_status.port }}_current">{{ port_status.current }}</td>
                 <td id="row_port_{{ port_status.port }}_classification">{{ port_status.classification }}</td>
                 <td id="row_port_{{ port_status.port }}_status">{{ port_status.status }}</td>
-                <td><a href="{{ url_for("switch_api.turn_on", port=port_status.port) }}" class="btn btn-success">ON</a> <a href="{{ url_for("switch_api.turn_off", port=port_status.port) }}" class="btn btn-danger">OFF</a></td>
+                <td><a href="{{ url_for("switch_api.turn_on", port=port_status.port) }}" class="btn btn-success">ON</a>
+                    <a href="{{ url_for("switch_api.turn_off", port=port_status.port) }}" class="btn btn-danger">
+                        OFF
+                    </a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
