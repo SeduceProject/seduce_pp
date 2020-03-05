@@ -13,12 +13,21 @@ boot_test_environment = 'boot_test'
 logging.config.fileConfig('logging-test.conf', disable_existing_loggers=1)
 logger = logging.getLogger("MAIN")
 
-def destroy_test_deployment(test_user_id):
+def destroy_test_deployment():
+    test_user = db.session.query(User).filter(User.email == test_email).all()
+    if len(test_user) == 0:
+        raise Exception("No test user in the database. Please create it:\n"
+                "INSERT INTO "
+                "user(state, email, firstname, lastname, _password, email_confirmed, user_authorized, is_admin) "
+                "VALUES('confirmed', '%s', 'Test','Test', "
+                "'$2b$12$PJCxhXp6vwLkEm8y2hctVudY/EQCfq2njV0SuFbglZoJMar0FDm6i', 1, 0, 0);" % test_email)
+    test_user_id = test_user[0].id
     db.session.query(Deployment).filter(
             Deployment.user_id == test_user_id).filter(Deployment.name == test_deployment_name).delete()
     db.session.commit()
     db.session.remove()
     time.sleep(2)
+    return test_user_id
 
 
 def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
@@ -135,16 +144,8 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
     # Nodes with a deployed environement which have passed the additional tests
     active_nodes = 0
     inactive_node_ip = []
-    test_user = db.session.query(User).filter(User.email == test_email).all()
-    if len(test_user) == 0:
-        raise Exception("No test user in the database. Please create it:\n"
-                "INSERT INTO "
-                "user(state, email, firstname, lastname, _password, email_confirmed, user_authorized, is_admin) "
-                "VALUES('confirmed', '%s', 'Test','Test', "
-                "'$2b$12$PJCxhXp6vwLkEm8y2hctVudY/EQCfq2njV0SuFbglZoJMar0FDm6i', 1, 0, 0);" % test_email)
-    test_user_id = test_user[0].id
     logger.info("Destroy older deployments")
-    destroy_test_deployment(test_user_id)
+    test_user_id = destroy_test_deployment()
     logger.info("Start a new deployment")
     nodes = reserve_free_nodes(test_user_id, dep_stats, nb_nodes, dep_env)
     logger.info("Waiting the end of deployments")
@@ -223,9 +224,9 @@ if __name__ == "__main__":
     #for env in [ { 'name': 'raspbian_buster' }, {'name': 'tiny_core'} ]:
     for env in CLUSTER_CONFIG["environments"]:
         logger.info("Deploying the '%s' environment" % env['name'])
-        testing_environment(env['name'], file_id, stats_data, 3)
+        testing_environment(env['name'], file_id, stats_data, 10)
     logger.info("Destroy older deployments")
-    destroy_test_deployment(test_user_id)
+    destroy_test_deployment()
     logger.info("Write the detailed statistics to the '%s'" % file_stats)
     with open(file_stats, 'w') as json_file:
         json.dump(stats_data, json_file, indent=4)
