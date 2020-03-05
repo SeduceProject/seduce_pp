@@ -59,15 +59,16 @@ def user_deployments():
 
     deployment_info = {}
     for d in deployments:
+        deployed = True
         if d.name not in deployment_info.keys():
-            deployment_info[d.name] = {"name": d.name, "ids": [], "user_id": d.user_id, "state": d.state, "server_names": [],
-                    "server_infos": [] }
+            deployment_info[d.name] = {"name": d.name, "env": d.environment, "state": d.state, "user_id": d.user_id,
+                    "ids": [], "server_names": [], "server_infos": [] }
         deployment_info[d.name]["ids"].append(d.id)
         for s in CLUSTER_CONFIG["nodes"]:
             if s["id"] == d.server_id:
-                deployment_info[d.name]["server_infos"].append({ "name": s["name"], "id": s["id"], "env": d.environment,
-                    "state": d.state, "ip": s["ip"], "model": s["model"], "webui": s["public_address"],
-                    "password": d.c9pwd })
+                deployment_info[d.name]["server_infos"].append({ "name": s["name"], "id": s["id"],
+                    "state": d.state, "ip": s["ip"], "model": s["model"], "public_ip": s["public_ip"],
+                    "public_port": s["public_port"], "password": d.c9pwd })
                 deployment_info[d.name]["server_names"].append(s["name"])
     if not deployments:
         return json.dumps({
@@ -90,11 +91,9 @@ def available_servers():
     session = db.create_scoped_session()
     not_destroyed_deployments = session.query(Deployment).filter(Deployment.state != "destroyed").all()
     session.close()
-    
     server_info = {}
     for s in CLUSTER_CONFIG["nodes"]:
-        server_info[s["id"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"],
-                "public_address": s["public_address"], "state": "free"}
+        server_info[s["id"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"], "state": "free"}
     id2email = {}
     for d in not_destroyed_deployments:
         if d.user_id == db_user.id:
@@ -113,12 +112,10 @@ def available_servers():
                 id2email[foreign.id] = foreign.email
             server_info[d.server_id]["dname"] = d.name
             server_info[d.server_id]["email"] = id2email[d.user_id]
-
     if not deployment:
         return json.dumps({
             "status": "ko"
         })
-
     return json.dumps({
         "status": "ok",
         "server_info": list(server_info.values())

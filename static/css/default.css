@@ -37,6 +37,16 @@
     width: 120px;
 }
 
+.grey-border {
+    border: 2px solid #FAFAFA;
+}
+
+.table-title {
+    padding: 10px;
+    margin-bottom: 0px;
+    background-color: #FAFAFA;
+}
+
 .shell-link {
     margin-left: 6px;
     margin-right: 6px;

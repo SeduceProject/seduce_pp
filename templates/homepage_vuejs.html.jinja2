@@ -88,20 +88,122 @@
                     </div>
                     <div v-bind:id="'collapse-' + [[ deployment.ids[0] ]]" class="collapse"
                         :aria-labelledby="'heading-' + [[ deployment.ids[0] ]]" data-parent="#accordionExample">
-                      <div class="card-body">
+                      <div class="card-body text-center grey-border">
+                            <h5 class="table-title">Environment Information</h5>
+							<table class="table text-center">
+							  <thead>
+								<tr>
+								  <th scope="col">Environment</th>
+								  <th scope="col">SSH with Password</th>
+								  <th scope="col">SSH with ssh key</th>
+                                </tr>
+							  </thead>
+							  <tbody>
+									<tr>
+										<td>[[ deployment.env ]]</td>
+										<td v-if="[[ deployment.env ]] != 'tiny_core'">
+                                            ssh -l pi -p <i>public_port</i> <i>public_ip</i>
+                                        </td>
+										<td v-if="[[ deployment.env ]] == 'tiny_core'">
+                                            ssh -l tc -p <i>public_port</i> <i>public_ip</i>
+                                        </td>
+										<td v-if="[[ deployment.env ]] != 'tiny_core'">
+                                            ssh -l root -p <i>public_port</i> <i>public_ip</i>
+                                        </td>
+										<td v-if="[[ deployment.env ]] == 'tiny_core'">
+                                            ssh -l tc -p <i>public_port</i> <i>public_ip</i>
+                                        </td>
+                                    </tr>
+									<tr>
+										<td>
+                                            <span v-if="[[ deployment.env ]] != 'raspbian_cloud9' &&
+                                                [[ deployment.env ]] != 'raspbian_jupyter'">
+                                                No web interface
+                                            </span>
+                                            <div v-if="[[ deployment.env ]] == 'raspbian_cloud9'" class="dropdown">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
+                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                C9 Interface
+                                              </button>
+                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+									            <span v-for="n in deployment.server_infos"
+                                                    v-if="[[ n.state ]] != 'deployed'" class="dropdown-item">
+                                                    Waiting [[ n.name ]]
+                                                </span>
+									            <a v-for="n in deployment.server_infos"
+                                                    v-if="[[ n.state ]] == 'deployed'" :href="'http://' + n.public_ip"
+                                                    target="_blank" class="dropdown-item">
+                                                    [[ n.name ]]
+                                                </a>
+                                              </div>
+                                            </div>
+                                            <div v-if="[[ deployment.env ]] == 'raspbian_jupyter'" class="dropdown">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
+                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                Jupyter Interface
+                                              </button>
+                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+									            <span v-for="n in deployment.server_infos"
+                                                    v-if="[[ n.state ]] != 'deployed'" class="dropdown-item">
+                                                    Waiting [[ n.name ]]
+                                                </span>
+									            <a v-for="n in deployment.server_infos"
+                                                    v-if="[[ n.state ]] == 'deployed'" :href="'http://' + n.public_ip"
+                                                    target="_blank" class="dropdown-item">
+                                                    [[ n.name ]]
+                                                </a>
+                                              </div>
+                                            </div>
+                                        </td>
+										<td>
+                                            <div class="dropdown">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
+                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                Deploy again
+                                              </button>
+                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+									            <a v-for="n in deployment.server_infos"
+                                                    :href="'/server/redeploy/' + [[ n.id ]]" target="_blank"
+                                                    class="dropdown-item">
+                                                    [[ n.name ]]
+                                                </a>
+                                              </div>
+                                            </div>
+                                        </td>
+										<td>
+                                            <div class="dropdown">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
+                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                Hard Reboot
+                                              </button>
+                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+									            <a v-for="n in deployment.server_infos"
+                                                    :href="'/server/reboot/' + [[ n.id ]]" target="_blank"
+                                                    class="dropdown-item">
+                                                    [[ n.name ]]
+                                                </a>
+                                              </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                              </tbody>
+                            </table>
+                            <h5 class="table-title">Node Information</h5>
 							<table class="table">
 							  <thead>
 								<tr>
 								  <th scope="col">Name</th>
 								  <th scope="col">Identifier</th>
-								  <th scope="col">IP address</th>
+								  <th scope="col">Private IP</th>
+								  <th scope="col">Public IP</th>
+								  <th scope="col">Public port</th>
 								  <th scope="col">Model</th>
-								  <th scope="col">Environement</th>
+                                  <th scope="col">Password</th>
 								  <th scope="col">State</th>
-                                  <th scope="col" v-if="[[ deployment.server_infos[0].env ]] == 'raspbian_cloud9'">
-                                    Password
-                                  </th>
-								  <th scope="col">Actions</th>
 								</tr>
 							  </thead>
 							  <tbody>
@@ -109,43 +211,29 @@
 										<th scope="row">[[ n.name ]]</td>
 										<td>[[ n.id ]]</td>
 										<td>[[ n.ip ]]</td>
+										<td>[[ n.public_ip ]]</td>
+										<td>[[ n.public_port ]]</td>
 										<td>[[ n.model ]]</td>
-										<td>[[ n.env ]]</td>
-                                        <td v-if="[[ n.env ]] == 'raspbian_cloud9'">[[ n.state.substring(0, 20) ]]</td>
-                                        <td v-if="[[ n.env ]] != 'raspbian_cloud9'">[[ n.state ]]</td>
-                                        <td v-if="[[ n.env ]] == 'raspbian_cloud9'">
-                                            <button type="button" class="btn btn-outline-dark" data-toggle="tooltip"
-                                                data-placement="bottom" :title="[[ n.password ]]"
-                                                onclick="copyToClipboard(this)">
-                                                Copy to clipboarb
-                                            </button>
-                                        </td>
-										<td>
+                                        <td>
                                             <div class="dropdown">
                                               <button class="btn btn-outline-dark dropdown-toggle" type="button"
                                                 id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
                                                 aria-expanded="false">
-                                                Actions
+                                                Show
                                               </button>
                                               <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                                                <a :href="'/server/redeploy/' + [[ n.id ]]" class="dropdown-item">
-                                                    Deploy again
-                                                </a>
-                                                <a :href="'/server/reboot/' + [[ n.id ]]" class="dropdown-item">
-                                                    Hard Reboot
-                                                </a>
-                                                <a v-if="[[ n.state ]] == 'deployed' &&
-                                                    [[ n.env ]] == 'raspbian_cloud9'"
-                                                    :href=n.webui target="_blank" class="dropdown-item">
-                                                    C9 Interface
-                                                </a>
-                                                <a v-if="[[ n.state ]] == 'deployed' &&
-                                                    [[ n.env ]] == 'raspbian_jupyter'"
-                                                    :href=n.webui target="_blank" class="dropdown-item">
-                                                    Jupyter Interface
-                                                </a>
+                                                <span class="dropdown-item">
+                                                    [[ n.password ]]
+                                                </span>
+                                                <span :title="[[ n.password ]]" class="dropdown-item"
+                                                    onclick="copyToClipboard(this)">
+                                                    Copy to Clipboard
+                                                </span>
                                               </div>
                                             </div>
+                                        </td>
+                                        <td>[[ n.state ]]</td>
+										<td>
 										</td>
 									</tr>
 							  </tbody>
@@ -154,6 +242,7 @@
                     </div>
                   </div>
                 </div>
+                <div style="height: 60px;"></div>
             </div>
         </main>
     </div>
