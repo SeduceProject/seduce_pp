@@ -7,6 +7,7 @@ def check_ssh_is_ready(node_desc, env_desc):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(node_desc.get("ip"), username=env_desc.get("ssh_user"), timeout=1.0)
+        ssh.close()
         return True
     except:
         logger.warning("Could not connect to %s" % node_desc.get("ip"))
