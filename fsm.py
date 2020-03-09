@@ -59,7 +59,6 @@ deployment_transitions = [
     {'trigger': 'init_reboot', 'source': '*', 'dest': 'off_requested'},
     {'trigger': 'off_requested_fct', 'source': 'off_requested', 'dest': 'on_requested'},
     {'trigger': 'on_requested_fct', 'source': 'on_requested', 'dest': 'reboot_check'},
-    {'trigger': 'reboot_check_fct', 'source': 'reboot_check', 'dest': 'deployed'},
 
     {'trigger': 'ask_destruction', 'source': '*', 'dest': 'destroy_request'},
     {'trigger': 'destroy_request_fct', 'source': 'destroy_request', 'dest': 'destroying'},

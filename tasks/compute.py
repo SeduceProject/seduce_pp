@@ -225,6 +225,9 @@ def mount_partition_fct(deployments, logger):
             cmd = "mount /dev/mmcblk0p1 boot_dir"
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
+            cmd = "rm boot_dir/bootcode.bin"
+            (stdin, stdout, stderr) = ssh.exec_command(cmd)
+            return_code = stdout.channel.recv_exit_status()
             cmd = "mount /dev/mmcblk0p2 fs_dir"
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
@@ -285,9 +288,6 @@ def system_conf_fct(deployments, logger):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             # Delete the bootcode.bin to force PXE boot
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
-            cmd = "rm boot_dir/bootcode.bin"
-            (stdin, stdout, stderr) = ssh.exec_command(cmd)
-            return_code = stdout.channel.recv_exit_status()
             if deployment.environment == 'tiny_core':
                 # Copy the custom tiny core with SSH keys
                 cmd = "cp /environments/mydata.tgz fs_dir/tce/"
@@ -460,7 +460,7 @@ def reboot_check_fct(deployments, logger):
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
             # Update the deployment
-            deployment.reboot_check_fct()
+            deployment.state = deployment.label
             db.session.add(deployment)
             db.session.commit()
             ssh.close()
