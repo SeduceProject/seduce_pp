@@ -116,7 +116,7 @@ def env_copy_fct(deployments, logger):
             logger.info("%s: copy %s to the SDCARD" % (server.get("id"), environment_img_path))
             # Write the image of the environment on SD card
             deploy_cmd = f"""rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | \
-                    pv -n -p -s %s 2> /tmp/progress_{server['id']}.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync""" % (
+                    pv -n -p -s %s 2> progress_{server['id']}.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync""" % (
                             CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"),
                             environment.get("img_size"))
             ssh.exec_command(deploy_cmd)
@@ -138,6 +138,8 @@ def env_check_fct(deployments, logger):
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username="root", timeout=1.0)
+            environment = [environment for environment in CLUSTER_CONFIG.get("environments")
+                    if environment.get("name") == deployment.environment][0]
             if ps_ssh(ssh, 'mmcblk0') == 0:
                 # Update the deployment
                 deployment.env_check_fct()
@@ -145,17 +147,20 @@ def env_check_fct(deployments, logger):
                 db.session.add(deployment)
                 db.session.commit()
             else:
-                cmd = f"tail -n 1 /tmp/progress_{server['id']}.txt"
+                cmd = f"tail -n 1 progress_{server['id']}.txt"
                 ssh.exec_command(cmd)
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
                 output = stdout.readlines()
                 if len(output) == 0:
                     logger.warning("%s: No progress value for the running environment copy" % server.get("ip"))
-                    deployment.label = 0
+                    updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
+                    elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+                    # Compute the progress value with an assumed transfert rate of 8 MB/s
+                    percent = elapsedTime * 8000000 * 100 / environment.get('img_size')
                 else:
                     percent = output[0].strip()
-                    deployment.label = percent
+                deployment.label = percent
                 db.session.add(deployment)
                 db.session.commit()
             ssh.close()
