@@ -282,3 +282,8 @@ sudo service tasks start
 # After editing tasks.service, reload the tasks service
 sudo systemctl daemon-reload
 ```
+* Restart the service without password
+```
+sudo visudo
+pipi ALL= NOPASSWD: /bin/systemctl restart frontend
+```
