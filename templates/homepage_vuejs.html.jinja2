@@ -166,8 +166,7 @@
                                               </button>
                                               <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
 									            <a v-for="n in deployment.server_infos"
-                                                    :href="'/server/redeploy/' + [[ n.id ]]" target="_blank"
-                                                    class="dropdown-item">
+                                                    :href="'/server/redeploy/' + [[ n.id ]]" class="dropdown-item">
                                                     [[ n.name ]]
                                                 </a>
                                               </div>
@@ -182,8 +181,7 @@
                                               </button>
                                               <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
 									            <a v-for="n in deployment.server_infos"
-                                                    :href="'/server/reboot/' + [[ n.id ]]" target="_blank"
-                                                    class="dropdown-item">
+                                                    :href="'/server/reboot/' + [[ n.id ]]" class="dropdown-item">
                                                     [[ n.name ]]
                                                 </a>
                                               </div>
