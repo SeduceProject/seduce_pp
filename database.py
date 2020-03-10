@@ -25,7 +25,7 @@ class User(db.Model):
     _password = db.Column(db.Text)
     firstname = db.Column(db.Text)
     lastname = db.Column(db.Text)
-    url_picture = db.Column(db.Text, nullable=True, default=None)
+    ssh_key = db.Column(db.Text, nullable=True, default=None)
 
     email_confirmed = db.Column(db.Boolean, default=False)
     user_authorized = db.Column(db.Boolean, default=False)

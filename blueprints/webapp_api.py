@@ -81,6 +81,25 @@ def user_deployments():
     })
 
 
+@webappapp_api_blueprint.route("/api/user_info")
+@flask_login.login_required
+def user_info():
+    from lib.config.cluster_config import CLUSTER_CONFIG
+    from database import Deployment, User, db
+
+    db_user = User.query.filter_by(email=current_user.id).first()
+    session = db.create_scoped_session()
+    me = session.query(User).filter(User.email == current_user.id).first()
+    session.close()
+    if me.ssh_key is None:
+        me.ssh_key = ''
+    return json.dumps({
+        "status": "ok",
+        "my_user": { "firstname": me.firstname, "lastname": me.lastname, "email": me.email, "ssh": me.ssh_key,
+            "state": me.state }
+    })
+
+
 @webappapp_api_blueprint.route("/api/servers/available_servers")
 @flask_login.login_required
 def available_servers():

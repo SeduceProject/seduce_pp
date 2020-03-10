@@ -1,5 +1,5 @@
 import celery, datetime, logging, os, paramiko, re, random, shutil, socket, subprocess, sys, time, traceback, uuid
-from database import db, Deployment
+from database import db, Deployment, User
 from lib.config.cluster_config import CLUSTER_CONFIG
 from lib.deployment import get_nfs_boot_cmdline, get_sdcard_boot_cmdline, get_sdcard_resize_boot_cmdline
 from lib.dgs121028p import turn_on_port, turn_off_port
@@ -230,6 +230,7 @@ def mount_partition_fct(deployments, logger):
             cmd = "mount /dev/mmcblk0p1 boot_dir"
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
+            # Delete the bootcode.bin file as soon as possible
             cmd = "rm boot_dir/bootcode.bin"
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
@@ -346,27 +347,31 @@ def user_conf_fct(deployments, logger):
     for deployment in deployments:
         # Get description of the server that will be deployed
         server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+        # Get the environment
         environment = [environment for environment in CLUSTER_CONFIG.get("environments")
                 if environment.get("name") == deployment.environment][0]
+        # Get the user SSH key
+        db_user = User.query.filter_by(id=deployment.user_id).first()
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+            my_ssh_keys = ''
+            if len(db_user.ssh_key) > 0:
+                my_ssh_keys = '\n%s' % db_user.ssh_key
+            if len(deployment.public_key) > 0:
+                my_ssh_keys = '%s\n%s' % (my_ssh_keys, deployment.public_key)
+            if len(my_ssh_keys) > 0:
+                # Add the public key of the user
+                cmd = "echo '%s' >> .ssh/authorized_keys" % my_ssh_keys
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
             if deployment.environment == 'tiny_core':
-                if len(deployment.public_key) > 0:
-                    # Add the public key of the user
-                    cmd = "echo '\n%s' >> /home/tc/.ssh/authorized_keys" % deployment.public_key
-                    (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                    return_code = stdout.channel.recv_exit_status()
                 # Change the 'tc' user password
                 cmd = "echo -e '%s\n%s' | sudo passwd tc; filetool.sh -b" % (deployment.c9pwd, deployment.c9pwd)
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
             if deployment.environment.startswith('raspbian_'):
-                if len(deployment.public_key) > 0:
-                    cmd = "echo '\n%s' >> .ssh/authorized_keys" % deployment.public_key
-                    (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                    return_code = stdout.channel.recv_exit_status()
                 # Change the 'pi' user password
                 cmd = "echo -e '%s\n%s' | sudo passwd pi" % (deployment.c9pwd, deployment.c9pwd)
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)

@@ -63,6 +63,38 @@ def process_take():
     return flask.redirect(flask.url_for("app.home"))
 
 
+@webapp_blueprint.route("/user/ssh_put/", methods=["POST"])
+@flask_login.login_required
+def ssh_put():
+    from database import Deployment, User
+    from database import db
+    my_ssh = flask.request.form.get("ssh_key")
+    if my_ssh is not None and len(my_ssh) > 0:
+        db_user = User.query.filter_by(email=current_user.id).first()
+        db_user.ssh_key = my_ssh
+        db.session.commit()
+        db.session.close()
+    return flask.redirect(flask.url_for("app.user"))
+
+
+@webapp_blueprint.route("/user/pwd_put/", methods=["POST"])
+@flask_login.login_required
+def pwd_put():
+    from database import Deployment, User
+    from database import db
+    
+    pwd = flask.request.form.get("password")
+    confirm_pwd = flask.request.form.get("confirm_password")
+    if pwd == confirm_pwd:
+        db_user = User.query.filter_by(email=current_user.id).first()
+        db_user._set_password = pwd
+        db.session.commit()
+        db.session.close()
+        return flask.redirect(flask.url_for("app.user"))
+    else:
+        return 'The two passwords are not identical!<a href="/user">Try again</a>'
+
+
 @webapp_blueprint.route("/server/reboot/<string:server_id>")
 @flask_login.login_required
 def ask_reboot(server_id):
@@ -114,6 +146,12 @@ def ask_destruction(deployment_ids):
     db.session.commit()
 
     return flask.redirect(flask.url_for("app.home"))
+
+
+@webapp_blueprint.route("/user")
+@flask_login.login_required
+def user():
+    return flask.render_template("user_vuejs.html.jinja2")
 
 
 @webapp_blueprint.route("/")

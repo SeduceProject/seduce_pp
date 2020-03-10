@@ -38,7 +38,7 @@ def user_loader(email):
         user.id = db_user.email
         user.firstname = db_user.firstname
         user.lastname = db_user.lastname
-        user.url_picture = db_user.url_picture
+        user.ssh_key = db_user.ssh_key
         user.is_admin = db_user.is_admin
         user.user_authorized = db_user.user_authorized
 

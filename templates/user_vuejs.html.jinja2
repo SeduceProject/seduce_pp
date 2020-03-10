@@ -1,0 +1,173 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+
+    <style>
+        .status-badge {
+            width: 50px;
+            height: 50px;
+        }
+    </style>
+
+    <div id="app" v-cloak>
+        <main role="main" class="container my-3 p-3 bg-white rounded shadow-sm">
+            <!-- Nav tabs -->
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab"
+                        aria-controls="home" aria-selected="true">Home</a>
+                </li>
+                <li class="nav-item">
+                        <a class="nav-link" id="password-tab" data-toggle="tab" href="#password" role="tab"
+                            aria-controls="password" aria-selected="false">Password</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" id="email-tab" data-toggle="tab" href="#email" role="tab"
+                        aria-controls="email" aria-selected="false">Email</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="ssh-tab" data-toggle="tab" href="#ssh" role="tab"
+                        aria-controls="ssh" aria-selected="false">SSH Key</a>
+                </li>
+            </ul>
+            <!-- Tab panes -->
+            <div class="tab-content grid-user">
+                <div class="tab-pane active pt-2 pane-user" id="home" role="tabpanel" aria-labelledby="home-tab">
+                    <b class="text-info">Fistname</b>: [[ user.firstname ]]<br/>
+                    <b class="text-info">Lastname</b>: [[ user.lastname ]]<br/>
+                    <b class="text-info">Email</b>: [[ user.email ]]<br/>
+                    <span v-if="[[ user.ssh ]] == ''">
+                        <b class="text-info">SSH key</b>: No SSH key registered<br/>
+                    </span>
+                    <span v-if="[[ user.ssh ]] != ''">
+                        <b class="text-info">SSH key</b>
+                        : ...[[ user.ssh.substring(user.ssh.length, user.ssh.length - 30) ]]<br/>
+                    </span>
+                    <b class="text-info">Status</b>: [[ user.state ]]<br/>
+                </div>
+                <div class="tab-pane pt-2" id="password" role="tabpanel" aria-labelledby="password-tab">
+                    <div class="container">
+                        <form action="{{ url_for("app.pwd_put") }}" method="post">
+                            <div class="row" style="width: 400px;">
+                                <div class="col">New password</div>
+                                <div class="col"><input name="password" type="password"></div>
+                            </div>
+                            <div class="row" style="width: 400px;">
+                                <div class="col">Confirm password</div>
+                                <div class="col"><input name="confirm_password" type="password"></div>
+                            </div>
+                            <div class="row text-center" style="width: 400px;">
+                                <div class="col">
+                                    <button type="submit" value="submit" class="btn btn-info btn-user">
+                                        Change password
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="tab-pane pt-2" id="email" role="tabpanel" aria-labelledby="email-tab">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col">New login email</div>
+                            <div class="col"><input type='password'></div>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col">
+                                <button class="btn btn-info btn-user">Change email</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane pt-2" id="ssh" role="tabpanel" aria-labelledby="ssh-tab">
+                    <div class="container">
+                        <form action="{{ url_for("app.ssh_put") }}" method="post">
+                            <div class="row">
+                                <div class="col">
+                                    <b class="text-info">Current SSH key</b><br/>
+                                </div>
+                                <div class="col">
+                                    <b class="text-info">New SSH key</b><br/>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div style="width: 450px; word-wrap: break-word;">
+                                        [[ user.ssh ]]
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <textarea type="text" id="ssh_key" name="ssh_key" rows=10 class="form-control
+                                        input-user"></textarea><br/>
+                                </div>
+                            </div>
+                            <div class="row">
+                            </div>
+                            <div class="row">
+                                <div class="col center-block text-center">
+                                    <button type="submit" value="submit" class="btn btn-info btn-user">
+                                        Change ssh key
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div><!-- tab-content -->
+        </main>
+    </div>
+    <script src="https://unpkg.com/vue"></script>
+    <script>
+        function addInputField() {
+            var divContent = document.getElementById('textvalues');
+            var fieldId = 'ifield-id';
+            var inputField = document.getElementById(fieldId);
+            if(inputField == null) {
+                // Create the input field
+                var inputText = document.createElement("textarea");
+                inputText.id = fieldId;
+                inputText.rows = 9;
+                inputText.className = "input-user";
+                // Create the confirm button
+                var saveButton = document.createElement("button");
+                saveButton.innerHTML = 'Confirm';
+                saveButton.addEventListener ("click", function() {
+                    alert("did something");
+                });
+                saveButton.className = 'btn btn-info btn-user mb-5';
+                // Append the new elements
+                divContent.appendChild(inputText);
+                divContent.appendChild(document.createElement('br'));
+                divContent.appendChild(saveButton);
+
+            }
+        }
+        const app = new Vue({
+            el: '#app',
+            data: {
+                term: '',
+                user: [],
+                noResults: false,
+                loading: true
+            },
+            methods: {
+                fetch_my_user: function () {
+                    fetch("{{ url_for("app_api.user_info") }}")
+                        .then(res => res.json())
+                        .then(res => {
+                            this.user = res.my_user;
+                        });
+                },
+                reload_all_data: function () {
+                    this.fetch_my_user();
+                    this.loading = false;
+                }
+            },
+            beforeMount: function () {
+                this.reload_all_data();
+                this.loading = true;
+            },
+            delimiters: ['[[', ']]']
+        });
+    </script>
+{% endblock %}

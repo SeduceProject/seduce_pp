@@ -52,6 +52,26 @@
     margin-right: 6px;
 }
 
+.btn-user {
+    width: 200px;
+}
+
+.fill-user {
+    height: 240px
+}
+
+.grid-user .row {
+    margin-top: 4px;
+}
+
+.grid-user .tab-pane {
+    height: 500px;
+}
+
+.input-user {
+    width: 390px;
+}
+
 /* state colors */
 .in_selection {
     background-color: #7d9bff;
