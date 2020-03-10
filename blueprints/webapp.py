@@ -38,6 +38,20 @@ def take(server_info):
                                  environments=CLUSTER_CONFIG.get("environments"))
 
 
+@webapp_blueprint.route("/server/cancel/")
+@flask_login.login_required
+def cancel():
+    from database import User, Deployment
+    from database import db
+
+    db_user = User.query.filter_by(email=current_user.id).first()
+    # Delete previous deployments still in initialized state
+    Deployment.query.filter_by(user_id=db_user.id, state="initialized").delete();
+    db.session.commit()
+    db.session.close()
+    return flask.redirect(flask.url_for("app.home"))
+
+
 @webapp_blueprint.route("/server/process_take/", methods=["POST"])
 @flask_login.login_required
 def process_take():
