@@ -1,12 +1,16 @@
+import datetime, flask, flask_login, random, string
 from flask import Blueprint
-import flask
-import datetime
-import flask_login
 from flask_login import current_user
 from fsm import deployment_initial_state
 
 webapp_blueprint = Blueprint('app', __name__,
                              template_folder='templates')
+
+
+def new_password(stringLength=8):
+    """Generate a random string of letters and digits """
+    lettersAndDigits = string.ascii_letters + string.digits
+    return ''.join(random.choice(lettersAndDigits) for i in range(stringLength))
 
 
 @webapp_blueprint.route("/server/take/<string:server_info>")
@@ -60,20 +64,20 @@ def process_take():
 
     db_user = User.query.filter_by(email=current_user.id).first()
     deployments = Deployment.query.filter_by(user_id=db_user.id, state="initialized").all()
-
     for d in deployments:
         d.name = flask.request.form.get("name")
         d.public_key = flask.request.form.get("public_key")
         d.init_script = flask.request.form.get("init_script")
-        pwd = flask.request.form.get("c9pwd")
-        if pwd.strip():
-            d.c9pwd = pwd
+        pwd = flask.request.form.get("sys_pwd").strip()
+        if pwd:
+            d.system_pwd = pwd[:50]
+        else:
+            d.system_pwd = new_password()
         d.environment = flask.request.form.get("environment")
         d.duration = flask.request.form.get("duration")
         d.start_date = datetime.datetime.utcnow()
         d.state = deployment_initial_state
     db.session.commit()
-
     return flask.redirect(flask.url_for("app.home"))
 
 

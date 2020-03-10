@@ -318,7 +318,7 @@ def system_conf_fct(deployments, logger):
                 return_code = stdout.channel.recv_exit_status()
             if deployment.environment == 'raspbian_cloud9':
                 cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 \
-                        -a admin:%s -w /workspace' > fs_dir/usr/local/bin/c9" % deployment.c9pwd
+                        -a admin:%s -w /workspace' > fs_dir/usr/local/bin/c9" % deployment.system_pwd
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
             if deployment.environment == 'raspbian_buster':
@@ -368,12 +368,13 @@ def user_conf_fct(deployments, logger):
                 return_code = stdout.channel.recv_exit_status()
             if deployment.environment == 'tiny_core':
                 # Change the 'tc' user password
-                cmd = "echo -e '%s\n%s' | sudo passwd tc; filetool.sh -b" % (deployment.c9pwd, deployment.c9pwd)
+                cmd = "echo -e '%s\n%s' | sudo passwd tc; filetool.sh -b" % (
+                        deployment.system_pwd, deployment.system_pwd)
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
             if deployment.environment.startswith('raspbian_'):
                 # Change the 'pi' user password
-                cmd = "echo -e '%s\n%s' | sudo passwd pi" % (deployment.c9pwd, deployment.c9pwd)
+                cmd = "echo -e '%s\n%s' | sudo passwd pi" % (deployment.system_pwd, deployment.system_pwd)
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
             # Update the deployment

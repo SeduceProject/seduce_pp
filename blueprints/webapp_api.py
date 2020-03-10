@@ -68,7 +68,7 @@ def user_deployments():
             if s["id"] == d.server_id:
                 deployment_info[d.name]["server_infos"].append({ "name": s["name"], "id": s["id"],
                     "state": d.state, "ip": s["ip"], "model": s["model"], "public_ip": s["public_ip"],
-                    "public_port": s["public_port"], "password": d.c9pwd })
+                    "public_port": s["public_port"], "password": d.system_pwd })
                 deployment_info[d.name]["server_names"].append(s["name"])
     if not deployments:
         return json.dumps({

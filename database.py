@@ -53,7 +53,7 @@ class Deployment(db.Model):
     environment = db.Column(db.Text)
     duration = db.Column(db.Text)
     init_script = db.Column(db.Text)
-    c9pwd = db.Column(db.String(60), default="admin")
+    system_pwd = db.Column(db.String(60))
 
     name = db.Column(db.Text)
     start_date = db.Column(db.DateTime)
