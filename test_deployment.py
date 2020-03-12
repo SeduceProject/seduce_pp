@@ -1,7 +1,10 @@
-import json, logging, logging.config, os, random, subprocess, sys, time
-from database import db, Deployment, User
+from database.connector import open_session, close_session
+from database.states import progress_forward
+from database.tables import Deployment, User
 from datetime import datetime
 from lib.config.cluster_config import CLUSTER_CONFIG
+import json, logging, logging.config, os, random, subprocess, sys, time
+
 
 test_email = 'test@imt-atlantique.fr'
 test_deployment_name = 'automatic testing'
@@ -11,10 +14,11 @@ boot_test_environment = 'boot_test'
 
 # Beautiful logger
 logging.config.fileConfig('logging-test.conf', disable_existing_loggers=1)
-logger = logging.getLogger("MAIN")
+logger = logging.getLogger("TESTING")
 
 def destroy_test_deployment():
-    test_user = db.session.query(User).filter(User.email == test_email).all()
+    db_session = open_session()
+    test_user = db_session.query(User).filter(User.email == test_email).all()
     if len(test_user) == 0:
         raise Exception("No test user in the database. Please create it:\n"
                 "INSERT INTO "
@@ -22,17 +26,16 @@ def destroy_test_deployment():
                 "VALUES('confirmed', '%s', 'Test','Test', "
                 "'$2b$12$PJCxhXp6vwLkEm8y2hctVudY/EQCfq2njV0SuFbglZoJMar0FDm6i', 1, 0, 0);" % test_email)
     test_user_id = test_user[0].id
-    db.session.query(Deployment).filter(
+    db_session.query(Deployment).filter(
             Deployment.user_id == test_user_id).filter(Deployment.name == test_deployment_name).delete()
-    db.session.commit()
-    db.session.remove()
+    close_session(db_session)
     time.sleep(2)
     return test_user_id
 
 
 def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
-    deployments = db.session.query(Deployment).filter(
-            Deployment.state != "destroyed").all()
+    db_session = open_session()
+    deployments = db_session.query(Deployment).filter(Deployment.state != "destroyed").all()
     used_nodes = [ d.server_id for d in deployments ]
     logger.info("Used nodes: %s" % used_nodes)
     free_nodes = []
@@ -69,7 +72,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
         new_deployment.start_date = datetime.utcnow()
         new_deployment.server_id = node['id']
         new_deployment.user_id = test_user_id
-        db.session.add(new_deployment)
+        db_session.add(new_deployment)
         # Write statistics about deployments
         if test_env in stats:
             if node['id'] not in stats[test_env]:
@@ -79,8 +82,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
         stats[test_env][node['id']].append({ 'ip': node['ip'], 'start_date': str(datetime.utcnow()), 
             'states': { 'last_state': '', 'last_date': None }, 'total': 0,
             'ping': False, 'ssh': False, 'init_script': False })
-    db.session.commit()
-    db.session.remove()
+    close_session(db_session)
     return selected_nodes
 
 
@@ -150,8 +152,9 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
     nodes = reserve_free_nodes(test_user_id, dep_stats, nb_nodes, dep_env)
     logger.info("Waiting the end of deployments")
     deployed_env = []
+    db_session = open_session()
     while len(deployed_env) < len(nodes):
-        deployments = db.session.query(Deployment).filter(
+        deployments = db_session.query(Deployment).filter(
                 Deployment.user_id == test_user_id).filter(Deployment.name == test_deployment_name).all()
         for d in deployments:
             my_state = d.state
@@ -161,10 +164,10 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
                     deployed_env.append(d.id)
             if d.state != my_state:
                 logger.info("The deployment state has been modified for the node '%s'" % d.server_id)
-                db.session.add(d)
-                db.session.commit()
-        db.session.remove()
+                db_session.add(d)
+        db_session.commit()
         time.sleep(2)
+    close_session(db_session)
     if dep_env == boot_test_environment:
         sleep_time = 50
     else:
@@ -221,7 +224,7 @@ if __name__ == "__main__":
     file_stats = 'json_test/%s_stats_tests.json' % file_id
     stats_data = {}
     #for env in [ { 'name': boot_test_environment } ]:
-    #for env in [ { 'name': 'raspbian_buster' }, {'name': 'tiny_core'} ]:
+    #for env in [ {'name': 'tiny_core'} ]:
     for env in CLUSTER_CONFIG["environments"]:
         logger.info("Deploying the '%s' environment" % env['name'])
         testing_environment(env['name'], file_id, stats_data, 10)

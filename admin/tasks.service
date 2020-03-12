@@ -6,7 +6,7 @@ Type=simple
 User=pipi
 Group=pipi
 WorkingDirectory=/home/pipi/seduce_pp
-ExecStart=/usr/bin/python3 /home/pipi/seduce_pp/celery_tasks.py
+ExecStart=/usr/bin/python3 /home/pipi/seduce_pp/pitasks.py
 ExecStop=/usr/bin/touch tasksstop
 TimeoutStopSec=400
  

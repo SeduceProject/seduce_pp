@@ -2,7 +2,6 @@ from lib.config.email_config import get_email_configuration
 import smtplib
 import random
 import string
-from database import db
 from lib.config.config_loader import load_config
 
 from email.mime.multipart import MIMEMultipart

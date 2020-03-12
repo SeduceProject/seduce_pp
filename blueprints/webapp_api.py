@@ -1,10 +1,12 @@
-import flask, flask_login, json, logging, uuid
-
+from database.connector import open_session, close_session
+from database.tables import User, Deployment
 from flask import Blueprint
 from flask_login import current_user
+from lib.config.cluster_config import CLUSTER_CONFIG
+import flask, flask_login, json, logging, uuid
 
-webappapp_api_blueprint = Blueprint('app_api', __name__,
-                                    template_folder='templates')
+
+webappapp_api_blueprint = Blueprint('app_api', __name__, template_folder='templates')
 
 
 @webappapp_api_blueprint.route("/api/authorized")
@@ -22,17 +24,14 @@ def authorized():
 @webappapp_api_blueprint.route("/api/deployment/<string:deployment_id>")
 @flask_login.login_required
 def deployment(deployment_id):
-    from database import Deployment, db
-
-    session = db.create_scoped_session()
+    session = open_session()
     deployment = session.query(Deployment).query.filter_by(id=deployment_id).first()
-    session.close()
-
+    dep_info = { "id": deployment.id, "state": deployment.state, "label": deployment.label }
+    close_session(session)
     if not deployment:
         return json.dumps({
             "status": "ko",
         })
-
     return json.dumps({
         "status": "ok",
         "deployment": {
@@ -46,17 +45,11 @@ def deployment(deployment_id):
 @webappapp_api_blueprint.route("/api/deployments")
 @flask_login.login_required
 def user_deployments():
-    from database import Deployment, User, db
-    from lib.config.cluster_config import CLUSTER_CONFIG
     user = current_user
-
     misc = {}
-
-    session = db.create_scoped_session()
+    session = open_session()
     db_user = session.query(User).filter_by(email=user.id).first()
-    deployments = session.query(Deployment).filter(Deployment.state != "destroyed").filter_by(user_id=db_user.id).all()
-    session.close()
-
+    deployments = session.query(Deployment).filter(Deployment.state != "destroyed").filter_by(user_id = db_user.id).all()
     deployment_info = {}
     for d in deployments:
         deployed = True
@@ -70,6 +63,7 @@ def user_deployments():
                     "state": d.state, "ip": s["ip"], "model": s["model"], "public_ip": s["public_ip"],
                     "public_port": s["public_port"], "password": d.system_pwd })
                 deployment_info[d.name]["server_names"].append(s["name"])
+    close_session(session)
     if not deployments:
         return json.dumps({
             "status": "ko",
@@ -84,32 +78,25 @@ def user_deployments():
 @webappapp_api_blueprint.route("/api/user_info")
 @flask_login.login_required
 def user_info():
-    from lib.config.cluster_config import CLUSTER_CONFIG
-    from database import Deployment, User, db
-
-    db_user = User.query.filter_by(email=current_user.id).first()
-    session = db.create_scoped_session()
+    session = open_session()
     me = session.query(User).filter(User.email == current_user.id).first()
-    session.close()
     if me.ssh_key is None:
         me.ssh_key = ''
+    me_info = { "firstname": me.firstname, "lastname": me.lastname, "email": me.email,
+            "ssh": me.ssh_key, "state": me.state }
+    close_session(session)
     return json.dumps({
         "status": "ok",
-        "my_user": { "firstname": me.firstname, "lastname": me.lastname, "email": me.email, "ssh": me.ssh_key,
-            "state": me.state }
+        "my_user": me_info
     })
 
 
 @webappapp_api_blueprint.route("/api/servers/available_servers")
 @flask_login.login_required
 def available_servers():
-    from lib.config.cluster_config import CLUSTER_CONFIG
-    from database import Deployment, User, db
-
-    db_user = User.query.filter_by(email=current_user.id).first()
-    session = db.create_scoped_session()
+    session = open_session()
+    db_user = session.query(User).filter(User.email == current_user.id).first()
     not_destroyed_deployments = session.query(Deployment).filter(Deployment.state != "destroyed").all()
-    session.close()
     server_info = {}
     for s in CLUSTER_CONFIG["nodes"]:
         server_info[s["id"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"], "state": "free"}
@@ -127,10 +114,11 @@ def available_servers():
             server_info[d.server_id]["state"] = "in_use"
             server_info[d.server_id]["progress"] = 100
             if d.user_id not in id2email.keys():
-                foreign = User.query.filter_by(id=d.user_id).first()
+                foreign = session.query(User).filter(User.id == d.user_id).first()
                 id2email[foreign.id] = foreign.email
             server_info[d.server_id]["dname"] = d.name
             server_info[d.server_id]["email"] = id2email[d.user_id]
+    close_session(session)
     if not deployment:
         return json.dumps({
             "status": "ko"

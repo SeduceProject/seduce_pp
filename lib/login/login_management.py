@@ -1,9 +1,5 @@
-import flask_login
-from database import User as DbUser
-
-
-class User(flask_login.UserMixin):
-    pass
+from database.connector import create_tables, open_session, close_session
+from database.tables import User as dbUser
 
 
 authorized_domains = [
@@ -24,13 +20,16 @@ def authorized_user(user):
 
 
 def authenticate(email, password):
-    from database import bcrypt
+    from initialization import bcrypt
 
     if email == "" or password == "" or email is None or password is None:
         return False
-    
-    user = DbUser.query.filter_by(email=email).first()
+    db_session = open_session()
+    user = db_session.query(dbUser).filter(dbUser.email == email).first()
+    pwd_check = False
+    auth_check = False
     if user is not None:
-        if bcrypt.check_password_hash(user.password, password):
-            return authorized_user(user)
-    return False
+        pwd_check = bcrypt.check_password_hash(user.password, password)
+        auth_check = authorized_user(user)
+    close_session(db_session)
+    return pwd_check and auth_check
