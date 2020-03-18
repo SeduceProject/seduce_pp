@@ -3,16 +3,14 @@ Description=PiSeduce Tasks
  
 [Service]
 Type=simple
-User=pipi
-Group=pipi
-WorkingDirectory=/home/pipi/seduce_pp
+User=root
+Group=root
+WorkingDirectory=/root/seduce_pp
 ExecStart=/usr/bin/python3 pitasks.py
 ExecStop=/usr/bin/touch tasksstop
 ExecStopPost=/bin/rm tasksstop
 TimeoutStopSec=20
- 
 Restart=on-failure
-# Configures the time to wait before service is stopped forcefully.
  
 [Install]
 WantedBy=multi-user.target

@@ -274,7 +274,7 @@ CLUSTER_CONFIG = {
     "environments": [
         {
             "name": "raspbian_cloud9",
-            "img_path": "/nfs/raspi1/environments/2019-09-19-Raspbian-lite.img",
+            "img_path": "/root/environments/2019-09-19-Raspbian-lite.img.gz",
             "img_size": 2277507072,
             "sector_start": 106496,
             "ssh_user": "root",
@@ -285,7 +285,18 @@ CLUSTER_CONFIG = {
         },
         {
             "name": "raspbian_buster",
-            "img_path": "/nfs/raspi1/environments/2020-02-13-raspbian-buster-lite.img",
+            "img_path": "/root/environments/2020-02-13-raspbian-buster-lite.img.gz",
+            "img_size": 1849688064,
+            "sector_start": 532480,
+            "ssh_user": "root",
+            "shell": "bash",
+            "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
+            "kernel": "4.19.97-v8+",
+            "ready": check_ssh_is_ready
+        },
+        {
+            "name": "ttyd",
+            "img_path": "/root/environments/ttyd.img.gz",
             "img_size": 1849688064,
             "sector_start": 532480,
             "ssh_user": "root",
@@ -296,7 +307,7 @@ CLUSTER_CONFIG = {
         },
         {
             "name": "tiny_core",
-            "img_path": "/nfs/raspi1/environments/piCore-10.0beta12b.img",
+            "img_path": "/root/environments/piCore-10.0beta12b.img.gz",
             "img_size": 67186688,
             "sector_start": 92160,
             "ssh_user": "tc",
@@ -307,7 +318,7 @@ CLUSTER_CONFIG = {
         },
         {
             "name": "raspbian_jupyter",
-            "img_path": "/nfs/raspi1/environments/2019-09-20-Raspbian-lite.img",
+            "img_path": "/root/environments/2019-09-20-Raspbian-lite.img.gz",
             "img_size": 2025848832,
             "sector_start": 106496,
             "ssh_user": "root",

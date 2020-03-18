@@ -59,6 +59,7 @@ def ps_ssh(ssh_session, bash_cmd):
         return -1
 
 
+# Deploy environments
 def nfs_boot_conf_fct(deployment, db_session, logger):
     # Get description of the server that will be deployed
     server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
@@ -68,10 +69,6 @@ def nfs_boot_conf_fct(deployment, db_session, logger):
     if os.path.isdir(tftpboot_node_folder):
         shutil.rmtree(tftpboot_node_folder)
     shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
-    # Modify the boot PXE configuration file to mount its file system via NFS
-    text_file = open("%s/cmdline.txt" % tftpboot_node_folder, "w")
-    text_file.write(get_nfs_boot_cmdline() % {"controller_ip": CLUSTER_CONFIG.get("controller").get("ip")})
-    text_file.close()
     return True
 
 
@@ -104,7 +101,7 @@ def env_copy_fct(deployment, db_session, logger):
         environment_img_path = environment.get("img_path")
         logger.info("%s: copy %s to the SDCARD" % (server.get("id"), environment_img_path))
         # Write the image of the environment on SD card
-        deploy_cmd = f"""rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | \
+        deploy_cmd = f"""rsh -o "StrictHostKeyChecking no" %s@%s "cat {environment_img_path}" | gunzip | \
                 pv -n -p -s %s 2> progress_{server['id']}.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync""" % (
                         CLUSTER_CONFIG.get("controller").get("user"), CLUSTER_CONFIG.get("controller").get("ip"),
                         environment.get("img_size"))
@@ -119,13 +116,13 @@ def env_copy_fct(deployment, db_session, logger):
 def env_check_fct(deployment, db_session, logger):
     # Get description of the server that will be deployed
     server = [server for server in CLUSTER_CONFIG.get("nodes") if server.get("id") == deployment.server_id][0]
+    ret_fct = False
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(server.get("ip"), username="root", timeout=1.0)
         environment = [environment for environment in CLUSTER_CONFIG.get("environments")
                 if environment.get("name") == deployment.environment][0]
-        ret_fct = False
         if ps_ssh(ssh, 'mmcblk0') == 0:
             ret_fct = True
         else:
@@ -144,10 +141,9 @@ def env_check_fct(deployment, db_session, logger):
                 percent = output[0].strip()
             deployment.label = percent
         ssh.close()
-        return ret_fct
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         logger.warning("Could not connect to %s" % server.get("ip"))
-    return False
+    return ret_fct
 
 
 def delete_partition_fct(deployment, db_session, logger):
@@ -260,7 +256,7 @@ def system_conf_fct(deployment, db_session, logger):
         ssh.connect(server.get("ip"), username="root", timeout=1.0)
         if deployment.environment == 'tiny_core':
             # Copy the custom tiny core with SSH keys
-            cmd = "cp /environments/mydata.tgz fs_dir/tce/"
+            cmd = "cp /mydata.tgz fs_dir/tce/"
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
         if deployment.environment.startswith('raspbian_'):

@@ -9,7 +9,7 @@ class User(Base):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True, autoincrement=True)
     state = Column(String(120), default=user_initial_state)
-    email = Column(Text, unique=True)
+    email = Column(String(200), unique=True)
     _password = Column(Text)
     firstname = Column(Text)
     lastname = Column(Text)
