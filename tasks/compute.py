@@ -25,12 +25,8 @@ def collect_nodes(node_state):
                 ret_fct = False
                 ret_fct = state_fct(d, db_session, logger_compute)
                 if ret_fct:
-                    logger_compute.info("### Node '%s' properly exits the '%s' state at %s" %
-                            (d.server_id, node_state, last_update))
                     d.updated_at = datetime.datetime.utcnow()
                     progress_forward(d)
-                else:
-                    logger_compute.warning("### Node '%s' failure in the '%s' state" % (d.server_id, node_state))
             except Exception:
                 logger_compute.exception("Exception in '%s' state:" % node_state)
     close_session(db_session)
@@ -208,7 +204,7 @@ def mount_partition_fct(deployment, db_session, logger):
         (stdin, stdout, stderr) = ssh.exec_command(cmd)
         return_code = stdout.channel.recv_exit_status()
         # Delete the bootcode.bin file as soon as possible
-        cmd = "rm boot_dir/bootcode.bin"
+        cmd = f"rm progress_{server['id']}.txt; rm boot_dir/bootcode.bin"
         (stdin, stdout, stderr) = ssh.exec_command(cmd)
         return_code = stdout.channel.recv_exit_status()
         cmd = "mount /dev/mmcblk0p2 fs_dir"
@@ -287,10 +283,6 @@ def system_conf_fct(deployment, db_session, logger):
         if deployment.environment == 'raspbian_cloud9':
             cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 \
                     -a admin:%s -w /workspace' > fs_dir/usr/local/bin/c9" % deployment.system_pwd
-            (stdin, stdout, stderr) = ssh.exec_command(cmd)
-            return_code = stdout.channel.recv_exit_status()
-        if deployment.environment == 'raspbian_buster':
-            cmd = "chroot fs_dir/ update-rc.d ssh enable"
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
         # Copy boot files to the tftp folder
