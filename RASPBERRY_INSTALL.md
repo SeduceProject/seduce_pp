@@ -1,10 +1,9 @@
+#### Installation guide of the PiMaster
 ### From 2020-02-13-raspbian-buster-lite.img
-* Update the system
+* Update the system of the PiMaster
 ```
 apt update && apt -y dist-upgrade
 apt install pv vim
-echo 'net.ipv4.ip_forward=1' > /etc/sysctl.conf
-sysctl -p /etc/sysctl.conf
 ```
 
 ### Prepare NFS boot filesystem
@@ -24,10 +23,16 @@ dpkg-reconfigure openssh-server
 ssh-keygen
 mkdir /root/boot_dir /root/fs_dir
 echo 'nfspi' > /etc/hostname
-vi /etc/hosts
 exit
 cat /nfs/raspi/root/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
 umount dev sys proc
+```
+
+### Configure the PiMaster as the network gateway
+* Enable IP forwarding
+```
+echo 'net.ipv4.ip_forward=1' > /etc/sysctl.conf
+sysctl -p /etc/sysctl.conf
 ```
 
 ### Install the software stack
@@ -35,25 +40,20 @@ umount dev sys proc
 apt install dnsmasq git libffi-dev mariadb-client mariadb-server nfs-kernel-server python3-mysqldb python3-pip snmp
 ```
 
-### Copy the updated files in the tftpboot directory
-* From the tftp server:
-```
-cd /tftpboot/1760325b
-scp -r -o StrictHostKeyChecking=no 192.168.1.62:"/boot/*.gz /boot/*.dtb /boot/*.txt /boot/*.img /boot/overlays/" .
-```
-
 ### Prepare PXE boot
 * Create the TFTP directory: `mkdir /tftpboot`
-* Copy the files
+* Extract the rpiboot files: `tar xf tftpboot_init.tar.gz`
+* Copy the files to the tftpboot folder
 ```
-/tftpboot/boocode.bin
-/tftpboot/rpiboot_uboot/
+cp -r tftpboot_init/* /tftpboot/
 ```
-* /tftpboot/rpiboot_uboot/cmdline.txt:
-  * `nfsroot=192.168.1.62:/nfs/raspi,udp,v3 rw ip=dhcp root=/dev/nfs rootwait console=tty1 console=ttyAMA0,115200`
+* Edit `/tftpboot/rpiboot_uboot/cmdline.txt` to configure the NFS boot:
+```
+nfsroot=192.168.1.62:/nfs/raspi,udp,v3 rw ip=dhcp root=/dev/nfs rootwait console=tty1 console=ttyAMA0,115200
+```
 
 ### Write the new hostname
-* Edit `/etc/hostname`, `/etc/hosts`
+* `echo 'pimaster' > /etc/hostname`
 
 ### Configure the NFS server
 * /etc/exports: `/nfs *(rw,sync,no_subtree_check,no_root_squash)`
@@ -99,7 +99,7 @@ GRANT USAGE ON *.* TO 'pipi'@'%' IDENTIFIED BY 'totopwd';
 GRANT ALL PRIVILEGES ON piseduce.* TO 'pipi'@'localhost';
 ```
 
-### Configure seduce_cp
+### Configure seduce_pp
 * Clone the repository: `git clone https://github.com/remyimt/seduce_pp`
 * Download the environment images to /root/environements/
 * Edit lib/config/cluster_config.py
@@ -109,57 +109,23 @@ GRANT ALL PRIVILEGES ON piseduce.* TO 'pipi'@'localhost';
 * Copy the service files
 ```
 cp admin/*.service /etc/systemd/system/
-systemctl enable tasks.service
-systemctl enable frontend.service
-service frontend start
-service tasks start
+systemctl enable pitasks.service
+systemctl enable pifrontend.service
+service pifrontend start
+service pitasks start
 ```
 
 ### Create the tiny core user data
-* Deploy the tiny core environment then log into with the default password 'piCore'
-* Copy the public SSH key of the controller to `/home/tc/.ssh/authorized_keys`
-* Backup the SSH key `filetool.sh -b`
-* Copy the backup to the controller `scp tc@192.168.1.203:/mnt/mmcblk0p2/tce/mydata.tgz /nfs/raspi/`
-
-### Note
-* chemin NFS dans le rpi_uboot, retirer le chemin dans tasks/compute.py
-
-### Download test
-* Server Dell
+* Get a tiny_core running node:
+    - deploy the tiny_core environment on a raspberry Pi
+    - wait for the node enters in the 'user_conf' state
+    - connect to the node with the user 'tc' and the default password 'piCore'
+* Copy the public SSH key of the pimaster to `/home/tc/.ssh/authorized_keys`
+* Backup tinycore environment with the pimaster SSH key: `filetool.sh -b`
+* Copy the backup to the pimaster. From the pimaster, execute:
 ```
-.img
-    10 noeuds -> best: 136s
-                worst: 196s
+scp tc@192.168.1.203:/mnt/mmcblk0p2/tce/mydata.tgz /nfs/raspi/
 ```
-* Raspberry pi 3+
-```
-.zip
-    1 noeud  -> 203: 136
-
-    3 noeuds -> 203: 133
-                204: 273
-                205: 279
-
-    3 noeuds -> 206: 143
-                207: 250
-                208: 362
-
-    6 noeuds -> 203: 183
-                204: 264
-                205: 225
-                206: 189
-                207: 189
-                208: 224
-.img
-    3 noeuds -> 203: 364
-                204: 493
-                205: 547
-
-    3 noeuds -> 206: 371
-                207: 385
-                208: 370
-```
-
 
 ### Delete bootcode.bin of system images
 ```
