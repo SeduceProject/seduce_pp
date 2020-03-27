@@ -3,8 +3,8 @@ from database.tables import Deployment, User
 from database.states import deployment_initial_state, destroy_state, init_deployment_state, reboot_state
 from flask import Blueprint
 from flask_login import current_user
-from lib.config.cluster_config import CLUSTER_CONFIG
-import datetime, flask, flask_login, random, string
+from lib.config.config_loader import get_cluster_desc, load_cluster_desc
+import datetime, flask, flask_login, json, random, string
 
 
 webapp_blueprint = Blueprint('app', __name__, template_folder='templates')
@@ -19,6 +19,7 @@ def new_password(stringLength=8):
 @webapp_blueprint.route("/server/take/<string:server_info>")
 @flask_login.login_required
 def take(server_info):
+    cluster_desc = get_cluster_desc()
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     # Delete previous deployments still in initialized state
@@ -26,19 +27,45 @@ def take(server_info):
     # Reserve the nodes to avoid other users to take them
     info = server_info.split(";")
     server_ids = info[0].split(",")
-    server_names = info[1].split(",")
-    for id in server_ids:
+    server_names = info[1].replace(' ','').split(",")
+    for n_name in server_names:
         new_deployment = Deployment()
         new_deployment.state = "initialized"
-        new_deployment.server_id = id
+        new_deployment.node_name = n_name
         new_deployment.user_id = db_user.id
         new_deployment.name = "initialized"
         db_session.add(new_deployment)
     close_session(db_session)
+    # Reload the cluster decription to add new environments
+    load_cluster_desc()
     return flask.render_template("form_take.html.jinja2",
                                  server_ids=server_ids,
                                  server_names=server_names,
-                                 environments=CLUSTER_CONFIG.get("environments"))
+                                 environments=cluster_desc["environments"].values())
+
+
+@webapp_blueprint.route("/server/process_take/", methods=["POST"])
+@flask_login.login_required
+def process_take():
+    db_session = open_session()
+    db_user = db_session.query(User).filter_by(email = current_user.id).first()
+    deployments = db_session.query(Deployment).filter_by(user_id = db_user.id, state = "initialized").all()
+    for d in deployments:
+        d.name = flask.request.form.get("name")
+        d.public_key = flask.request.form.get("public_key")
+        d.init_script = flask.request.form.get("init_script")
+        pwd = flask.request.form.get("sys_pwd").strip()
+        if pwd:
+            d.system_pwd = pwd[:50]
+        else:
+            d.system_pwd = new_password()
+        d.environment = flask.request.form.get("environment")
+        d.duration = flask.request.form.get("duration_text")
+        d.system_size = flask.request.form.get("more_space")
+        d.start_date = datetime.datetime.utcnow()
+        d.state = deployment_initial_state
+    close_session(db_session)
+    return flask.redirect(flask.url_for("app.home"))
 
 
 @webapp_blueprint.route("/server/cancel/")
@@ -52,29 +79,6 @@ def cancel():
     return flask.redirect(flask.url_for("app.home"))
 
 
-@webapp_blueprint.route("/server/process_take/", methods=["POST"])
-@flask_login.login_required
-def process_take():
-    db_session = open_session()
-    db_user = db_session.query(User).filter_by(email = current_user.id).first()
-    deployments = db_session.query(Deployment).filter_by(user_id = db_user.id, state="initialized").all()
-    for d in deployments:
-        d.name = flask.request.form.get("name")
-        d.public_key = flask.request.form.get("public_key")
-        d.init_script = flask.request.form.get("init_script")
-        pwd = flask.request.form.get("sys_pwd").strip()
-        if pwd:
-            d.system_pwd = pwd[:50]
-        else:
-            d.system_pwd = new_password()
-        d.environment = flask.request.form.get("environment")
-        d.duration = flask.request.form.get("duration")
-        d.start_date = datetime.datetime.utcnow()
-        d.state = deployment_initial_state
-    close_session(db_session)
-    return flask.redirect(flask.url_for("app.home"))
-
-
 @webapp_blueprint.route("/user/ssh_put/", methods=["POST"])
 @flask_login.login_required
 def ssh_put():
@@ -83,8 +87,7 @@ def ssh_put():
         db_session = open_session()
         db_user = db_session.query(User).filter_by(email = current_user.id).first()
         db_user.ssh_key = my_ssh
-        db.session.commit()
-        db.session.close()
+        close_session(db_session)
     return flask.redirect(flask.url_for("app.user"))
 
 
@@ -103,29 +106,29 @@ def pwd_put():
         return 'The two passwords are not identical!<a href="/user">Try again</a>'
 
 
-@webapp_blueprint.route("/server/reboot/<string:server_id>")
+@webapp_blueprint.route("/server/reboot/<string:n_name>")
 @flask_login.login_required
-def ask_reboot(server_id):
+def ask_reboot(n_name):
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     # Verify the node belongs to my deployments
     my_deployment = db_session.query(Deployment).filter_by(user_id = db_user.id,
-            server_id = server_id).filter(Deployment.state != "destroyed").first()
+            node_name = n_name).filter(Deployment.state != "destroyed").first()
     if my_deployment is not None:
-        my_deployment.label = my_deployment.state
+        my_deployment.temp_info = my_deployment.state
         reboot_state(my_deployment)
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
 
 
-@webapp_blueprint.route("/server/redeploy/<string:server_id>")
+@webapp_blueprint.route("/server/redeploy/<string:n_name>")
 @flask_login.login_required
-def ask_redeploy(server_id):
+def ask_redeploy(n_name):
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     # Verify the node belongs to my deployments
     my_deployment = db_session.query(Deployment).filter_by(user_id = db_user.id,
-            server_id = server_id).filter(Deployment.state != "destroyed").first()
+            node_name = n_name).filter(Deployment.state != "destroyed").first()
     init_deployment_state(my_deployment)
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
@@ -140,6 +143,44 @@ def ask_destruction(deployment_ids):
         deployment = db_session.query(Deployment).filter_by(id = d, user_id = db_user.id).first()
         if deployment is not None:
             destroy_state(deployment)
+    close_session(db_session)
+    return flask.redirect(flask.url_for("app.home"))
+
+
+@webapp_blueprint.route("/server/save_env/<string:n_name>")
+@flask_login.login_required
+def save_env(n_name):
+    db_session = open_session()
+    db_user = db_session.query(User).filter_by(email = current_user.id).first()
+    deployment = db_session.query(Deployment).filter_by(user_id = db_user.id, node_name = n_name).filter(
+            Deployment.state != "destroyed").first()
+    env_name = deployment.environment
+    close_session(db_session)
+    return flask.render_template("form_save_env.html.jinja2",
+                                 environment=env_name,
+                                 node_name=n_name)
+
+
+@webapp_blueprint.route("/server/build_env/", methods=["POST"])
+@flask_login.login_required
+def build_env():
+    cluster_desc = get_cluster_desc()
+    db_session = open_session()
+    db_user = db_session.query(User).filter_by(email = current_user.id).first()
+    deployment = db_session.query(Deployment).filter_by(user_id = db_user.id,
+            node_name=flask.request.form.get('node_name')).filter(Deployment.state != "destroyed").first()
+    env = cluster_desc['environments'][deployment.environment]
+    env['name'] = flask.request.form.get("user_env_name")
+    env['img_name'] = env['name'] + '.img.gz'
+    user_ssh_user = flask.request.form.get("user_ssh_user")
+    if len(user_ssh_user) > 0:
+        env['ssh_user'] = user_ssh_user
+    env['type'] = 'user'
+    env_file_path = cluster_desc['env_cfg_dir'] + env['name'].replace(' ', '_') + '.json'
+    with open(env_file_path, 'w') as jsonfile:
+        json.dump(env, jsonfile)
+    deployment.state = 'img_create_part'
+    deployment.temp_info = env['name']
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
 

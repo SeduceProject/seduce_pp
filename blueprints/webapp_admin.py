@@ -1,29 +1,34 @@
 from flask import Blueprint
-import flask
-import datetime
-import flask_login
 from flask_login import current_user
+from lib.config.config_loader import get_cluster_desc
 from lib.decorators.admin_login_required import admin_login_required
+import datetime, flask, flask_login, json
 
 webapp_admin_blueprint = Blueprint('app_admin', __name__,
                              template_folder='templates')
 
 
+@webapp_admin_blueprint.route("/config/cluster")
+@flask_login.login_required
+@admin_login_required
+def dump_cluster_desc():
+    with open('cluster_desc.json', 'w') as cluster_desc:
+        json.dump(get_cluster_desc(), cluster_desc, indent=2)
+    return flask.redirect(flask.url_for("app.home"))
+    
+
 @webapp_admin_blueprint.route("/config/generate")
 @flask_login.login_required
 @admin_login_required
 def generate_config():
-    from lib.config.cluster_config import CLUSTER_CONFIG
-
+    cluster_desc = get_cluster_desc()
     nginx_stream_config = """
 ## <stream config for pi.seduce.fr>
 stream {
     """
-
-    for idx, node in enumerate(CLUSTER_CONFIG.get("nodes"), start=1):
+    for idx, node in enumerate(cluster_desc["nodes"].values(), start=1):
         ssh_port_number = 22000 + idx
         server_ip = node.get("ip")
-
         nginx_stream_config += f"""
     upstream ssh_pi{idx} {{
         server {server_ip}:22;
@@ -45,7 +50,7 @@ stream {
 ## <http config for pi.seduce.fr>
 """
 
-    for idx, node in enumerate(CLUSTER_CONFIG.get("nodes"), start=1):
+    for idx, node in enumerate(cluster_desc["nodes"].values(), start=1):
         ssh_port_number = 22000 + idx
         server_ip = node.get("ip")
 
@@ -92,6 +97,6 @@ location / {{
     """
 
     return flask.render_template("generate_configuration.html.jinja2",
-                                 config=CLUSTER_CONFIG,
+                                 config=cluster_desc,
                                  nginx_stream_config=nginx_stream_config,
                                  nginx_http_config=nginx_http_config)

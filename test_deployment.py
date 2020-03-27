@@ -2,7 +2,7 @@ from database.connector import open_session, close_session
 from database.states import progress_forward
 from database.tables import Deployment, User
 from datetime import datetime
-from lib.config.cluster_config import CLUSTER_CONFIG
+from lib.config.config_loader import get_cluster_desc
 import json, logging, logging.config, os, random, subprocess, sys, time
 
 
@@ -36,14 +36,15 @@ def destroy_test_deployment():
 def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
     db_session = open_session()
     deployments = db_session.query(Deployment).filter(Deployment.state != "destroyed").all()
-    used_nodes = [ d.server_id for d in deployments ]
+    used_nodes = [ d.node_name for d in deployments ]
+    cluster_desc = get_cluster_desc()
     logger.info("Used nodes: %s" % used_nodes)
     free_nodes = []
     ssh_user_env = None
     shell_env = None
     script_env = None
     if test_env != 'boot_test':
-        for env in CLUSTER_CONFIG["environments"]:
+        for env in cluster_desc["environments"].values():
             if env['name'] == test_env:
                 ssh_user_env = env['ssh_user']
                 shell_env = env['shell']
@@ -51,9 +52,9 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
         if ssh_user_env is None or shell_env is None:
             logger.error("Environment '%s' not found!" % test_env)
             sys.exit(13)
-    for server in CLUSTER_CONFIG["nodes"]:
-        if server.get("id") not in used_nodes:
-            free_nodes.append({ 'id': server.get("id"), 'ip': server.get('ip'),
+    for server in cluster_desc["nodes"].values():
+        if server.get("name") not in used_nodes:
+            free_nodes.append({ 'name': server.get("name"), 'ip': server.get('ip'),
                 'ssh_user': ssh_user_env, 'shell': shell_env, 'script': script_env, 'env': test_env })
     if len(free_nodes) > nb_nodes:
         selected_nodes = random.sample(free_nodes, nb_nodes)
@@ -70,16 +71,16 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
         new_deployment.system_pwd = "superC9PWD"
         new_deployment.name = test_deployment_name
         new_deployment.start_date = datetime.utcnow()
-        new_deployment.server_id = node['id']
+        new_deployment.node_name = node['name']
         new_deployment.user_id = test_user_id
         db_session.add(new_deployment)
         # Write statistics about deployments
         if test_env in stats:
-            if node['id'] not in stats[test_env]:
-                stats[test_env][node['id']] = []
+            if node['name'] not in stats[test_env]:
+                stats[test_env][node['name']] = []
         else:
-            stats[test_env] = { node['id']: [] }
-        stats[test_env][node['id']].append({ 'ip': node['ip'], 'start_date': str(datetime.utcnow()), 
+            stats[test_env] = { node['name']: [] }
+        stats[test_env][node['name']].append({ 'ip': node['ip'], 'start_date': str(datetime.utcnow()), 
             'states': { 'last_state': '', 'last_date': None }, 'total': 0,
             'ping': False, 'ssh': False, 'init_script': False })
     close_session(db_session)
@@ -87,7 +88,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
 
 
 def state_register(dep, stats):
-    state_info = stats[dep.environment][dep.server_id][-1]['states']
+    state_info = stats[dep.environment][dep.node_name][-1]['states']
     # Remember the start of the new state
     last_state = state_info['last_state']
     last_date = state_info['last_date']
@@ -98,13 +99,13 @@ def state_register(dep, stats):
             if from_change > 600:
                 state_info[last_state] = from_change
                 logger.warning("Detected stuck deployment for the node '%s'" %
-                        stats[dep.environment][dep.server_id][-1]['ip'])
+                        stats[dep.environment][dep.node_name][-1]['ip'])
                 return True
         else:
             if from_change > 180:
                 state_info[last_state] = from_change
                 logger.warning("Detected stuck deployment for the node '%s'" %
-                        stats[dep.environment][dep.server_id][-1]['ip'])
+                        stats[dep.environment][dep.node_name][-1]['ip'])
                 return True
     if last_state != dep.state:
         logger.info("id: %d, state: %s, updated_at: %s" % (dep.id, dep.state, dep.updated_at))
@@ -120,7 +121,7 @@ def state_register(dep, stats):
     if dep.state == 'deployed' or (dep.environment == boot_test_environment and dep.state == 'env_copy'):
         start_dep = datetime.strptime(str(dep.start_date), '%Y-%m-%d %H:%M:%S')
         end_dep = datetime.strptime(str(dep.updated_at), '%Y-%m-%d %H:%M:%S')
-        stats[dep.environment][dep.server_id][-1]['total'] = (end_dep - start_dep).total_seconds()
+        stats[dep.environment][dep.node_name][-1]['total'] = (end_dep - start_dep).total_seconds()
         if dep.state != 'deployed':
             dep.state = 'deployed'
         return True
@@ -150,6 +151,9 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
     test_user_id = destroy_test_deployment()
     logger.info("Start a new deployment")
     nodes = reserve_free_nodes(test_user_id, dep_stats, nb_nodes, dep_env)
+    if len(nodes) == 0:
+        logger.error("No available node")
+        sys.exit(2)
     logger.info("Waiting the end of deployments")
     deployed_env = []
     db_session = open_session()
@@ -160,10 +164,10 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
             my_state = d.state
             if d.id not in deployed_env:
                 if state_register(d, dep_stats):
-                    logger.warning("Stop monitoring the node '%s'" % d.server_id)
+                    logger.warning("Stop monitoring the node '%s'" % d.node_name)
                     deployed_env.append(d.id)
             if d.state != my_state:
-                logger.info("The deployment state has been modified for the node '%s'" % d.server_id)
+                logger.info("The deployment state has been modified for the node '%s'" % d.node_name)
                 db_session.add(d)
         db_session.commit()
         time.sleep(2)
@@ -176,7 +180,7 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
     time.sleep(sleep_time)
     logger.info("Check the deployment of %d nodes: %s" % (len(nodes), [ n['ip'] for n in nodes] ))
     for n in nodes:
-        n_stats = dep_stats[n['env']][n['id']][-1]
+        n_stats = dep_stats[n['env']][n['name']][-1]
         if dep_env == boot_test_environment:
             if n_stats['states']['last_state'] == 'env_copy':
                 logger.info("%s: Ping connection" % n['ip'])
@@ -223,9 +227,10 @@ if __name__ == "__main__":
     file_id = datetime.utcnow().strftime("%y_%m_%d_%H_%M")
     file_stats = 'json_test/%s_stats_tests.json' % file_id
     stats_data = {}
-    #for env in [ { 'name': boot_test_environment } ]:
+    cluster_desc = get_cluster_desc()
+    for env in [ { 'name': boot_test_environment } ]:
     #for env in [ {'name': 'tiny_core'} ]:
-    for env in CLUSTER_CONFIG["environments"]:
+    #for env in cluster_desc["environments"].values():
         logger.info("Deploying the '%s' environment" % env['name'])
         testing_environment(env['name'], file_id, stats_data, 10)
     logger.info("Destroy older deployments")

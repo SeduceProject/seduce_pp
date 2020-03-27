@@ -1,0 +1,11 @@
+{
+    "type": "default",
+    "name": "tiny_core",
+    "img_name": "piCore-10.0beta12b.img.gz",
+    "img_size": 67186688,
+    "sector_start": 92160,
+    "ssh_user": "tc",
+    "shell": "sh",
+    "script_test": "echo 'riri\nfifi\nloulou' > /home/tc/picsou.txt",
+    "kernel": "4.19.13-piCore-v7"
+}

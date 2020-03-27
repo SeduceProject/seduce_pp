@@ -10,6 +10,7 @@
     </style>
 
     <div id="app" v-cloak>
+		<!-- Last update information -->
         <main role="main" class="container">
             <div class="my-3 p-3 bg-white rounded shadow-sm">
                 <h4>Last update</h4>
@@ -19,6 +20,7 @@
                 </h6>
             </div>
         </main>
+		<!-- Node selection panel -->
         <main role="main" class="container">
             <div class="my-3 p-3 bg-white rounded shadow-sm">
                 <div class="border-bottom border-gray pb-2 mb-0">
@@ -96,6 +98,7 @@
 								  <th scope="col">Environment</th>
 								  <th scope="col">SSH with Password</th>
 								  <th scope="col">SSH with ssh key</th>
+								  <th scope="col">Web Interface</th>
                                 </tr>
 							  </thead>
 							  <tbody>
@@ -113,12 +116,10 @@
 										<td v-if="[[ deployment.env ]] == 'tiny_core'">
                                             ssh -l tc -p <i>public_port</i> <i>public_ip</i>
                                         </td>
-                                    </tr>
-									<tr>
 										<td>
                                             <span v-if="[[ deployment.env ]] != 'raspbian_cloud9' &&
                                                 [[ deployment.env ]] != 'raspbian_jupyter'">
-                                                No web interface
+                                                None
                                             </span>
                                             <div v-if="[[ deployment.env ]] == 'raspbian_cloud9'" class="dropdown">
                                               <button class="btn btn-outline-dark dropdown-toggle" type="button"
@@ -158,22 +159,10 @@
                                               </div>
                                             </div>
                                         </td>
+                                    </tr>
+									<tr>
 										<td>
-                                            <div class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
-                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                Deploy again
-                                              </button>
-                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-									            <a v-for="n in deployment.server_infos"
-                                                    :href="'/server/redeploy/' + [[ n.id ]]" class="dropdown-item">
-                                                    [[ n.name ]]
-                                                </a>
-                                              </div>
-                                            </div>
-                                        </td>
-										<td>
+                                            <!-- Hard Reboot -->
                                             <div class="dropdown">
                                               <button class="btn btn-outline-dark dropdown-toggle" type="button"
                                                 id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
@@ -182,11 +171,60 @@
                                               </button>
                                               <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
 									            <a v-for="n in deployment.server_infos"
-                                                    :href="'/server/reboot/' + [[ n.id ]]" class="dropdown-item">
+                                                    :href="'/server/reboot/' + [[ n.name ]]" class="dropdown-item">
                                                     [[ n.name ]]
                                                 </a>
                                               </div>
                                             </div>
+                                        </td>
+										<td>
+                                            <!-- Deploy again -->
+                                            <div class="dropdown">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
+                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                Deploy again
+                                              </button>
+                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+									            <a v-for="n in deployment.server_infos"
+                                                    :href="'/server/redeploy/' + [[ n.name ]]" class="dropdown-item">
+                                                    [[ n.name ]]
+                                                </a>
+                                              </div>
+                                            </div>
+                                        </td>
+										<td>
+                                            <!-- Save environment -->
+                                            <div class="dropdown">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
+                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                Save environment
+                                              </button>
+                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+									            <a v-for="n in deployment.server_infos"
+                                                    :href="'/server/save_env/' + [[ n.name ]]" class="dropdown-item">
+                                                    [[ n.name ]]
+                                                </a>
+                                              </div>
+                                            </div>
+                                        </td>
+										<td>
+                                            <!-- Nice feature
+                                            <div class="dropdown">
+                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
+                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                aria-expanded="false">
+                                                Nice feature
+                                              </button>
+                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+									            <a v-for="n in deployment.server_infos"
+                                                    :href="'/server/redeploy/' + [[ n.name ]]" class="dropdown-item">
+                                                    [[ n.name ]]
+                                                </a>
+                                              </div>
+                                            </div>
+                                            -->
                                         </td>
                                     </tr>
                               </tbody>
@@ -246,6 +284,7 @@
         </main>
     </div>
     <script src="{{ url_for("static", filename="js/vue") }}"></script>
+    <script src="{{ url_for("static", filename="js/jquery-3.3.1.js") }}"></script>
     <script>
         function selectNode(node) {
             var nodeHTML = node.children[0].children[2].children[0]

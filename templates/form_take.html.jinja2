@@ -28,60 +28,54 @@
         <form action="{{ url_for("app.process_take") }}" method="post">
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="firstName">Duration (hour)</label>
-                <input type="text" class="form-control" id="duration" name="duration" placeholder="" value="1" required>
-                <div class="invalid-feedback">
-                  Valid duration is required.
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label for="lastName">Last name</label>
+                <label>Environment</label>
                 <select class="custom-select d-block w-100" id="environment" name="environment" required>
                     {% for environment in environments %}
                     <option value="{{ environment.name }}">{{ environment.name }}</option>
                     {% endfor %}
                 </select>
-                <div class="invalid-feedback">
-                  Valid environment is required.
-                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label>Additional free space</label>
+                <select id="more_space" name="more_space" class="custom-select d-block w-100">
+                    <option value="8">Whole SD_CARD</option>
+                    <option value="3072">3 Gigabytes</option>
+                    <option value="2048">2 Gigabytes</option>
+                    <option value="1024">1 Gigabytes</option>
+                    <option value="500">500 Megabytes</option>
+                    <option value="200">200 Megabytes</option>
+                </select>
               </div>
             </div>
             <div class="row">
-              <div class="col-md-12 mb-3">
-                <label for="firstName">Name</label>
+              <div class="col-md-6 mb-3">
+                <label>Name</label>
                 <input class="form-control" id="name" name="name" type="text" required></input>
-                <div class="invalid-feedback">
-                  The name is required to identify your deployment.
-                </div>
               </div>
-            </div>
-            <div class="row">
-              <div class="col-md-12 mb-3">
-                <label for="c9password">System password
-                </label>
+              <div class="col-md-6 mb-3">
+                <label>System password</label>
                 <input class="form-control" id="sys_pwd" name="sys_pwd" type="text"></input>
-                <div class="invalid-feedback">
-                  The C9 password is used to secure the access to your node.
-                </div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-12 mb-3">
-                <label for="firstName">SSH Public key</label>
+                <label class="mr-2">Duration (hours):</label><input id="duration_text" name="duration_text"
+                type="number" min="1" max="72" value="2" size="4" onchange="setSlider(this.value)" />
+                <input type="range" id="duration" min="1" max="72" value="2" class="form-control slider_input"
+                onchange="displayValue(this.value)" oninput="displayValue(this.value)" required>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label>SSH Public key</label>
                 <textarea class="form-control" rows="5" id="public_key" name="public_key"></textarea>
-                <div class="invalid-feedback">
-                  A valid public key is required.
-                </div>
               </div>
             </div>
             <div class="row">
               <div class="col-md-12 mb-3">
-                <label for="init_script">Init script</label>
+                <label>Init script</label>
                 <textarea class="form-control" rows="5" id="init_script" class="shell_code"
                     name="init_script"></textarea>
-                <div class="invalid-feedback">
-                  A valid init script is required.
-                </div>
               </div>
             </div>
             <div class="row">
@@ -100,6 +94,16 @@
     lineNumbers: true,
     matchBrackets: true
   });
+  // Slider helpers
+  var duration_slider = document.getElementById('duration');
+  function displayValue(val) {
+    var durationInput = document.getElementById('duration_text');
+    durationInput.value = val;
+  }
+  function setSlider(val) {
+    var durationSlider = document.getElementById('duration');
+    durationSlider.value = val;
+  }
 </script>
 
 {% endblock %}

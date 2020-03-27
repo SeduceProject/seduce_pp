@@ -12,9 +12,11 @@ progress = {
         'deployment': [
             [ 'nfs_boot_conf', 'nfs_boot_off', 'nfs_boot_on', 'env_copy', 'env_check', 'delete_partition',
                 'create_partition', 'mount_partition', 'resize_partition', 'wait_resizing', 'system_conf', 'user_conf',
-                'last_check', 'deployed' ],
+                'user_script', 'deployed' ],
+            [ 'img_create_part', 'img_format_part', 'img_copy', 'img_copy_check', 'img_customize', 'img_compress',
+                'img_compress_check', 'img_upload', 'upload_check', 'deployed' ],
             [ 'destroy_request', 'destroying', 'destroyed' ],
-            [ 'off_requested', 'on_requested', 'reboot_check' ]
+            [ 'off_requested', 'on_requested', 'rebooting' ]
         ]
     }
 
@@ -51,8 +53,8 @@ def progress_state(state_key, state):
 
 
 def progress_forward(db_obj):
-    if db_obj.state == 'reboot_check':
-        db_obj.state = db_obj.label
+    if db_obj.state == 'rebooting':
+        db_obj.state = db_obj.temp_info
     else:
         db_obj.state = progress_state(type(db_obj).__name__.lower(), db_obj.state)
 

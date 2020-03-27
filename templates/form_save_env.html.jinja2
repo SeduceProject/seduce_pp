@@ -1,0 +1,73 @@
+{% extends "layout.html.jinja2" %}
+
+{% block css %}
+<script src="{{ url_for("static", filename="js/jquery-3.4.1.slim.min.js") }}"></script>
+<script src="{{ url_for("static", filename="js/codemirror.js") }}"></script>
+<link rel="stylesheet" href="{{ url_for("static", filename="css/codemirror.css") }}">
+<script src="{{ url_for("static", filename="js/shell.js") }}"></script>
+
+<style>
+.CodeMirror {
+    border: 1px solid #ced4da;
+    border-radius: .25rem;
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+    <main role="main" class="container">
+      <div class="my-3 p-3 bg-white rounded shadow-sm">
+        <h5>Please provide the following information to build your own environment:</h5>
+        <br/>
+        <form action="{{ url_for("app.build_env") }}" method="post">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <h6>Original environment</h6>
+                <div class="border p-2 pl-3 text-secondary">{{ environment }}</div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <h6>Used node</h6>
+                <div class="border p-2 pl-3 text-secondary">{{ node_name }}</div>
+                <input type="hidden" id="node_name" name="node_name" value="{{ node_name }}" />
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label>Name of your environment</label>
+                <input class="form-control" id="user_env_name" name="user_env_name" type="text" required />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label>SSH User</label>
+                <input class="form-control" id="user_ssh_user" name="user_ssh_user" type="text" />
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <input class="btn btn-primary float-right" type="submit" value="Deploy">
+                <a class="btn btn-danger float-right mr-2" href="/">Cancel</a>
+              </div>
+            </div>
+        </form>
+      </div>
+    </main>
+
+    <script>
+  var editor = CodeMirror.fromTextArea(document.getElementById('init_script'), {
+    mode: 'shell',
+    lineNumbers: true,
+    matchBrackets: true
+  });
+  // Slider helpers
+  var duration_slider = document.getElementById('duration');
+  function displayValue(val) {
+    var durationInput = document.getElementById('duration_text');
+    durationInput.value = val;
+  }
+  function setSlider(val) {
+    var durationSlider = document.getElementById('duration');
+    durationSlider.value = val;
+  }
+</script>
+
+{% endblock %}

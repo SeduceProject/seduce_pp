@@ -1,0 +1,11 @@
+{
+    "type": "default",
+    "name": "raspbian_cloud9",
+    "img_name": "2019-09-19-raspbian-cloud9.img.gz",
+    "img_size": 2277507072,
+    "sector_start": 106496,
+    "ssh_user": "root",
+    "shell": "bash",
+    "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
+    "kernel": "4.19.66-v7+"
+}

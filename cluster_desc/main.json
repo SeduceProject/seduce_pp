@@ -1,0 +1,14 @@
+{
+    "controller": {
+        "ip": "192.168.1.62",
+        "user": "root"
+    },
+    "switch": {
+        "address": "192.168.1.23",
+        "username": "admin",
+        "password": "seduce"
+    },
+    "comments": "WARNING: Do NOT forget the ending /",
+    "env_cfg_dir": "/root/seduce_pp/cluster_desc/environments/",
+    "img_dir": "/root/environments/"
+}

@@ -2,7 +2,7 @@ from database.connector import open_session, close_session
 from database.tables import User, Deployment
 from flask import Blueprint
 from flask_login import current_user
-from lib.config.cluster_config import CLUSTER_CONFIG
+from lib.config.config_loader import get_cluster_desc
 import flask, flask_login, json, logging, uuid
 
 
@@ -26,7 +26,7 @@ def authorized():
 def deployment(deployment_id):
     session = open_session()
     deployment = session.query(Deployment).query.filter_by(id=deployment_id).first()
-    dep_info = { "id": deployment.id, "state": deployment.state, "label": deployment.label }
+    dep_info = { "id": deployment.id, "state": deployment.state, "info": deployment.temp_info }
     close_session(session)
     if not deployment:
         return json.dumps({
@@ -37,7 +37,7 @@ def deployment(deployment_id):
         "deployment": {
             "id": deployment.id,
             "state": deployment.state,
-            "label": deployment.label
+            "info": deployment.temp_info
         }
     })
 
@@ -45,6 +45,7 @@ def deployment(deployment_id):
 @webappapp_api_blueprint.route("/api/deployments")
 @flask_login.login_required
 def user_deployments():
+    cluster_desc = get_cluster_desc()
     user = current_user
     misc = {}
     session = open_session()
@@ -57,8 +58,8 @@ def user_deployments():
             deployment_info[d.name] = {"name": d.name, "env": d.environment, "state": d.state, "user_id": d.user_id,
                     "ids": [], "server_names": [], "server_infos": [] }
         deployment_info[d.name]["ids"].append(d.id)
-        for s in CLUSTER_CONFIG["nodes"]:
-            if s["id"] == d.server_id:
+        for s in cluster_desc["nodes"].values():
+            if s["name"] == d.node_name:
                 deployment_info[d.name]["server_infos"].append({ "name": s["name"], "id": s["id"],
                     "state": d.state, "ip": s["ip"], "model": s["model"], "public_ip": s["public_ip"],
                     "public_port": s["public_port"], "password": d.system_pwd })
@@ -94,30 +95,31 @@ def user_info():
 @webappapp_api_blueprint.route("/api/servers/available_servers")
 @flask_login.login_required
 def available_servers():
+    cluster_desc = get_cluster_desc()
     session = open_session()
     db_user = session.query(User).filter(User.email == current_user.id).first()
     not_destroyed_deployments = session.query(Deployment).filter(Deployment.state != "destroyed").all()
     server_info = {}
-    for s in CLUSTER_CONFIG["nodes"]:
-        server_info[s["id"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"], "state": "free"}
+    for s in cluster_desc["nodes"].values():
+        server_info[s["name"]] = {"id": s["id"], "name": s["name"], "ip": s["ip"], "state": "free"}
     id2email = {}
     for d in not_destroyed_deployments:
         if d.user_id == db_user.id:
-            server_info[d.server_id]["state"] = d.state
-            server_info[d.server_id]["dname"] = d.name
-            server_info[d.server_id]["env"] = d.environment
-            if d.state == 'env_check':
-                server_info[d.server_id]["progress"] = d.label
+            server_info[d.node_name]["state"] = d.state
+            server_info[d.node_name]["dname"] = d.name
+            server_info[d.node_name]["env"] = d.environment
+            if d.state.endswith('_check'):
+                server_info[d.node_name]["progress"] = d.temp_info
             else:
-                server_info[d.server_id]["progress"] = 100
+                server_info[d.node_name]["progress"] = 100
         else:
-            server_info[d.server_id]["state"] = "in_use"
-            server_info[d.server_id]["progress"] = 100
+            server_info[d.node_name]["state"] = "in_use"
+            server_info[d.node_name]["progress"] = 100
             if d.user_id not in id2email.keys():
                 foreign = session.query(User).filter(User.id == d.user_id).first()
                 id2email[foreign.id] = foreign.email
-            server_info[d.server_id]["dname"] = d.name
-            server_info[d.server_id]["email"] = id2email[d.user_id]
+            server_info[d.node_name]["dname"] = d.name
+            server_info[d.node_name]["email"] = id2email[d.user_id]
     close_session(session)
     if not deployment:
         return json.dumps({

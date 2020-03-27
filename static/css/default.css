@@ -4,7 +4,6 @@
 
 .server-container {
     width: 100%;
-    height: 700px;
     overflow: auto;
     margin-top: 5px;
 }
@@ -89,6 +88,7 @@
     background-color: #ff7d7d;
 }
 
+/* Deploying nodes */
 .nfs_boot_conf {
     background-color: #E97DFF;
 }
@@ -137,7 +137,7 @@
     background-color: #9ADCAA;
 }
 
-.last_check {
+.user_script {
     background-color: #93E5A2;
 }
 
@@ -145,6 +145,7 @@
     background-color: #7DFF8B;
 }
 
+/* Rebooting nodes */
 .off_requested {
     background-color: #ffe496;
 }
@@ -153,10 +154,11 @@
     background-color: #fffd96;
 }
 
-.reboot_check {
+.rebooting {
     background-color: #e6ff96;
 }
 
+/* Destroying nodes */
 .destroy_request {
     background-color: #fd7dff;
 }
@@ -168,4 +170,80 @@
 .destroyed {
     background-color: #b67dff;
 }
+
+/* Save environments */
+.img_create_part {
+    background-color: #ffff99;
+}
+
+.img_format_part {
+    background-color: #f2ff98;
+}
+
+.img_copy {
+    background-color: #e5ff96;
+}
+
+.img_copy_check {
+    background-color: #d8ff95;
+}
+
+.img_customize {
+    background-color: #cbff93;
+}
+
+.img_compress {
+    background-color: #cbff93;
+}
+
+.img_compress_check {
+    background-color: #beff92;
+}
+
+.img_upload {
+    background-color: #b1ff91;
+}
+
+.upload_check {
+    background-color: #a4ff8f;
+}
+
 /* End of state colors */
+
+.slider_input {
+    height: 10px;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  border: 1px solid #000000;
+  height: 36px;
+  width: 16px;
+  border-radius: 3px;
+  background: #ffffff;
+  cursor: pointer;
+  margin-top: -14px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d; /* Add cool effects to your sliders! */
+}
+
+/* All the same stuff for Firefox */
+input[type=range]::-moz-range-thumb {
+  box-shadow: 1px 1px 1px #333333, 0px 0px 1px #444444;
+  border: 1px solid #000000;
+  height: 16px;
+  width: 10px;
+  border-radius: 3px;
+  background: #FAFAFA;
+  cursor: pointer;
+}
+
+/* All the same stuff for IE */
+input[type=range]::-ms-thumb {
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+  border: 1px solid #000000;
+  height: 36px;
+  width: 16px;
+  border-radius: 3px;
+  background: #ffffff;
+  cursor: pointer;
+}
