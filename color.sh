@@ -1,15 +1,16 @@
 #!/bin/bash
 
+#ffff99
 # e97dff
-R_FROM=0xe9
-G_FROM=0x7d
-B_FROM=0xff
+R_FROM=0xff
+G_FROM=0xff
+B_FROM=0x99
 # 7dff8b
 R_TO=0x7d
 G_TO=0xff
 B_TO=0x8b
 
-NB_COLOR=22
+NB_COLOR=9
 HTML_PAGE="color.html"
 
 # Convert to decimal
@@ -31,7 +32,7 @@ echo "  <body>" >> $HTML_PAGE
 echo "Copy/paste the following color codes:"
 #echo $r_step $g_step $b_step
 #echo $r_from $g_from $b_from
-color_from=$(printf "%X%X%X" $r_from $g_from $b_from)
+color_from=$(printf "%x%x%x" $r_from $g_from $b_from)
 echo $color_from
 
 for i in $(seq 1 $(( $NB_COLOR - 2)) ); do
@@ -41,13 +42,13 @@ for i in $(seq 1 $(( $NB_COLOR - 2)) ); do
   g_new=$(printf "%.0f" $g_new)
   b_new=$(bc <<< "$b_from + $i * $b_step")
   b_new=$(printf "%.0f" $b_new)
-  color_new=$(printf "%X%X%X" $r_new $g_new $b_new)
+  color_new=$(printf "%x%x%x" $r_new $g_new $b_new)
   echo $color_new
   echo "<div style='width: 60px; height: 60px;background-color:$color_new;float: left;'></div>" >> $HTML_PAGE
 done
 
 #echo $r_to $g_to $b_to
-color_to=$(printf "%X%X%X" $r_to $g_to $b_to)
+color_to=$(printf "%x%x%x" $r_to $g_to $b_to)
 echo $color_to
 
 # Write the html page
