@@ -7,7 +7,7 @@ import datetime, flask, flask_login, initialization, logging, logging.config, da
 
 
 def logging_config():
-    logging.config.fileConfig('logging-frontend.conf', disable_existing_loggers=1)
+    logging.config.fileConfig('logging-pifrontend.conf', disable_existing_loggers=1)
 
 
 @login_manager.user_loader

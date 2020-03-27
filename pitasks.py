@@ -5,7 +5,7 @@ import logging, logging.config, os, time
 
 
 def logging_config():
-    logging.config.fileConfig('logging-tasks.conf', disable_existing_loggers=1)
+    logging.config.fileConfig('logging-pitasks.conf', disable_existing_loggers=1)
     logging.getLogger("paramiko").setLevel(logging.CRITICAL)
 
 
