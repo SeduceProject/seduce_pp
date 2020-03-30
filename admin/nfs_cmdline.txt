@@ -1,1 +1,0 @@
-nfsroot=192.168.122.236:/nfs/raspi1,udp,v3 rw ip=dhcp root=/dev/nfs rootwait console=tty1 console=ttyAMA0,115200

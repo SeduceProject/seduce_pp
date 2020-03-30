@@ -8,14 +8,15 @@ NEW_STATE="created"
 echo "Name of the node:"
 echo -n "!! "
 read NAME
-id=$(grep -A 2 $NAME /home/pipi/seduce_pp/lib/config/cluster_config.py | grep id | sed 's/.*"\(.*\)",$/\1/')
-STATE=$(mysql -u$USER -p$PWD $DB_NAME -Ne "SELECT state FROM deployment WHERE state != 'destroyed' AND server_id = '$id';")
-echo "New state (current=$STATE):"
+STATE=$(mysql -u$USER -p$PWD $DB_NAME -Ne \
+    "SELECT state FROM deployment WHERE state != 'destroyed' AND node_name = '$NAME';")
+if [ -z "$STATE" ]; then
+    echo "No node '$NAME' in current deployments!"
+    exit 2
+fi
+echo "New state for the node '$NAME' (current=$STATE):"
 echo -n "!! "
 read NEW_STATE
 
-echo $id
-if [ ! -z "$id" ]; then
-  mysql -u$USER -p$PWD $DB_NAME -e "UPDATE deployment SET state='$NEW_STATE' WHERE state != 'destroyed' AND server_id = '$id';"
-fi
-
+mysql -u$USER -p$PWD $DB_NAME -e \
+    "UPDATE deployment SET state='$NEW_STATE' WHERE state != 'destroyed' AND node_name = '$NAME';"
