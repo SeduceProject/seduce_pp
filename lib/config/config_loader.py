@@ -1,5 +1,5 @@
 from glob import glob
-import configparser, json, logging, os
+import configparser, json, logging, os, re
 
 
 CONFIG_FILES_PATH = ["/etc/seducepp.conf", "seducepp.conf", "conf/seducepp/seducepp.conf"]
@@ -31,7 +31,8 @@ def load_config():
             with open(config_file_path, 'r') as config_file:
                 CONFIG_SINGLETON = config_file_to_dict(config_file_path)
                 return CONFIG_SINGLETON
-    raise LookupError("No configuration file found, please create a configuration file in one of these locations: %s" % (CONFIG_FILES_PATH))
+    raise LookupError("No configuration file found, please create a configuration file in one of these locations: %s"
+            % (CONFIG_FILES_PATH))
 
 
 def get_cluster_desc():
@@ -40,8 +41,11 @@ def get_cluster_desc():
     else:
         return CLUSTER_DESC
 
-
 # Load the cluster information
+def extract_number(node_name):
+    return int(node_name.split('-')[1])
+
+
 def load_cluster_desc():
     logger = logging.getLogger("CONFIG_LOADER")
     global CLUSTER_DESC
@@ -50,7 +54,7 @@ def load_cluster_desc():
         CLUSTER_DESC = json.load(json_file)
     CLUSTER_DESC['nodes'] = {}
     CLUSTER_DESC['environments'] = {}
-    for node_json in sorted(glob('cluster_desc/nodes/*.json')):
+    for node_json in sorted(glob('cluster_desc/nodes/*.json'), key = lambda x: int(re.findall('\d+', x)[0])):
         with open(node_json, 'r') as json_file:
             node_desc = json.load(json_file)
         CLUSTER_DESC['nodes'][node_desc['name']] = node_desc

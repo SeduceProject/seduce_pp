@@ -1,0 +1,9 @@
+{
+    "name": "node-5",
+    "id": "091a30c2",
+    "port_number": 5,
+    "ip": "192.168.1.55",
+    "model": "RPI3B+",
+    "public_ip": "pi5.seduce.fr",
+    "public_port": "22005"
+}

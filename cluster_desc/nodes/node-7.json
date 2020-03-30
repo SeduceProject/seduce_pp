@@ -1,0 +1,9 @@
+{
+    "name": "node-7",
+    "id": "2ebf44b1",
+    "port_number": 7,
+    "ip": "192.168.1.57",
+    "model": "RPI3B+",
+    "public_ip": "pi7.seduce.fr",
+    "public_port": "22007"
+}
