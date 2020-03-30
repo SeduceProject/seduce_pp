@@ -1,100 +1,96 @@
-## Installation de PiSeduce dans une VM
-* Linux Ubuntu Server 18.04.3 amd64
-
-### Installation des paquets
+#### Installation guide of the PiMaster
+### From 2020-02-13-raspbian-buster-lite.img
+* Update the system of the PiMaster
 ```
-sudo apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
-sudo add-apt-repository "deb [arch=amd64,arm64,ppc64el] http://mariadb.mirror.liquidtelecom.com/repo/10.4/ubuntu $(lsb_release -cs) main"
-sudo apt update
-
-sudo apt install dnsmasq mariadb-client mariadb-server nfs-kernel-server python3-mysqldb python3-pip redis-server snmp
+apt update && apt -y dist-upgrade
+apt install pv vim
 ```
 
-### SSH configuration
-* Create the SSH key: `ssh-keygen`
+### Prepare NFS boot filesystem
+* Create the filesystem from the an existing Raspberry Pi system
+```
+mkdir -p /nfs/raspi
+rsync -xa --progress --exclude /nfs / /nfs/raspi
+cat /root/.ssh/id_rsa.pub > /nfs/raspi/root/.ssh/authorized_keys
+cd /nfs/raspi
+mount --bind /dev dev
+mount --bind /sys sys
+mount --bind /proc proc
+chroot .
+echo '' > /etc/fstab
+rm /etc/ssh/ssh_host_*
+dpkg-reconfigure openssh-server
+ssh-keygen
+mkdir /root/boot_dir /root/fs_dir
+echo 'nfspi' > /etc/hostname
+exit
+cat /nfs/raspi/root/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+umount dev sys proc
+```
 
-### NFS server
-* Create the shared directory
+### Configure the PiMaster as the network gateway
+* Enable IP forwarding
 ```
-sudo mkdir -p /nfs/raspi1
-sudo chown nobody:nogroup /nfs/
-sudo chmod -R 777 /nfs/
-```
-* Upload the raspberry boot system to the shared directory from an existing server
-```
-rsync -av /nfs/raspi1/ pipi@192.168.122.236:/nfs/
-```
-* Add the SSH key of the nfs server to the rasberry environment
-  * Edit /nfs/raspi1/root/.ssh/authorized_keys
-* Append to /etc/exports: `/nfs *(rw,sync,no_subtree_check,no_root_squash)`
-* Export the directory
-```
-sudo exportfs -a
-sudo systemctl restart nfs-kernel-server
+echo 'net.ipv4.ip_forward=1' > /etc/sysctl.conf
+sysctl -p /etc/sysctl.conf
 ```
 
-### DHCP Server on the hypervisor
-* Edit /etc/dnsmasq.conf
+### Install the software stack
 ```
-listen-address=192.168.1.25
+apt install dnsmasq git libffi-dev mariadb-client mariadb-server nfs-kernel-server python3-mysqldb python3-pip snmp
+```
+
+### Prepare PXE boot
+* Create the TFTP directory: `mkdir /tftpboot`
+* Extract the rpiboot files: `tar xf tftpboot_init.tar.gz`
+* Copy the files to the tftpboot folder
+```
+cp -r tftpboot_init/* /tftpboot/
+```
+* Edit `/tftpboot/rpiboot_uboot/cmdline.txt` to configure the NFS boot:
+```
+nfsroot=192.168.1.62:/nfs/raspi,udp,v3 rw ip=dhcp root=/dev/nfs rootwait console=tty1 console=ttyAMA0,115200
+```
+
+### Write the new hostname
+* `echo 'pimaster' > /etc/hostname`
+
+### Configure the NFS server
+* /etc/exports: `/nfs *(rw,sync,no_subtree_check,no_root_squash)`
+```
+exportfs -a
+service nfs-kernel-server restart
+showmount -e
+```
+
+### Configure dnsmasq
+* /etc/dnsmasq.conf
+```
+listen-address=192.168.1.62
+interface=eth0
+bind-interfaces
+log-dhcp
+enable-tftp
+dhcp-boot=/bootcode.bin
+tftp-root=/tftpboot
+pxe-service=0,"Raspberry Pi Boot"
+tftp-no-blocksize
+no-hosts
 
 dhcp-range=192.168.1.0,static,255.255.255.0
 dhcp-option=23,64
 
-dhcp-host=B8:27:EB:76:30:6B,raspi1,192.168.1.51
-dhcp-host=B8:27:EB:1f:11:f3,raspi2,192.168.1.52
-dhcp-host=B8:27:EB:20:85:b9,raspi3,192.168.1.53
-dhcp-host=b8:27:eb:b9:70:4c,raspi4,192.168.1.54
-dhcp-host=b8:27:eb:1a:30:c2,raspi5,192.168.1.55
-dhcp-host=b8:27:eb:e8:62:9c,raspi6,192.168.1.56
-dhcp-host=b8:27:eb:bf:44:b1,raspi7,192.168.1.57
-dhcp-host=b8:27:eb:ff:05:a5,raspi8,192.168.1.58
-dhcp-host=b8:27:eb:a8:f8:3c,raspi9,192.168.1.59
-dhcp-host=b8:27:eb:8f:a6:a1,raspi10,192.168.1.60
-dhcp-host=b8:27:eb:7c:64:be,raspi11,192.168.1.61
-dhcp-host=b8:27:eb:60:32:5b,raspi12,192.168.1.62
-dhcp-host=b8:27:eb:5c:fc:3a,raspi13,192.168.1.63
-dhcp-host=b8:27:eb:1c:5d:6c,raspi14,192.168.1.64
-dhcp-host=b8:27:eb:95:d2:ae,raspi15,192.168.1.65
-dhcp-host=b8:27:eb:ae:26:43,raspi16,192.168.1.66
-dhcp-host=b8:27:eb:41:d6:5c,raspi17,192.168.1.67
-dhcp-host=b8:27:eb:5a:94:f5,raspi18,192.168.1.68
-dhcp-host=b8:27:eb:75:9e:2c,raspi19,192.168.1.69
-dhcp-host=b8:27:eb:7a:80:80,raspi20,192.168.1.70
-dhcp-host=b8:27:eb:96:c4:98,raspi21,192.168.1.71
-dhcp-host=b8:27:eb:1c:4a:a6,raspi22,192.168.1.72
-dhcp-host=b8:27:eb:d1:93:93,raspi23,192.168.1.73
-dhcp-host=b8:27:eb:10:86:c5,raspi24,192.168.1.74
-
-dhcp-ignore=tag:!known
-interface=enp94s0f0
-bind-interfaces
-
-log-dhcp
-dhcp-boot=/bootcode.bin,192.168.122.236,192.168.122.236
+dhcp-host=b8:27:eb:b9:70:4c,raspi4,192.168.1.124
+dhcp-host=b8:27:eb:1a:30:c2,raspi5,192.168.1.125
 ```
-* Restart the service: `service dnsmasq restart`
 
-### tftp server from dnsmasq
-* Edit /etc/dnsmasq.conf
+### Configure the database
+* Configure the root access
 ```
-listen-address=192.168.122.236
-interface=ens3
-bind-interfaces
-log-dhcp
-enable-tftp
-tftp-root=/tftpboot
-pxe-service=0,"Raspberry Pi Boot"
-tftp-no-blocksize
+mysql_secure_installation
+mysql -u root -p
 ```
-* Restart the service: `sudo service dnsmasq restart`
-
-### Python requirements
-* pip3 install -r requirements.txt
-* pip3 install supervisor celery[redis]
-
-### DB configuration
-* mysql -u root -p
+* Configure the user access
 ```
 CREATE DATABASE piseduce;
 CREATE USER 'pipi'@'localhost' IDENTIFIED BY 'totopwd';
@@ -103,187 +99,44 @@ GRANT USAGE ON *.* TO 'pipi'@'%' IDENTIFIED BY 'totopwd';
 GRANT ALL PRIVILEGES ON piseduce.* TO 'pipi'@'localhost';
 ```
 
-### Redis configuration
-* Edit /etc/redis/redis.conf and set the supervised field to `supervised systemd`
-* Restart redis: `sudo systemctl restart redis`
+### Configure seduce_pp
+* Clone the repository: `git clone https://github.com/remyimt/seduce_pp`
+* Download the environment images to /root/environements/
+* Edit lib/config/cluster_config.py
 
-### seduce_pp configuration
-* Create the configuration file seducepp.conf
+### Create the systemD services
+* Configure the user in both `admin/tasks.service` and `admin/frontend.service`
+* Copy the service files
 ```
-mkdir -p  seduce_pp/conf/seducepp
-touch seduce_pp/conf/seducepp/seducepp.conf
-```
-* Edit the file seducepp.conf
-```
-[frontend]
-listen = 0.0.0.0
-port = 8081
-public_address = pi.seduce.fr
-
-[api]
-listen = 0.0.0.0
-port = 5000
-public_address = api.seduce.fr
-
-[mail]
-smtp_address = smtp.gmail.com
-smtp_port = 587
-account = toto@gmail.com
-password = totopwd
-
-[admin]
-user = toto@gmail.com
-password = totopwd
-firstname = Super
-lastname = Admin
-url_picture = /static/assets/faces/superman.png
-
-[influx]
-address = 127.0.0.1
-port = 8086
-user = root
-password = root
-db = pidiou
-
-[bot]
-token = tototoken
-
-[redis]
-address = 127.0.0.1
-port = 6379
-
-[db]
-connection_url=mysql://pipi:piseduce@localhost/piseduce
-
-[captcha]
-site_key=totokey
-secret_key=totokey
-```
-* Configure the controller to deploy environments on raspberry
-  * Edit lib/config/cluster_config.py
-  * Set the controller IP with your IP: `"ip": "192.168.122.236"`
-  * Set the controller SSH key
-  * Set the controller SSH user
-* Add the SSH key of the raspberry from the NFS filesystem to your 
-  * sudo cat /nfs/raspi1/root/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-
-### Process Control System: supervisord
-* Create the configuration file in /etc/supervisord.conf
-```
-[unix_http_server]
-file=/tmp/supervisor.sock   ; the path to the socket file
-
-[supervisord]
-logfile=/tmp/supervisord.log ; main log file; default $CWD/supervisord.log
-logfile_maxbytes=50MB        ; max main logfile bytes b4 rotation; default 50MB
-logfile_backups=10           ; # of main logfile backups; 0 means none, default 10
-loglevel=info                ; log level; default info; others: debug,warn,trace
-pidfile=/tmp/supervisord.pid ; supervisord pidfile; default supervisord.pid
-nodaemon=false               ; start in foreground if true; default false
-minfds=1024                  ; min. avail startup file descriptors; default 1024
-minprocs=200                 ; min. avail process descriptors;default 200
-
-[rpcinterface:supervisor]
-supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
-[supervisorctl]
-serverurl=unix:///tmp/supervisor.sock ; use a unix:// URL  for a unix socket
-
-[program:frontend]
-user=pipi
-command=python3 app.py
-directory=/home/pipi/seduce_pp
-stdout_logfile=/tmp/frontend.log
-stderr_logfile=/tmp/frontend_err.log
-
-[program:tasks]
-user=pipi
-command=python3 celery_tasks.py
-directory=/home/pipi/seduce_pp
-stdout_logfile=/tmp/tasks.log
-stderr_logfile=/tmp/tasks_err.log
-```
-* Start the daemon: `supervisord`
-* Control servives supervisorctl:
-  * `supervisorctl status`
-  * `supervisorctl update`
-  * `supervisorctl restart tasks`
-
-* Start supervisord at startup
-```
-sudo vim /etc/rc.local
-sudo -i -u pipi supervisord
-sudo chmod +x /etc/rc.local
+cp admin/*.service /etc/systemd/system/
+systemctl enable pitasks.service
+systemctl enable pifrontend.service
+service pifrontend start
+service pitasks start
 ```
 
-### Create a pi user
-* Connect to the web interface (localhost:9010, check the last line in app.py)
-* Confirm the user from the command: 
+### Create the tiny core user data
+* Get a tiny_core running node:
+    - deploy the tiny_core environment on a raspberry Pi
+    - wait for the node enters in the 'user_conf' state
+    - connect to the node with the user 'tc' and the default password 'piCore'
+* Copy the public SSH key of the pimaster to `/home/tc/.ssh/authorized_keys`
+* Backup tinycore environment with the pimaster SSH key: `filetool.sh -b`
+* Copy the backup to the pimaster. From the pimaster, execute:
 ```
-mysql -upipi -p piseduce -e "UPDATE user SET email_confirmed=1, state='confirmed' WHERE email='remy.pottier@imt-atlantique.fr'"
-```
-
-### Create the NFS directory to boot Raspberry Pi (FAILED)
-* Deploy a Raspberry Pi
-* Create the filesystem archive
-```
-apt update && apt -y dist-upgrade && apt -y autoremove && apt autoclean && apt install rsync
-dphys-swapfile swapoff
-dphys-swapfile uninstall
-update-rc.d dphys-swapfile remove
-mkdir -p /nfs/client1
-apt-get install -y rsync
-rsync -xa --progress --exclude /nfs / /nfs/client1
-cd /nfs/client1
-mount --bind /dev dev
-mount --bind /sys sys
-mount --bind /proc proc
-chroot .
-rm /etc/ssh/ssh_host_*
-exit
-umount dev
-umount sys
-umount proc
-rm /nfs/client1/var/swap
-tar -cpf /nfs.tar /nfs
-```
-* Uncompress tar in the NFS server with `tar --same-owner -xvf nfs.tar`
-* Try to fix the NFS boot by changing permissions
-```
-chmod 755 -R /nfs/raspi1/
-cd /nfs/raspi1
-chmod 700 root/
-cd .ssh
-chmod 644 *
-chmod 600 ssh_host_dsa_key ssh_host_ecdsa_key ssh_host_ed25519_key ssh_host_rsa_key
-chmod ... /etc/ssh
+scp tc@192.168.1.203:/mnt/mmcblk0p2/tce/mydata.tgz /nfs/raspi/
 ```
 
-## Setting a development environment
-* Clone the directory
-* Create a new database `piseduce_new`
-* Copy the configuration file and edit it
-  * change mail account for both the [mail] and the [admin] sections
-  * change the url of the [db] section to connect to the new database
-* Change the port of the frontend api
-  * edit the app.py file
-* Start the frontend `python3 app.py`
-* Import the user database
-  * `mysqldump -upipi -ptoto piseduce user > user.sql`
-  * `mysql -upipi -ptoto piseduce_new < user.sql`
-* Start the tasks `python3 celery_tasks.py`
-* Reserve the nodes from the main frontend and use them to test your new feature
-
-## Configure tasks as a init.d service
-* Documentation: http://manpages.ubuntu.com/manpages/cosmic/man5/systemd.service.5.html
+### Delete bootcode.bin of system images
 ```
-sudo cp admin/tasks.service /etc/systemd/system/
-sudo systemctl enable tasks.service
-sudo service tasks start
-# After editing tasks.service, reload the tasks service
-sudo systemctl daemon-reload
-```
-* Restart the service without password
-```
-sudo visudo
-pipi ALL= NOPASSWD: /bin/systemctl restart frontend
+# Get the first loop device available
+sudo losetup -f
+# Mount the image file
+sudo losetup -P /dev/loop3 2019-09-26-raspbian-buster-lite.img
+sudo mount /dev/loop3p1 mount_dir/
+# Delete the bootcode.bin
+sudo rm mount_dir/bootcode.bin
+# Free the loop device
+sudo umount mount_dir
+sudo losetup -d /dev/loop3
 ```
