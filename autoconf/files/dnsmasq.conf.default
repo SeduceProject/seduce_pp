@@ -1,0 +1,12 @@
+listen-address=PIMASTERIP
+interface=eth0
+bind-interfaces
+log-dhcp
+enable-tftp
+dhcp-boot=/bootcode.bin
+tftp-root=/tftpboot
+pxe-service=0,"Raspberry Pi Boot"
+tftp-no-blocksize
+no-hosts
+dhcp-option=23,64
+

@@ -197,7 +197,7 @@ def delete_partition_fct(deployment, cluster_desc, db_session, logger):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(server.get("ip"), username="root", timeout=1.0)
         # Register the size of the existing partition
-        cmd = "fdisk -l /dev/mmcblk0"
+        cmd = "rm progress-%s.txt; fdisk -l /dev/mmcblk0" % server['name']
         (stdin, stdout, stderr) = ssh.exec_command(cmd)
         return_code = stdout.channel.recv_exit_status()
         output = stdout.readlines()
@@ -257,7 +257,7 @@ def mount_partition_fct(deployment, cluster_desc, db_session, logger):
         (stdin, stdout, stderr) = ssh.exec_command(cmd)
         return_code = stdout.channel.recv_exit_status()
         # Delete the bootcode.bin file as soon as possible
-        cmd = f"rm progress_{server['id']}.txt; rm boot_dir/bootcode.bin"
+        cmd = "rm boot_dir/bootcode.bin"
         (stdin, stdout, stderr) = ssh.exec_command(cmd)
         return_code = stdout.channel.recv_exit_status()
         cmd = "mount /dev/mmcblk0p2 fs_dir"
@@ -573,10 +573,7 @@ def img_copy_fct(deployment, cluster_desc, db_session, logger):
                 env_data['img_size'] = (end_partition + 10) * 512
                 with open(env_file_path, 'w') as jsonfile:
                     json.dump(env_data, jsonfile)
-                # Copy the system to the new partition
-                #cmd = "dd if=/dev/mmcblk0 bs=512 count=%d | pv -n -p -s %d 2> progress-%s.txt | \
-                #        gzip -9 > img_part/%s.img.gz &" % (
-                #        end_partition, (end_partition * 512), server['name'], env_name)
+                # Copy the system to the image file
                 cmd = "dd if=/dev/mmcblk0 of=img_part/%s.img bs=512 count=%d &" % (env_name, end_partition + 10)
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
@@ -734,6 +731,9 @@ def upload_check_fct(deployment, cluster_desc, db_session, logger):
     process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     nb_line = process.stdout.decode('utf-8').strip()
     if int(nb_line) == 0:
+        cmd = f"rm progress-{server['name']}.txt"
+        (stdin, stdout, stderr) = ssh.exec_command(cmd)
+        return_code = stdout.channel.recv_exit_status()
         # Load the new environement to the cluster description
         load_cluster_desc()
         return True

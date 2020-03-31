@@ -2,6 +2,7 @@
 ssh_key/test-piseduce
 deployment_results.txt
 *.log
+archive_files
 TODO
 test.db
 celerybeat-schedule.db

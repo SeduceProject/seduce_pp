@@ -1,0 +1,14 @@
+{
+    "controller": {
+        "ip": "PIMASTERIP",
+        "user": "root"
+    },
+    "switch": {
+        "address": "SWITCHIP",
+        "username": "admin",
+        "password": "seduce"
+    },
+    "comments": "WARNING: Do NOT forget the ending /",
+    "env_cfg_dir": "/root/seduce_pp/cluster_desc/environments/",
+    "img_dir": "/root/environments/"
+}

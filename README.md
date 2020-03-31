@@ -116,6 +116,9 @@ service pitasks start
 ```
 
 ### Create the tiny core user data
+* Fix the tiny core repository
+  * Edit `/opt/tcemirror`: `http://tinycorelinux.net/10.x/armv7/tcz/`
+  * Install packages with `tce-load -wi package_name`
 * Get a tiny_core running node:
     - deploy the tiny_core environment on a raspberry Pi
     - wait for the node enters in the 'user_conf' state
