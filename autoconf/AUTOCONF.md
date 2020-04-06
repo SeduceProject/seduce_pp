@@ -41,3 +41,9 @@ sudo tar xf archive_files/nfs.tar.gz -C mount_dir/
 * Update the system
 
 ## First PiSeduce Boot: Configure your own cluster
+```
+[reflector]
+enable-reflector=yes
+reflect-ipv=yes
+```
+`service avahi-daemon restart`
