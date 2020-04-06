@@ -69,7 +69,6 @@ def user_deployments():
         return json.dumps({
             "status": "ko",
         })
-
     return json.dumps({
         "status": "ok",
         "deployments": list(deployment_info.values())
@@ -129,3 +128,13 @@ def available_servers():
         "status": "ok",
         "server_info": list(server_info.values())
     })
+
+
+@webappapp_api_blueprint.route("/api/configuration/log")
+def conf_log():
+    my_data = []
+    with open('first_boot_log.txt', 'r') as logfile:
+        lines = logfile.readlines()[-16:]
+        for l in lines:
+            my_data.append(l.strip())
+    return json.dumps({ "status": "ok", "data": my_data})

@@ -1,0 +1,2 @@
+# Node configuration 
+* One file node-x.json per node

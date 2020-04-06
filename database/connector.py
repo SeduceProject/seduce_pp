@@ -2,22 +2,17 @@ from database.base import Base, db_name, engine, Session
 from sqlalchemy import inspect
 
 
-def create_tables():
+def create_tables(logger):
     inspector = inspect(engine)
     for sch in inspector.get_schema_names():
         if sch == db_name:
             if len(inspector.get_table_names(schema=sch)) == 0:
-                print("The database is empty. Create tables...")
+                logger.info("The database is empty. Create tables...")
                 Base.metadata.create_all(engine)
-
-
-def append(values):
-    session = Session()
-    for v in values:
-        print('Append %s' % v)
-        session.add(v)
-    session.commit()
-    session.close()
+                logger.info("Create the admin user")
+                admin = "INSERT INTO user(state, email, _password, firstname, lastname, email_confirmed,\
+                        user_authorized, is_admin) VALUES('confirmed', 'admin@piseduce.fr',\
+                        '$2b$12$qX460DWxWW3rzu5Q.Ot2juQDxb4lTA28rC6Y01BWvSt5i9Ey763du', 'Admin', 'Admin', 1, 1, 1)"
 
 
 def open_session():

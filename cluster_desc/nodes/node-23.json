@@ -1,9 +1,0 @@
-{
-    "name": "node-23",
-    "id": "2dd19393",
-    "port_number": 23,
-    "ip": "192.168.1.73",
-    "model": "RPI3B+",
-    "public_ip": "pi23.seduce.fr",
-    "public_port": "22023"
-}

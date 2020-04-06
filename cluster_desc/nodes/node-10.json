@@ -1,9 +1,0 @@
-{
-    "name": "node-10",
-    "id": "5e8fa6a1",
-    "port_number": 10,
-    "ip": "192.168.1.60",
-    "model": "RPI3B+",
-    "public_ip": "pi10.seduce.fr",
-    "public_port": "22010"
-}

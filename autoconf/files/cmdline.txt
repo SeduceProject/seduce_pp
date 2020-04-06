@@ -1,0 +1,1 @@
+nfsroot=PIMASTERIP:/nfs/raspi,udp,v3 rw ip=dhcp root=/dev/nfs rootwait console=tty1 console=ttyAMA0,115200

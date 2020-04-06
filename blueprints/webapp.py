@@ -4,7 +4,7 @@ from database.states import deployment_initial_state, destroy_state, init_deploy
 from flask import Blueprint
 from flask_login import current_user
 from lib.config.config_loader import get_cluster_desc, load_cluster_desc
-import datetime, flask, flask_login, json, random, string
+import datetime, flask, flask_login, json, random, shutil, string, subprocess
 
 
 webapp_blueprint = Blueprint('app', __name__, template_folder='templates')
@@ -68,7 +68,6 @@ def process_take():
     return flask.redirect(flask.url_for("app.home"))
 
 
-@webapp_blueprint.route("/server/cancel/")
 @flask_login.login_required
 def cancel():
     db_session = open_session()
@@ -76,7 +75,7 @@ def cancel():
     # Delete previous deployments still in initialized state
     old_dep = db_session.query(Deployment).filter_by(user_id=db_user.id, state="initialized").delete()
     close_session(db_session)
-    return flask.redirect(flask.url_for("app.home"))
+    return flask.redirect(flask.url_for("app.configuration"))
 
 
 @webapp_blueprint.route("/user/ssh_put/", methods=["POST"])
@@ -183,6 +182,50 @@ def build_env():
     deployment.temp_info = env['name']
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
+
+
+@webapp_blueprint.route("/configuration/configure/", methods=["POST"])
+def configure():
+    old_ip = flask.request.form.get("my_ip")
+    new_ip = flask.request.form.get("master_ip")
+    # Generate the autoconf script
+    shutil.copy('autoconf/files/master-conf-script', 'config.sh')
+    cmd = "sed -i 's/IFACE_CONF/%s/' config.sh" % flask.request.form.get("master_iface")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    cmd = "sed -i 's/MASTER_PORT_CONF/%s/' config.sh" % flask.request.form.get("master_port")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    cmd = "sed -i 's/SWITCH_IP_CONF/%s/' config.sh" % flask.request.form.get("switch_ip")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    cmd = "sed -i 's/NB_PORT_CONF/%s/' config.sh" % flask.request.form.get("nb_port")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    cmd = "sed -i 's/SNMP_OID_CONF/%s/' config.sh" % flask.request.form.get("switch_oid")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    cmd = "sed -i 's/NETWORK_IP_CONF/%s/' config.sh" % new_ip[:new_ip.rindex('.')]
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    cmd = "sed -i 's/INC_IP_CONF/%s/' config.sh" % flask.request.form.get("inc_ip")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    cmd = "sed -i 's/CHANGE_ME_ROOT/%s/' config.sh" % flask.request.form.get("root_pwd")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    cmd = "sed -i 's/CHANGE_ME_USER/%s/' config.sh" % flask.request.form.get("user_pwd")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    # Configure the pifrontend database access
+    cmd = "sed -i 's/CHANGE_ME_USER/%s/' seducepp.conf" % flask.request.form.get("user_pwd")
+    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    if old_ip != new_ip:
+        # Generate the dhcpcd.conf and reboot
+        cmd = "sed -i 's/CHANGE_ME_USER/%s/' seducepp.conf" % flask.request.form.get("user_pwd")
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    else:
+        cmd = "./config.sh &"
+        config_log = open('first_boot_log.txt', 'w')
+        process = subprocess.run(cmd, shell=True, stdout=config_log, stderr=config_log)
+    return flask.redirect(flask.url_for("app.configuration"))
+
+
+@webapp_blueprint.route("/server/cancel/")
+@webapp_blueprint.route("/configuration")
+def configuration():
+    return flask.render_template("first_boot_exec.html.jinja2")
 
 
 @webapp_blueprint.route("/user")

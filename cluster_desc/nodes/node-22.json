@@ -1,9 +1,0 @@
-{
-    "name": "node-22",
-    "id": "5d1c4aa6",
-    "port_number": 22,
-    "ip": "192.168.1.72",
-    "model": "RPI3B+",
-    "public_ip": "pi22.seduce.fr",
-    "public_port": "22022"
-}

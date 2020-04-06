@@ -1,9 +1,0 @@
-{
-    "name": "node-18",
-    "id": "1d5a94f5",
-    "port_number": 18,
-    "ip": "192.168.1.68",
-    "model": "RPI3B+",
-    "public_ip": "pi18.seduce.fr",
-    "public_port": "22018"
-}

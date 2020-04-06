@@ -1,5 +1,4 @@
 from database.base import Session
-from database.connector import create_tables
 from database.tables import User as dbUser
 from initialization import login_manager, app, User
 from lib.login.login_management import authenticate, authorized_user
@@ -63,5 +62,4 @@ def timesince(dt, default="just now"):
 
 if __name__ == '__main__':
     logging_config()
-    create_tables()
     app.run(debug=True, port=9000, host="0.0.0.0")

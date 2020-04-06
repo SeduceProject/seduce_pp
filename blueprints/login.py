@@ -2,9 +2,10 @@ from database.connector import open_session, close_session
 from database.states import progress_forward
 from database.tables import User
 from flask import Blueprint, render_template
+from glob import glob
 from lib.decorators.admin_login_required import admin_login_required
 from lib.login.login_management import authenticate
-import flask, flask_login, logging
+import flask, flask_login, logging, subprocess
 
 
 login_blueprint = Blueprint('login', __name__, template_folder='templates')
@@ -13,20 +14,32 @@ login_blueprint = Blueprint('login', __name__, template_folder='templates')
 @login_blueprint.route('/login', methods=['GET', 'POST'])
 @login_blueprint.route('/login?msg=<msg>', methods=['GET', 'POST'])
 def login(msg=None):
-    from initialization import User as InitUser
-    if flask.request.method == 'GET':
-        next_url = flask.request.args.get("next")
-        return render_template("login/login.html", next_url=next_url, msg=msg)
-    email = flask.request.form.get('email', "")
-    password = flask.request.form.get('password', "")
-    next_url = flask.request.form.get('next_url', "/")
-    if authenticate(email, password):
-        user = InitUser()
-        user.id = email
-        is_authenticated = flask_login.login_user(user)
-        redirect_url = next_url if (next_url is not None and next_url != "None") else flask.url_for("app.home")
-        return flask.redirect(redirect_url)
-    return flask.redirect(flask.url_for("login.login", msg="You are not authorized to log in"))
+    if len(glob('cluster_desc/nodes/node-*.json')) == 0:
+        cmd = "ifconfig | grep -B 1 broadcast"
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        output = process.stdout.decode('utf-8').split('\n')
+        master_interface = output[0].split(':')[0]
+        master_ip = output[1].split()[1]
+        cmd = "route -n | grep -A 1 Gateway | tail -n 1 | awk '{ print $2 }'"
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        gateway = process.stdout.decode('utf-8').strip()
+        return flask.render_template("form_configure.html.jinja2",
+                ip = master_ip, iface = master_interface, gateway_ip = gateway)
+    else:
+        from initialization import User as InitUser
+        if flask.request.method == 'GET':
+            next_url = flask.request.args.get("next")
+            return render_template("login/login.html", next_url=next_url, msg=msg)
+        email = flask.request.form.get('email', "")
+        password = flask.request.form.get('password', "")
+        next_url = flask.request.form.get('next_url', "/")
+        if authenticate(email, password):
+            user = InitUser()
+            user.id = email
+            is_authenticated = flask_login.login_user(user)
+            redirect_url = next_url if (next_url is not None and next_url != "None") else flask.url_for("app.home")
+            return flask.redirect(redirect_url)
+        return flask.redirect(flask.url_for("login.login", msg="You are not authorized to log in"))
 
 
 @login_blueprint.route('/signup', methods=['GET', 'POST'])

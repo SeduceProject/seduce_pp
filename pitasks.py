@@ -1,3 +1,4 @@
+from database.connector import create_tables
 from database.states import progress, no_fct
 from tasks.email import new_user
 from tasks.compute import collect_nodes
@@ -14,6 +15,7 @@ if __name__ == "__main__":
     logging_config()
     logger = logging.getLogger("CELERY_TASKS")
 
+    create_tables(logger)
     logger.info("Analyzing the node states")
     while not os.path.isfile(STOP_FILE):
         # Send confirmation email to new users

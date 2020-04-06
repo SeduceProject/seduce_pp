@@ -71,6 +71,10 @@
     width: 390px;
 }
 
+.text-console {
+    font-family: monospace;
+}
+
 /* state colors */
 .in_selection {
     background-color: #7d9bff;
