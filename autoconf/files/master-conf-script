@@ -34,6 +34,7 @@ if [ $MY_GATEWAY != $GATEWAY_IP ]; then
     sed -i "s/routers=.*/routers=$GATEWAY_IP/" /etc/dhcpcd.conf
     sed -i "s/domain_name_servers=.*/domain_name_servers=$GATEWAY_IP/" /etc/dhcpcd.conf
     dhcpcd -n $INTERFACE
+    sleep 10
 fi
 
 echo "# Create the dnsmasq configuration"
@@ -80,8 +81,15 @@ fi
 echo "# Configuring the DHCP server"
 echo "# Turn off all nodes connected to $SWITCH_IP"
 for p in $PORTS; do
-    snmpset -v2c -c private $SWITCH_IP $SNMP_OID.$p i $OFF
+    retry="again"
+    while [ ! -z "$retry" ]; do
+        snmpset -v2c -c private $SWITCH_IP $SNMP_OID.$p i $OFF
+        if [ $? -eq 0 ]; then
+            retry=""
+        fi
+    done
 done
+
 sleep 1
 echo "# Detecting MAC addresses"
 for p in $PORTS; do
@@ -126,8 +134,8 @@ for p in $PORTS; do
     echo "  - Turn on the node on port $p"
     snmpset -v2c -c private $SWITCH_IP $SNMP_OID.$p i $ON
 done
-echo " + Waiting 30s for the nodes"
-sleep 30
+echo " + Waiting 45s for the nodes"
+sleep 45
 for p in $PORTS; do
     echo " + SSH connection to 'node-$p'"
     node_ip=$NETWORK_IP.$(( $p + $INC_IP))
