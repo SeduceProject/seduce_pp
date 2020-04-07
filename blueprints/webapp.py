@@ -198,6 +198,8 @@ def configure():
     if old_ip == new_ip and no_dhcp_change:
         # Generate the autoconf script
         shutil.copy('autoconf/files/master-conf-script', 'config.sh')
+        cmd = "sed -i 's/GATEWAY_IP_CONF/%s/' config.sh" % flask.request.form.get("master_gateway")
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         cmd = "sed -i 's/IFACE_CONF/%s/' config.sh" % flask.request.form.get("master_iface")
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         cmd = "sed -i 's/MASTER_PORT_CONF/%s/' config.sh" % flask.request.form.get("master_port")

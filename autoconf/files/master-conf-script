@@ -4,6 +4,7 @@
 # PiMaster Configuration
 INTERFACE="IFACE_CONF"
 MASTER_PORT="MASTER_PORT_CONF"
+GATEWAY_IP="GATEWAY_IP_CONF"
 # Switch Configuration
 SWITCH_IP="SWITCH_IP_CONF"
 NB_PORT="NB_PORT_CONF"
@@ -26,6 +27,14 @@ fi
 
 # Remove the PiMaster port
 PORTS=$(echo $PORTS | sed "s/$MASTER_PORT //")
+
+MY_GATEWAY=$(route -n | grep -A 1 Gateway | tail -n 1 | awk '{ print $2 }')
+if [ $MY_GATEWAY != $GATEWAY_IP ]; then
+    echo "# Configure the network gateway"
+    sed -i "s/routers=.*/routers=$GATEWAY_IP/" /etc/dhcpcd.conf
+    sed -i "s/domain_name_servers=.*/domain_name_servers=$GATEWAY_IP/" /etc/dhcpcd.conf
+    dhcpcd -n $INTERFACE
+fi
 
 echo "# Create the dnsmasq configuration"
 MASTER_IP=$(ifconfig | grep -A 1 eth0 | grep inet | awk '{ print $2}')
