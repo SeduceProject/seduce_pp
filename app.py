@@ -1,7 +1,6 @@
 from database.base import Session
 from database.tables import User as dbUser
 from initialization import login_manager, app, User
-from lib.login.login_management import authenticate, authorized_user
 import datetime, flask, flask_login, initialization, logging, logging.config, database.connector
 
 
@@ -14,7 +13,7 @@ def user_loader(user_email):
     db_session = Session()
     db_user = db_session.query(dbUser).filter(dbUser.email == user_email).first()
     db_session.close()
-    if db_user is not None and authorized_user(db_user):
+    if db_user is not None and db_user.email_confirmed:
         user = User()
         user.id = db_user.email
         user.firstname = db_user.firstname
@@ -23,17 +22,6 @@ def user_loader(user_email):
         user.is_admin = db_user.is_admin
         user.user_authorized = db_user.user_authorized
         return user
-    return None
-
-
-@login_manager.request_loader
-def request_loader(request):
-    email = request.form.get('email')
-    password = request.form.get('email')
-    if authenticate(email, password):
-        user = User()
-        user.id = email
-        return User
     return None
 
 

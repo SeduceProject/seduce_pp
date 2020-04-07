@@ -4,7 +4,6 @@ from database.tables import User
 from flask import Blueprint, render_template
 from glob import glob
 from lib.decorators.admin_login_required import admin_login_required
-from lib.login.login_management import authenticate
 import flask, flask_login, logging, subprocess
 
 
@@ -33,13 +32,19 @@ def login(msg=None):
         email = flask.request.form.get('email', "")
         password = flask.request.form.get('password', "")
         next_url = flask.request.form.get('next_url', "/")
-        if authenticate(email, password):
+        db_session = open_session()
+        user_account = db_session.query(User).filter(User.email == email).first()
+        redirect_url = ''
+        if (user_account is not None and user_account.email_confirmed and
+                bcrypt.check_password_hash(user_account.password, password)):
             user = InitUser()
             user.id = email
             is_authenticated = flask_login.login_user(user)
             redirect_url = next_url if (next_url is not None and next_url != "None") else flask.url_for("app.home")
-            return flask.redirect(redirect_url)
-        return flask.redirect(flask.url_for("login.login", msg="You are not authorized to log in"))
+        else:
+            redirect_url = flask.url_for("login.login", msg="You are not authorized to log in")
+        close_session(db_session)
+        return flask.redirect(redirect_url)
 
 
 @login_blueprint.route('/signup', methods=['GET', 'POST'])
