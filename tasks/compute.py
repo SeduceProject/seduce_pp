@@ -2,7 +2,6 @@ from database.connector import open_session, close_session
 from database.states import progress_forward
 from database.tables import Deployment, User
 from lib.config.config_loader import get_cluster_desc, load_cluster_desc
-from lib.deployment import get_nfs_boot_cmdline
 from lib.dgs121028p import turn_on_port, turn_off_port
 from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
 import datetime, json, logging, os, paramiko, re, requests, shutil, socket, subprocess, sys, time, uuid
@@ -119,7 +118,7 @@ def nfs_boot_off_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn off port
-    turn_off_port(cluster_desc["switch"]["address"], server["port_number"])
+    turn_off_port(cluster_desc["switch"]["ip"], server["port_number"])
     return True
 
 
@@ -127,7 +126,7 @@ def nfs_boot_on_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn on port
-    turn_on_port(cluster_desc["switch"]["address"], server["port_number"])
+    turn_on_port(cluster_desc["switch"]["ip"], server["port_number"])
     return True
 
 
@@ -144,8 +143,8 @@ def env_copy_fct(deployment, cluster_desc, db_session, logger):
         logger.info("%s: copy %s to the SDCARD" % (server["name"], img_path))
         # Write the image of the environment on SD card
         deploy_cmd = "rsh -o StrictHostKeyChecking=no %s@%s 'cat %s' | gunzip | pv -n -p -s %s 2> progress-%s.txt | \
-                dd of=/dev/mmcblk0 bs=4M conv=fsync &" % (cluster_desc["controller"]["user"],
-                        cluster_desc["controller"]["ip"], img_path, environment["img_size"], server["name"])
+                dd of=/dev/mmcblk0 bs=4M conv=fsync &" % (cluster_desc["pimaster"]["user"],
+                        cluster_desc["pimaster"]["ip"], img_path, environment["img_size"], server["name"])
         (stdin, stdout, stderr) = ssh.exec_command(deploy_cmd)
         return_code = stdout.channel.recv_exit_status()
         ssh.close()
@@ -758,7 +757,7 @@ def off_requested_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn off port
-    turn_off_port(cluster_desc["switch"]["address"], server["port_number"])
+    turn_off_port(cluster_desc["switch"]["ip"], server["port_number"])
     return True
 
 
@@ -766,7 +765,7 @@ def on_requested_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn off port
-    turn_on_port(cluster_desc["switch"]["address"], server["port_number"])
+    turn_on_port(cluster_desc["switch"]["ip"], server["port_number"])
     return True
 
 
@@ -792,7 +791,7 @@ def destroy_request_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn off port
-    turn_off_port(cluster_desc["switch"]["address"], server["port_number"])
+    turn_off_port(cluster_desc["switch"]["ip"], server["port_number"])
     # Delete the tftpboot folder
     tftpboot_node_folder = "/tftpboot/%s" % server["id"]
     if os.path.isdir(tftpboot_node_folder):

@@ -18,146 +18,153 @@
                 PiMaster Network Interface
               </div>
               <div class="col-md-6">
-                <input id="master_iface" name="master_iface" type="text" size=20 value="{{ iface }}" required/>
+                <input id="master_iface" name="master_iface" type="text" size=20 value="{{ iface }}" required />
+                <input id="dhcp_conf" name="dhcp_conf" type="checkbox" value="user_dhcp" class="ml-2" onclick="dhcpConf()" />
+                DHCP Configuration
+                <input id="dhcp_on" name="dhcp_on" type="hidden" value="{{ dhcp }}" />
               </div>
             </div>
-            <!-- PiMaster IP -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                PiMaster IP Address
-              </div>
-              <div class="col-md-6">
-                <input id="master_ip" name="master_ip" type="text" size=20 value="{{ ip }}"
-                onfocusout="computeFromMasterIP()" required/>
-                <input id="my_ip" name="my_ip" type="hidden" value="{{ ip }}"/>
-              </div>
-            </div>
-            <!-- PiMaster gateway -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                PiMaster Network Gateway
-              </div>
-              <div class="col-md-6">
-                <input id="master_gateway" name="master_gateway" type="text" size=20 value="{{ gateway_ip }}"/>
-              </div>
-            </div>
-            <!-- Network IP -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                Network IP
-              </div>
-              <div class="col-md-6 pt-1">
-                <span id="network_ip"></span>
-              </div>
-            </div>
-            <!-- First Node IP -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                First Node IP Address
-              </div>
-              <div class="col-md-6">
-                <input id="first_ip" name="first_ip" type="text" size=20 onfocusout="computeFromFirstIP()"
-                required></input>
-              </div>
-              <input id="inc_ip" name="inc_ip" type="hidden" value=10 required></input>
-            </div>
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-              </div>
-              <div class="col-md-6">
-                <span id="first_ip_error" class="d-none">'First IP must be in network'</span>
-              </div>
-            </div>
-            <!-- Node IP Range -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                Node IP Range
-              </div>
-              <div class="col-md-6 pt-1">
-                <span id="ip_range"></span>
-              </div>
-            </div>
-            <!-- Switch Configuration -->
-            <div class="my-3 p-1 bg-white border-bottom h4 text-dark">
-                Switch Configuration
-            </div>
-            <!-- Switch IP -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                Switch IP Address
-              </div>
-              <div class="col-md-6">
-                <input id="switch_ip" name="switch_ip" type="text" size=20 value="192.168.1.251" required></input>
-              </div>
-            </div>
-            <!-- Switch Port Nb. -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                Number of ports
-              </div>
-              <div class="col-md-6">
-                <input id="nb_port" name="nb_port" type="text" size=3 value="8"
-                onfocusout="computeFromFirstIP(); checkMasterPort()" required></input>
-              </div>
-            </div>
-            <!-- PiMaster Port Nb. -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                PiMaster Port Number
-              </div>
-              <div class="col-md-6">
-                <input id="master_port" name="master_port" type="text" size=3 value="1"
-                onfocusout="checkMasterPort()" required></input>
-              </div>
-            </div>
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-              </div>
-              <div class="col-md-6">
-                <span id="port_error" class="d-none">'Wrong PiMaster port number!'</span>
-              </div>
-            </div>
-            <!-- Switch OID -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                SNMP OID to turn off/on POE
-              </div>
-              <div class="col-md-3">
-                <input id="switch_oid" name="switch_oid" type="text" size=20 value="1.3.6.1.2.1.105.1.1.1.3.1"
-                onfocusout="displayFullOID()" required></input>
-              </div>
-            </div>
-            <!-- Complete OID -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                Complete OID to turn off/on POE
-              </div>
-              <div class="col-md-6 pt-1">
-                <span id="complete_oid"></span>
-              </div>
-            </div>
-            <!-- Database Configuration -->
-            <div class="my-3 p-1 bg-white border-bottom h4 text-dark">
-                Database Configuration
-            </div>
-            <!-- Root password -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                Root Password
-              </div>
-              <div class="col-md-6">
-                <input id="root_pwd" name="root_pwd" type="text" size=20 value="" required></input>
-              </div>
-            </div>
-            <!-- User password -->
-            <div class="row my-1">
-              <div class="col-md-3 pt-1 text-right">
-                User Password
-              </div>
-              <div class="col-md-6">
-                <input id="user_pwd" name="user_pwd" type="text" size=20 value="" required></input>
-              </div>
-            </div>
+            <fieldset id="ip-fields">
+                <!-- PiMaster IP -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    PiMaster IP Address
+                  </div>
+                  <div class="col-md-6">
+                    <input id="master_ip" name="master_ip" type="text" size=20 value="{{ ip }}"
+                    onfocusout="computeFromMasterIP()" required/>
+                    <input id="my_ip" name="my_ip" type="hidden" value="{{ ip }}"/>
+                  </div>
+                </div>
+                <!-- PiMaster gateway -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    PiMaster Network Gateway
+                  </div>
+                  <div class="col-md-6">
+                    <input id="master_gateway" name="master_gateway" type="text" size=20 value="{{ gateway_ip }}"/>
+                  </div>
+                </div>
+                <!-- Network IP -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    Network IP
+                  </div>
+                  <div class="col-md-6 pt-1">
+                    <span id="network_ip"></span>
+                  </div>
+                </div>
+            </fieldset>
+            <fieldset id="other-fields">
+                <!-- First Node IP -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    First Node IP Address
+                  </div>
+                  <div class="col-md-6">
+                    <input id="first_ip" name="first_ip" type="text" size=20 onfocusout="computeFromFirstIP()"
+                    required></input>
+                  </div>
+                  <input id="inc_ip" name="inc_ip" type="hidden" value=10 required></input>
+                </div>
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                  </div>
+                  <div class="col-md-6">
+                    <span id="first_ip_error" class="d-none">'First IP must be in network'</span>
+                  </div>
+                </div>
+                <!-- Node IP Range -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    Node IP Range
+                  </div>
+                  <div class="col-md-6 pt-1">
+                    <span id="ip_range"></span>
+                  </div>
+                </div>
+                <!-- Switch Configuration -->
+                <div class="my-3 p-1 bg-white border-bottom h4 text-dark">
+                    Switch Configuration
+                </div>
+                <!-- Switch IP -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    Switch IP Address
+                  </div>
+                  <div class="col-md-6">
+                    <input id="switch_ip" name="switch_ip" type="text" size=20 value="192.168.1.251" required></input>
+                  </div>
+                </div>
+                <!-- Switch Port Nb. -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    Number of ports
+                  </div>
+                  <div class="col-md-6">
+                    <input id="nb_port" name="nb_port" type="text" size=3 value="8"
+                    onfocusout="computeFromFirstIP(); checkMasterPort()" required></input>
+                  </div>
+                </div>
+                <!-- PiMaster Port Nb. -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    PiMaster Port Number
+                  </div>
+                  <div class="col-md-6">
+                    <input id="master_port" name="master_port" type="text" size=3 value="1"
+                    onfocusout="checkMasterPort()" required></input>
+                  </div>
+                </div>
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                  </div>
+                  <div class="col-md-6">
+                    <span id="port_error" class="d-none">'Wrong PiMaster port number!'</span>
+                  </div>
+                </div>
+                <!-- Switch OID -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    SNMP OID to turn off/on POE
+                  </div>
+                  <div class="col-md-3">
+                    <input id="switch_oid" name="switch_oid" type="text" size=20 value="1.3.6.1.2.1.105.1.1.1.3.1"
+                    onfocusout="displayFullOID()" required></input>
+                  </div>
+                </div>
+                <!-- Complete OID -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    Complete OID to turn off/on POE
+                  </div>
+                  <div class="col-md-6 pt-1">
+                    <span id="complete_oid"></span>
+                  </div>
+                </div>
+                <!-- Database Configuration -->
+                <div class="my-3 p-1 bg-white border-bottom h4 text-dark">
+                    Database Configuration
+                </div>
+                <!-- Root password -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    Root Password
+                  </div>
+                  <div class="col-md-6">
+                    <input id="root_pwd" name="root_pwd" type="text" size=20 value="" required></input>
+                  </div>
+                </div>
+                <!-- User password -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    User Password
+                  </div>
+                  <div class="col-md-6">
+                    <input id="user_pwd" name="user_pwd" type="text" size=20 value="" required></input>
+                  </div>
+                </div>
+            </fieldset>
             <br/>
             <center>
                 <a id="reset" href="javascript:resetIp();" class="btn btn-info">Reset to Default</a>
@@ -169,6 +176,36 @@
     </main>
 
     <script>
+        function dhcpConf() {
+            var newDhcp = document.getElementById('dhcp_conf');
+            var dhcpOn = document.getElementById('dhcp_on');
+            if(newDhcp.checked) {
+                document.getElementById('ip-fields').disabled = true;
+            } else {
+                document.getElementById('ip-fields').disabled = false;
+            }
+            dhcp_value = dhcp_on.value == 'True';
+            if(dhcp_value == newDhcp.checked) {
+                disableRebootButton();
+            } else {
+                enableRebootButton();
+            }
+        }
+
+        function enableRebootButton() {
+            document.getElementById('save_conf').disabled = false;
+            document.getElementById('save_conf').value = 'Save and Reboot';
+            document.getElementById('save_conf').className = 'btn btn-danger';
+            document.getElementById('other-fields').disabled = true;
+        }
+
+        function disableRebootButton() {
+            document.getElementById('save_conf').disabled = false;
+            document.getElementById('save_conf').value = 'Save Configuration';
+            document.getElementById('save_conf').className = 'btn btn-info';
+            document.getElementById('other-fields').disabled = false;
+        }
+
         function computeFromMasterIP() {
             document.getElementById('first_ip_error').className = 'd-none';
             var masterIp = document.getElementById('master_ip').value;
@@ -178,13 +215,9 @@
             var baseIp = masterIp.slice(0, masterIp.lastIndexOf('.'));
             document.getElementById('network_ip').innerHTML = baseIp + '.0/24';
             if(myIp.value == masterIp) {
-                document.getElementById('save_conf').disabled = false;
-                document.getElementById('save_conf').value = 'Save Configuration';
-                document.getElementById('save_conf').className = 'btn btn-info';
+                disableRebootButton();
             } else {
-                document.getElementById('save_conf').disabled = false;
-                document.getElementById('save_conf').value = 'Save and Reboot';
-                document.getElementById('save_conf').className = 'btn btn-danger';
+                enableRebootButton();
             }
             document.getElementById('first_ip').value = baseIp + '.' + (incIp + 1);
             computeFromFirstIP();
@@ -250,8 +283,15 @@
                 document.getElementById('save_conf').disabled = false;
             }
         }
-        // Run the function on page load
+        // Set the dhcp checkbox value
+        if(document.getElementById('dhcp_on').value == 'False') {
+            document.getElementById('dhcp_conf').checked = false;
+        } else {
+            document.getElementById('dhcp_conf').checked = true;
+        }
+        // Run functions on page load
         computeFromMasterIP();
+        dhcpConf();
         displayFullOID();
         checkMasterPort();
     </script>

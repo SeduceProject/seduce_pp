@@ -18,11 +18,14 @@ INC_IP="INC_IP_CONF"
 DB_ROOT_PWD="CHANGE_ME_ROOT"
 DB_USER_PWD="CHANGE_ME_USER"
 # Default value should be ""
-PORTS="2 21"
+PORTS="2 8 21"
 
 if [ -z "$PORTS" ]; then
     PORTS=$(seq 1 $NB_PORT)
 fi
+
+# Remove the PiMaster port
+PORTS=$(echo $PORTS | sed "s/$MASTER_PORT //")
 
 echo "# Create the dnsmasq configuration"
 MASTER_IP=$(ifconfig | grep -A 1 eth0 | grep inet | awk '{ print $2}')
@@ -157,5 +160,7 @@ for f in $(ls /tftpboot/rpiboot_uboot); do
     rm -rf /tftpboot/$f
 done
 
-echo "# Reboot the node in 20 seconds"
-sleep 20 && reboot
+echo "# Restart services"
+service pifrontend restart
+service pitasks restart
+echo "# Connect to http://pimaster.local:9000/ with the admin login 'admin@piseduce.fr' and the password 'piseduceadmin'"

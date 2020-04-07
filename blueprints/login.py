@@ -14,6 +14,10 @@ login_blueprint = Blueprint('login', __name__, template_folder='templates')
 @login_blueprint.route('/login?msg=<msg>', methods=['GET', 'POST'])
 def login(msg=None):
     if len(glob('cluster_desc/nodes/node-*.json')) == 0:
+        cmd = "cat /etc/dhcpcd.conf | grep ^static"
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        output = process.stdout.decode('utf-8')
+        dhcp_on = len(output) == 0
         cmd = "ifconfig | grep -B 1 broadcast"
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         output = process.stdout.decode('utf-8').split('\n')
@@ -23,7 +27,7 @@ def login(msg=None):
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         gateway = process.stdout.decode('utf-8').strip()
         return flask.render_template("form_configure.html.jinja2",
-                ip = master_ip, iface = master_interface, gateway_ip = gateway)
+                ip = master_ip, iface = master_interface, gateway_ip = gateway, dhcp = dhcp_on)
     else:
         from initialization import User as InitUser
         if flask.request.method == 'GET':
