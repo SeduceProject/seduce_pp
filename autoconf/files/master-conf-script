@@ -184,6 +184,8 @@ for f in $(ls /tftpboot/rpiboot_uboot); do
     rm -rf /tftpboot/$f
 done
 
-echo "# Connect to http://pimaster.local:9000/ with the admin login 'admin@piseduce.fr' and the password 'piseduceadmin'"
 service pitasks restart
+sleep 10
+echo "# Connect to http://pimaster.local:9000/"
+echo "# login: 'admin@piseduce.fr', password: 'piseduceadmin'"
 service pifrontend restart
