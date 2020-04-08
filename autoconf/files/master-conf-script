@@ -78,6 +78,13 @@ if [ $? -eq 0 ]; then
     mysql -e "FLUSH PRIVILEGES"
 fi
 
+echo "# Configure SSH access to the nodes"
+echo "Host $NETWORK_IP.*" > /root/.ssh/config
+echo "    StrictHostKeyChecking no" >> /root/.ssh/config
+echo "" >> /root/.ssh/config
+echo "Host node*.local" >> /root/.ssh/config
+echo "    StrictHostKeyChecking no" >> /root/.ssh/config
+
 echo "# Configuring the DHCP server"
 echo "# Turn off all nodes connected to $SWITCH_IP"
 for p in $PORTS; do
