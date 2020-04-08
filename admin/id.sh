@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG="/home/pipi/seduce_pp/cluster_desc/nodes"
+CONFIG="./cluster_desc/nodes"
 
 echo "Enter the name of the node:"
 echo -n "$: "

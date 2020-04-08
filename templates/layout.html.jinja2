@@ -36,15 +36,13 @@
           <li class="nav-item active">
             <a class="nav-link" href="{{ url_for("app.user") }}">Settings<span class="sr-only">(current)</span></a>
           </li>
-          {% if current_user.is_admin %}
-          <li class="nav-item active">
-            <a class="nav-link" href="{{ url_for("app_admin.generate_config") }}">Configuration</a>
-          </li>
-          {% endif %}
         </ul>
         <span class="form-inline my-2 my-lg-0">
             {% if current_user.is_authenticated %}
                 <span class="welcome_message" class="nav-item">Hi {{ current_user.id }}!</span>
+                {% if current_user.is_admin %}
+                    <button class="btn btn-primary ml-3">Admin</button>
+                {% endif %}
                 <a class="nav-link" href="{{ url_for("login.logout") }}">Logout</a>
             {% else %}
                 <a class="nav-link" href="{{ url_for("login.login") }}">Sign in</a>
