@@ -8,6 +8,9 @@ test.db
 celerybeat-schedule.db
 celerybeat-schedule
 celerybeat.pid
+cluster_desc/*.json
+cluster_desc/environments/*.json
+cluster_desc/nodes/*.json
 
 ## INTELLIJ / PyCharm GITIGNORE
 
