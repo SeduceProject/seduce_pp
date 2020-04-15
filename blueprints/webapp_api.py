@@ -2,7 +2,7 @@ from database.connector import open_session, close_session
 from database.tables import User, Deployment
 from flask import Blueprint
 from flask_login import current_user
-from lib.config.config_loader import get_cluster_desc
+from lib.config_loader import get_cluster_desc
 import flask, flask_login, json, logging, uuid
 
 

@@ -75,6 +75,11 @@
     font-family: monospace;
 }
 
+.text-title {
+    font-family: "Palatino Linotype";
+    color: #123eab;
+}
+
 /* state colors */
 .in_selection {
     background-color: #7d9bff;
@@ -214,6 +219,7 @@
 
 /* End of state colors */
 
+/* Slider of the node reservation form */
 .slider_input {
     height: 10px;
 }

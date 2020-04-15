@@ -1,0 +1,327 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+    <div id="app" v-cloak>
+		<!-- Last update information -->
+        <main role="main" class="container pt-5">
+            <div id="admin-info"class="my-3 p-3 bg-white rounded shadow-sm">
+                <h4 class="mt-3 text-title">Pending User Requests</h4>
+                <span v-if="users.pending.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
+                <table v-if="users.pending.length > 0" class="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Email</th>
+                      <th scope="col">First Name</th>
+                      <th scope="col">Last Name</th>
+                      <th scope="col">Email</th>
+                      <th scope="col">State</th>
+                      <th scope="col">Authorize</th>
+                      <th scope="col">Remove</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="user in users.pending">
+                      <td class="p-3">[[ user.email ]]</td>
+                      <td class="p-3">[[ user.firstname ]]</td>
+                      <td class="p-3">[[ user.lastname ]]</td>
+                      <td class="p-3">[[ user.email_confirmed ]]</td>
+                      <td class="p-3">[[ user.state ]]</td>
+                      <td>
+                        <a :href="'/config/add_user_auth/' + user.id" class="btn btn-info"
+                            style="width: 85.6px;">&#x002B;</a>
+                      </td>
+                      <td>
+                        <a :href="'/config/del_user/' + user.id" class="btn btn-warning"
+                            style="width: 85.6px;">&#x2212;</a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <h4 class="mt-3 text-title">Authorized Users</h4>
+                <span v-if="users.authorized.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
+                <table v-if="users.authorized.length > 0" class="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Email</th>
+                      <th scope="col">First Name</th>
+                      <th scope="col">Last Name</th>
+                      <th scope="col">Email</th>
+                      <th scope="col">State</th>
+                      <th scope="col">Promote</th>
+                      <th scope="col">Revoke</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="user in users.authorized">
+                      <td class="p-3">[[ user.email ]]</td>
+                      <td class="p-3">[[ user.firstname ]]</td>
+                      <td class="p-3">[[ user.lastname ]]</td>
+                      <td class="p-3">[[ user.email_confirmed ]]</td>
+                      <td class="p-3">[[ user.state ]]</td>
+                      <td>
+                        <a :href="'/config/add_admin/' + user.id" class="btn btn-info"
+                            style="width: 85.6px;">&#x002B;</a>
+                      </td>
+                      <td>
+                        <a :href="'/config/del_user_auth/' + user.id" class="btn btn-warning"
+                            style="width: 85.6px;">&#x2212;</a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <h4 class="mt-3 text-title">Admin Users</h4>
+                <span v-if="users.admin.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
+                <table v-if="users.admin.length > 0" class="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Email</th>
+                      <th scope="col">First Name</th>
+                      <th scope="col">Last Name</th>
+                      <th scope="col">Email</th>
+                      <th scope="col">State</th>
+                      <th scope="col">Revoke</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="user in users.admin">
+                      <td class="p-3">[[ user.email ]]</td>
+                      <td class="p-3">[[ user.firstname ]]</td>
+                      <td class="p-3">[[ user.lastname ]]</td>
+                      <td class="p-3">[[ user.email_confirmed ]]</td>
+                      <td class="p-3">[[ user.state ]]</td>
+                      <td>
+                        <a :href="'/config/del_admin/' + user.id" class="btn btn-warning"
+                            style="width: 85.6px;">&#x2212;</a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <h4 class="mt-3 text-title">Email Configuration</h4>
+                <form action="{{ url_for("app_admin.email_config") }}" method="post">
+                    <div v-if="users.email_signup == true" style="margin-left: 50px; margin-bottom: 20px;">
+                        <span style="font-size: 1rem; font-weight: bold;">Email Signup</span>
+                        <a id="esup_button"class="btn btn-danger text-light ml-1" style="width: 130px;"
+                            onclick="emailSignup()">
+                            Enabled
+                        </a>
+                        <input id="esup_value" name="esup_value" type="hidden" :value="[[ users.email_signup ]]">
+                        <br/>
+                        When email signup is enabled, the email confirmation link authorizes users to connect to
+                        the cluster without admin approval.
+                    </div>
+                    <div v-if="users.email_signup == false" style="margin-left: 50px; margin-bottom: 20px;">
+                        <span style="font-size: 1rem; font-weight: bold;">Email Signup</span>
+                        <a id="esup_button"class="btn btn-secondary text-light ml-1" style="width: 130px;"
+                            onclick="emailSignup()">
+                            Disabled
+                        </a>
+                        <input id="esup_value" name="esup_value" type="hidden" :value="[[ users.email_signup ]]">
+                        <br/>
+                        When email signup is enabled, the email confirmation link authorizes users to connect to
+                        the cluster without admin approval.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 pt-1 text-right font-weight-bold">
+                            SMTP Server
+                        </div>
+                        <div class="col-md-3">
+                            <input id="smtp_server" name="smtp_server" type="text">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-2 text-right">
+                            Current value
+                        </div>
+                        <div class="col-md-3">
+                            <span>
+                                [[ users.smtp_config.smtp_address ]]
+                            </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 pt-1 text-right font-weight-bold">
+                            SMTP Port
+                        </div>
+                        <div class="col-md-3">
+                            <input id="smtp_port" name="smtp_port" type="text">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-2 text-right">
+                            Current value
+                        </div>
+                        <div class="col-md-3">
+                            <span>
+                                [[ users.smtp_config.smtp_port ]]
+                            </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 pt-1 text-right font-weight-bold">
+                            SMTP User
+                        </div>
+                        <div class="col-md-3">
+                            <input id="smtp_user" name="smtp_user" type="text">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-2 text-right">
+                            Current value
+                        </div>
+                        <div class="col-md-3">
+                            <span>
+                                [[ users.smtp_config.account ]]
+                            </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 pt-1 text-right font-weight-bold">
+                            SMTP Password
+                        </div>
+                        <div class="col-md-3">
+                            <input id="smtp_pwd" name="smtp_pwd" type="password">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-2 text-right">
+                            Current value
+                        </div>
+                        <div class="col-md-3">
+                            <span id="pwd_text">
+                                ************
+                            </span>
+                            <input id="pwd_value" type="hidden" :value="[[ users.smtp_config.password ]]">
+                            <a id="show_pwd" class="btn btn-dark text-white" style="width: 210px;"
+                                onclick="showPassword()">
+                                Show Password
+                            </a>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-info ml-3" >Update Email Configuration</button>
+                </form>
+                <h4 class="mt-3 text-title">Send Confirmation Email</h4>
+                <span class="ml-2">
+                    An email with a confirm link will be sent to the user. If 'Email Signup' is enabled, the email
+                    confirmation will allow users to connect to the cluster.
+                </span>
+                <div class="dropdown ml-3">
+                  <button class="btn btn-outline-info dropdown-toggle" type="button"
+                    id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    Send Confirmation Email
+                  </button>
+                  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                    <a v-for="user in users.authorized"
+                        :href="'/users/confirm_email/' + [[ user.id ]]" class="dropdown-item">
+                        [[ user.email ]]
+                    </a>
+                    <a v-for="user in users.pending"
+                        :href="'/config/confirm_email/' + [[ user.id ]]" class="dropdown-item">
+                        [[ user.email ]]
+                    </a>
+                  </div>
+                </div>
+                <h4 class="mt-3 text-title">Email Filters</h4>
+                <form action="{{ url_for("app_admin.add_domain") }}" method="post">
+                    <table class="table" style="width: 600px;">
+                      <thead>
+                        <tr>
+                          <th scope="col">Email Domain Name</th>
+                          <th scope="col">
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td class="p-3">
+                            <input id="email_filter" name="email_filter" type="text"/>
+                          </td>
+                          <td class="pt-3">
+                            <button type="submit" class="btn btn-info" style="width: 84.6px;">&#x002B;
+                            </button>
+                          </td>
+                        </tr>
+                        <tr v-if="users.filters.length == 0">
+                            <td>
+                                <span class="ml-3" style="font-size: 14pt;">
+                                    No email filter
+                                </span>
+                            </td>
+                            <td>
+                            </td>
+                        </tr>
+                        <tr v-for="f in users.filters">
+                          <td class="p-3">[[ f ]]</td>
+                          <td>
+                            <a :href="'/config/del_domain/' + f" class="btn btn-warning"
+                                style="width: 85.6px;">&#x2212;</a>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                </form>
+            </div>
+        </main>
+    </div>
+    <script src="{{ url_for("static", filename="js/vue") }}"></script>
+    <script src="{{ url_for("static", filename="js/jquery-3.3.1.js") }}"></script>
+    <script>
+        function emailSignup() {
+            var button = document.getElementById("esup_button");
+            var i_value = document.getElementById("esup_value");
+            // Invert the value (enable/disable)
+            if(i_value.value == "false") {
+                i_value.value = "true";
+                // Button style for enable mode
+                button.className = "btn btn-danger text-light ml-1";
+                button.innerHTML = "Enabled"
+            } else {
+                button.className = "btn btn-secondary text-light ml-1";
+                button.innerHTML = "Disabled"
+                i_value.value = "false";
+            }
+        }
+
+        function showPassword() {
+            var button = document.getElementById("show_pwd");
+            var pwd_txt = document.getElementById("pwd_text");
+            var pwd_current = document.getElementById("pwd_value");
+            var input_pwd = document.getElementById("smtp_pwd");
+            if(button.innerHTML.includes("Show Password")) {
+                button.innerHTML = "Hide Password";
+                pwd_txt.innerHTML = pwd_current.value;
+                input_pwd.type = "text"
+            } else {
+                button.innerHTML = "Show Password";
+                pwd_txt.innerHTML = "************";
+                input_pwd.type = "password";
+            }
+        }
+        
+        const app = new Vue({
+            el: '#admin-info',
+            data: {
+                users: [],
+                loading: true
+            },
+            methods: {
+                fetch_users: function () {
+                    fetch("{{ url_for("app_admin.users") }}")
+                        .then(res => res.json())
+                        .then(res => {
+                            this.users = res.user_info;
+                        });
+                },
+                reload_all_data: function () {
+                    this.fetch_users();
+                    this.loading = false;
+                }
+            },
+            beforeMount: function () {
+                this.reload_all_data();
+                this.loading = true;
+            },
+            delimiters: ['[[', ']]']
+        });
+    </script>
+{% endblock %}

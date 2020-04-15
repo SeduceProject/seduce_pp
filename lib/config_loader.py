@@ -30,9 +30,23 @@ def load_config():
         if os.path.exists(config_file_path):
             with open(config_file_path, 'r') as config_file:
                 CONFIG_SINGLETON = config_file_to_dict(config_file_path)
-                return CONFIG_SINGLETON
+            CONFIG_SINGLETON['path'] = config_file_path
+            return CONFIG_SINGLETON
     raise LookupError("No configuration file found, please create a configuration file in one of these locations: %s"
             % (CONFIG_FILES_PATH))
+
+
+def save_mail_config(mail_conf):
+    global CONFIG_SINGLETON
+    config_file = CONFIG_SINGLETON['path']
+    del CONFIG_SINGLETON['path']
+    CONFIG_SINGLETON['mail'] = mail_conf
+    config = configparser.ConfigParser()
+    config.read_dict(CONFIG_SINGLETON)
+    with open(config_file, 'w') as conffile:
+        config.write(conffile)
+    CONFIG_SINGLETON = None
+    load_config()
 
 
 def get_cluster_desc():
@@ -40,6 +54,7 @@ def get_cluster_desc():
         return load_cluster_desc()
     else:
         return CLUSTER_DESC
+
 
 # Load the cluster information
 def extract_number(node_name):
@@ -73,3 +88,30 @@ def load_cluster_desc():
     logger.info("%d nodes and %d environments loaded" %
             (len(CLUSTER_DESC['nodes']), len(CLUSTER_DESC['environments'])))
     return CLUSTER_DESC
+
+
+def set_email_signup(new_value):
+    global CLUSTER_DESC
+    CLUSTER_DESC['email_signup'] = new_value
+    return save_cluster_desc()
+
+
+def add_domain_filter(new_filter):
+    global CLUSTER_DESC
+    CLUSTER_DESC['email_filters'].append(new_filter)
+    return save_cluster_desc()
+
+
+def del_domain_filter(new_filter):
+    global CLUSTER_DESC
+    CLUSTER_DESC['email_filters'].remove(new_filter)
+    return save_cluster_desc()
+
+
+def save_cluster_desc():
+    logger = logging.getLogger("CONFIG_LOADER")
+    del CLUSTER_DESC['nodes']
+    del CLUSTER_DESC['environments']
+    with open('cluster_desc/main.json', 'w') as jsonfile:
+        json.dump(CLUSTER_DESC, jsonfile, indent=4)
+    return load_cluster_desc()

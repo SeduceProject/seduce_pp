@@ -1,0 +1,9 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+    <main role="main" class="container">
+        <h1 class="mt-5">Account created!</h1>
+        <p class="lead">Your registration request has been sent to the administrator.</p>
+        <a href="{{ url_for("app.home") }}">Home Page</a>
+    </main>
+{% endblock %}

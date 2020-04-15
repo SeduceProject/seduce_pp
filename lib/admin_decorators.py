@@ -41,7 +41,7 @@ def admin_login_required(func):
             return func(*args, **kwargs)
         elif current_app.login_manager._login_disabled:
             return func(*args, **kwargs)
-        elif not (current_user.is_admin and current_user.user_authorized):
+        elif not current_user.is_admin:
             return current_app.login_manager.unauthorized()
         return func(*args, **kwargs)
     return decorated_view

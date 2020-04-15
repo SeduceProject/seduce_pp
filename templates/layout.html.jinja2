@@ -41,7 +41,7 @@
             {% if current_user.is_authenticated %}
                 <span class="welcome_message" class="nav-item">Hi {{ current_user.id }}!</span>
                 {% if current_user.is_admin %}
-                    <button class="btn btn-primary ml-3">Admin</button>
+                    <a href="{{ url_for("app.admin") }}" class="btn btn-primary ml-3">Admin</a>
                 {% endif %}
                 <a class="nav-link" href="{{ url_for("login.logout") }}">Logout</a>
             {% else %}

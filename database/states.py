@@ -5,10 +5,6 @@ user_initial_state = 'user_created'
 deployment_initial_state = 'nfs_boot_conf'
 
 progress = {
-        'user': [
-            [ 'user_created', 'waiting_confirmation_email', 'confirmed', 'waiting_authorization',
-                    'authorized', 'unauthorized' ]
-        ],
         'deployment': [
             [ 'nfs_boot_conf', 'nfs_boot_off', 'nfs_boot_on', 'env_copy', 'env_check', 'delete_partition',
                 'create_partition', 'mount_partition', 'resize_partition', 'wait_resizing', 'system_conf', 'user_conf',
@@ -23,8 +19,6 @@ progress = {
 no_fct = [ 'destroyed', 'deployed' ]
 
 failure = [
-        [ 'waiting_authorization', 'unauthorized' ],
-        [ 'unauthorized', 'authorized' ],
         [ 'user_conf', 'off_requested' ]
     ]
 

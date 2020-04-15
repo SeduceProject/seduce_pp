@@ -1,7 +1,7 @@
 from database.connector import open_session, close_session
 from database.states import progress_forward
 from database.tables import Deployment, User
-from lib.config.config_loader import get_cluster_desc, load_cluster_desc
+from lib.config_loader import get_cluster_desc, load_cluster_desc
 from lib.dgs121028p import turn_on_port, turn_off_port
 from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
 import datetime, json, logging, os, paramiko, re, requests, shutil, socket, subprocess, sys, time, uuid

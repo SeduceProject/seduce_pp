@@ -1,4 +1,4 @@
-from lib.config.config_loader import load_config
+from lib.config_loader import load_config
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker

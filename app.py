@@ -13,7 +13,7 @@ def user_loader(user_email):
     db_session = Session()
     db_user = db_session.query(dbUser).filter(dbUser.email == user_email).first()
     db_session.close()
-    if db_user is not None and db_user.email_confirmed:
+    if db_user is not None and db_user.user_authorized:
         user = User()
         user.id = db_user.email
         user.firstname = db_user.firstname

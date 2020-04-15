@@ -3,7 +3,9 @@ from database.states import progress_forward
 from database.tables import User
 from flask import Blueprint, render_template
 from glob import glob
-from lib.decorators.admin_login_required import admin_login_required
+from lib.admin_decorators import admin_login_required
+from lib.config_loader import get_cluster_desc
+from lib.email_notification import get_email_configuration, send_confirmation_request
 import flask, flask_login, logging, subprocess
 
 
@@ -39,11 +41,12 @@ def login(msg=None):
         db_session = open_session()
         user_account = db_session.query(User).filter(User.email == email).first()
         redirect_url = ''
-        if (user_account is not None and user_account.email_confirmed and
+        # User login
+        if (user_account is not None and user_account.user_authorized and
                 bcrypt.check_password_hash(user_account.password, password)):
             user = InitUser()
             user.id = email
-            is_authenticated = flask_login.login_user(user)
+            flask_login.login_user(user)
             redirect_url = next_url if (next_url is not None and next_url != "None") else flask.url_for("app.home")
         else:
             redirect_url = flask.url_for("login.login", msg="You are not authorized to log in")
@@ -53,6 +56,7 @@ def login(msg=None):
 
 @login_blueprint.route('/signup', methods=['GET', 'POST'])
 def signup():
+    cluster_desc = get_cluster_desc()
     if flask.request.method == 'GET':
         next_url = flask.request.args.get("next")
         return render_template("login/signup.html", next_url=next_url)
@@ -67,6 +71,15 @@ def signup():
         return 'The two passwords are not identical!<a href="/signup">Try again</a>'
     if len(existing_email) > 0:
         return "Your email address '%s' already exists. <a href='/'>Try to login</a>" % email
+    email_filters = cluster_desc['email_filters']
+    filter_ok = len(email_filters) == 0
+    for f in email_filters:
+        if f in email:
+            filter_ok = True
+    if not filter_ok:
+        return 'Wrong email address.\
+                Your domain name is not in the authorized domains.\
+                Please contact the administrator or <a href="/signup">try with another email address</a>'
     user = User()
     user.email = email
     user.firstname = firstname
@@ -74,18 +87,35 @@ def signup():
     user._set_password = password
     db_session.add(user)
     close_session(db_session)
-    redirect_url = flask.url_for("login.confirmation_account_creation")
+    email_conf = get_email_configuration()
+    if len(email_conf['smtp_server_url']) > 0 and email_conf['smtp_server_url'] != 'no_config':
+        # Send an email to confirm the user email address
+        send_confirmation_request(email, firstname)
+    if cluster_desc['email_signup']:
+        redirect_url = flask.url_for("login.confirmation_created_account")
+    else:
+        redirect_url = flask.url_for("login.wait_admin_approval")
     return flask.redirect(redirect_url)
 
 
-@login_blueprint.route('/confirmation_account_creation')
-def confirmation_account_creation():
-    return render_template("login/confirmation_account_creation.html")
+@login_blueprint.route('/confirmation_created_account')
+def confirmation_created_account():
+    return render_template("login/confirmation_created_account.html")
 
 
-@login_blueprint.route('/confirmation_account_confirmation')
-def confirmation_account_confirmation():
-    return render_template("login/confirmation_account_confirmation.html")
+@login_blueprint.route('/wait_admin_approval')
+def wait_admin_approval():
+    return render_template("login/wait_admin_approval.html")
+
+
+@login_blueprint.route('/confirmation_authorized_account')
+def confirmation_authorized_account():
+    return render_template("login/confirmation_authorized_account.html")
+
+
+@login_blueprint.route('/confirmation_email')
+def confirmation_email():
+    return render_template("login/confirmation_email.html")
 
 
 @login_blueprint.route('/confirm_email/token/<token>')
@@ -94,100 +124,16 @@ def confirm_email(token):
     logger.info("Receive the token '%s' to confirm email" % token)
     db_session = open_session()
     user_candidate = db_session.query(User).filter(User.email_confirmation_token == token).first()
+    url = "Bad request: could not find the given token '%s'" % (token)
     if user_candidate is not None:
-        if user_candidate.state == "waiting_confirmation_email":
-            user_candidate.email_confirmed = True
-            progress_forward(user_candidate)
-            close_session(db_session)
-        return flask.redirect(flask.url_for("login.confirmation_account_confirmation"))
-    return "Bad request: could not find the given token '%s'" % (token)
-
-
-@login_blueprint.route('/approve_user/token/<token>')
-@admin_login_required
-def approve_user(token):
-    from lib.email.notification import send_authorization_confirmation
-    db_session = open_session()
-    user_candidate = db_session.query(User).filter(User.admin_authorization_token == token).first()
-    if user_candidate is not None:
-        user_candidate.approve()
-        user_candidate.user_authorized = True
-        db_session.add(user_candidate)
-        close_session(db_session)
-        send_authorization_confirmation(user_candidate)
-        return flask.redirect(flask.url_for("app.settings"))
-    return "Bad request: could not the find given token '%s'" % (token)
-
-
-@login_blueprint.route('/disapprove_user/token/<token>')
-@admin_login_required
-def disapprove_user(token):
-    db_session = open_session()
-    user_candidate = db_session.query(User).filter(User.admin_authorization_token == token).first()
-    if user_candidate is not None:
-        user_candidate.disapprove()
-        user_candidate.user_authorized = False
-        db_session.add(user_candidate)
-        close_session(db_session)
-        return flask.redirect(flask.url_for("app.settings"))
-    return "Bad request: could not find givent token '%s'" % (token)
-
-
-@login_blueprint.route('/promote_user/<user_id>')
-@admin_login_required
-def promote_user(user_id):
-    db_session = open_session()
-    user_candidate = db_session.query(User).filter(User.id == user_id).first()
-    if user_candidate is not None:
-        user_candidate.is_admin = True
-        db_session.add(user_candidate)
-        close_session(db_session)
-        return flask.redirect(flask.url_for("app.settings"))
-    return "Bad request: could not a user with given id '%s'" % (user_id)
-
-
-@login_blueprint.route('/demote_user/<user_id>')
-@admin_login_required
-def demote_user(user_id):
-    db_session = open_session()
-    user_candidate = db_session.query(User).filter(User.id == user_id).first()
-    if user_candidate is not None:
-        user_candidate.is_admin = False
-        db_session.add(user_candidate)
-        close_session(db_session)
-        return flask.redirect(flask.url_for("app.settings"))
-    return "Bad request: could not a user with given id '%s'" % (user_id)
-
-
-@login_blueprint.route('/authorize_user/<user_id>')
-@admin_login_required
-def authorize_user(user_id):
-    db_session = open_session()
-    user_candidate = db_session.query(User).filter(User.id == user_id).first()
-    if user_candidate is not None:
-        if user_candidate.state == "waiting_authorization":
-            user_candidate.approve()
-        elif user_candidate.state == "unauthorized":
-            user_candidate.reauthorize()
-        user_candidate.user_authorized = True
-        db_session.add(user_candidate)
-        close_session(db_session)
-        return flask.redirect(flask.url_for("app.settings"))
-    return "Bad request: could not a user with given id '%s'" % (user_id)
-
-
-@login_blueprint.route('/deauthorize_user/<user_id>')
-@admin_login_required
-def deauthorize_user(user_id):
-    db_session = open_session()
-    user_candidate = db_session.query(User).filter(User.id == user_id).first()
-    if user_candidate is not None:
-        user_candidate.deauthorize()
-        user_candidate.user_authorized = False
-        db_session.add(user_candidate)
-        close_session(db_session)
-        return flask.redirect(flask.url_for("app.settings"))
-    return "Bad request: could not a user with given id '%s'" % (user_id)
+        user_candidate.email_confirmed = True
+        if get_cluster_desc()['email_signup']:
+            user_candidate.user_authorized = True
+            url = flask.redirect(flask.url_for("login.confirmation_authorized_account"))
+        else:
+            url = flask.redirect(flask.url_for("login.confirmation_email"))
+    close_session(db_session)
+    return url
 
 
 @login_blueprint.route("/logout")

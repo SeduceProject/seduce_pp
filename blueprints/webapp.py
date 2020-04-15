@@ -4,7 +4,8 @@ from database.states import deployment_initial_state, destroy_state, init_deploy
 from flask import Blueprint
 from flask_login import current_user
 from glob import glob
-from lib.config.config_loader import get_cluster_desc, load_cluster_desc
+from lib.admin_decorators import admin_login_required
+from lib.config_loader import get_cluster_desc, load_cluster_desc
 import datetime, flask, flask_login, json, random, shutil, string, subprocess
 
 
@@ -69,6 +70,7 @@ def process_take():
     return flask.redirect(flask.url_for("app.home"))
 
 
+@webapp_blueprint.route("/server/cancel/")
 @flask_login.login_required
 def cancel():
     db_session = open_session()
@@ -239,7 +241,6 @@ def configure():
     return flask.redirect(flask.url_for("app.configuration"))
 
 
-@webapp_blueprint.route("/server/cancel/")
 @webapp_blueprint.route("/configuration")
 def configuration():
     return flask.render_template("first_boot_exec.html.jinja2")
@@ -249,6 +250,13 @@ def configuration():
 @flask_login.login_required
 def user():
     return flask.render_template("user_vuejs.html.jinja2")
+
+
+@webapp_blueprint.route("/admin")
+@admin_login_required
+def admin():
+    load_cluster_desc()
+    return flask.render_template("admin.html.jinja2")
 
 
 @webapp_blueprint.route("/")

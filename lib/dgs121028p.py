@@ -1,5 +1,5 @@
 import base64, dukpy, re, requests, subprocess, time
-from lib.config.config_loader import get_cluster_desc
+from lib.config_loader import get_cluster_desc
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 
