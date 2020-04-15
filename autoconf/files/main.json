@@ -7,6 +7,8 @@
         "ip": "SWITCHIP",
         "snmp_oid": "SNMPOID"
     },
+    "email_signup": true,
+    "email_filters": [ "@example.fr" ],
     "comments": "WARNING: Do NOT forget the ending /",
     "env_cfg_dir": "/root/seduce_pp/cluster_desc/environments/",
     "img_dir": "/root/environments/"
