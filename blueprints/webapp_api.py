@@ -82,8 +82,14 @@ def user_info():
     me = session.query(User).filter(User.email == current_user.id).first()
     if me.ssh_key is None:
         me.ssh_key = ''
+    if me.is_admin:
+        status = 'Administrator'
+    elif me.user_authorized:
+        status = 'Authorized'
+    else:
+        status = 'Unknown (Contact your administrator)'
     me_info = { "firstname": me.firstname, "lastname": me.lastname, "email": me.email,
-            "ssh": me.ssh_key, "state": me.state }
+            "ssh": me.ssh_key, "status": status }
     close_session(session)
     return json.dumps({
         "status": "ok",

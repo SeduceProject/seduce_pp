@@ -10,11 +10,10 @@
                 <table v-if="users.pending.length > 0" class="table">
                   <thead>
                     <tr>
-                      <th scope="col">Email</th>
+                      <th scope="col">Identifier</th>
                       <th scope="col">First Name</th>
                       <th scope="col">Last Name</th>
                       <th scope="col">Email</th>
-                      <th scope="col">State</th>
                       <th scope="col">Authorize</th>
                       <th scope="col">Remove</th>
                     </tr>
@@ -25,7 +24,6 @@
                       <td class="p-3">[[ user.firstname ]]</td>
                       <td class="p-3">[[ user.lastname ]]</td>
                       <td class="p-3">[[ user.email_confirmed ]]</td>
-                      <td class="p-3">[[ user.state ]]</td>
                       <td>
                         <a :href="'/config/add_user_auth/' + user.id" class="btn btn-info"
                             style="width: 85.6px;">&#x002B;</a>
@@ -42,11 +40,10 @@
                 <table v-if="users.authorized.length > 0" class="table">
                   <thead>
                     <tr>
-                      <th scope="col">Email</th>
+                      <th scope="col">Identifier</th>
                       <th scope="col">First Name</th>
                       <th scope="col">Last Name</th>
                       <th scope="col">Email</th>
-                      <th scope="col">State</th>
                       <th scope="col">Promote</th>
                       <th scope="col">Revoke</th>
                     </tr>
@@ -57,7 +54,6 @@
                       <td class="p-3">[[ user.firstname ]]</td>
                       <td class="p-3">[[ user.lastname ]]</td>
                       <td class="p-3">[[ user.email_confirmed ]]</td>
-                      <td class="p-3">[[ user.state ]]</td>
                       <td>
                         <a :href="'/config/add_admin/' + user.id" class="btn btn-info"
                             style="width: 85.6px;">&#x002B;</a>
@@ -74,11 +70,10 @@
                 <table v-if="users.admin.length > 0" class="table">
                   <thead>
                     <tr>
-                      <th scope="col">Email</th>
+                      <th scope="col">Identifier</th>
                       <th scope="col">First Name</th>
                       <th scope="col">Last Name</th>
                       <th scope="col">Email</th>
-                      <th scope="col">State</th>
                       <th scope="col">Revoke</th>
                     </tr>
                   </thead>
@@ -88,7 +83,6 @@
                       <td class="p-3">[[ user.firstname ]]</td>
                       <td class="p-3">[[ user.lastname ]]</td>
                       <td class="p-3">[[ user.email_confirmed ]]</td>
-                      <td class="p-3">[[ user.state ]]</td>
                       <td>
                         <a :href="'/config/del_admin/' + user.id" class="btn btn-warning"
                             style="width: 85.6px;">&#x2212;</a>

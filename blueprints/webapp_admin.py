@@ -40,7 +40,7 @@ def users():
                 category = pending
             category.append({
                 'id': user.id, 'email': user.email, 'firstname': user.firstname, 'lastname': user.lastname,
-                'email_confirmed': user.email_confirmed, 'state': user.state
+                'email_confirmed': user.email_confirmed
             })
     return json.dumps({
         "status": "ok",

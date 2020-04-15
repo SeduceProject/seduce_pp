@@ -10,8 +10,8 @@ def create_tables(logger):
                 logger.info("The database is empty. Create tables...")
                 Base.metadata.create_all(engine)
                 logger.info("Create the admin user")
-                admin = "INSERT INTO user(state, email, _password, firstname, lastname, email_confirmed,\
-                        user_authorized, is_admin) VALUES('confirmed', 'admin@piseduce.fr',\
+                admin = "INSERT INTO user(email, _password, firstname, lastname, email_confirmed, user_authorized,\
+                        is_admin) VALUES('admin@piseduce.fr',\
                         '$2b$12$qX460DWxWW3rzu5Q.Ot2juQDxb4lTA28rC6Y01BWvSt5i9Ey763du', 'Admin', 'Admin', 1, 1, 1)"
                 db_session = open_session()
                 db_session.execute(admin)

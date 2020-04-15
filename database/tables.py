@@ -8,7 +8,6 @@ from sqlalchemy.orm import relationship
 class User(Base):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    state = Column(String(120), default=user_initial_state)
     email = Column(String(200), unique=True)
     _password = Column(Text)
     firstname = Column(Text)
@@ -18,12 +17,11 @@ class User(Base):
     user_authorized = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
     email_confirmation_token = Column(Text, nullable=True, default=None)
-    admin_authorization_token = Column(Text, nullable=True, default=None)
     deployments = relationship('Deployment', backref='user', lazy=True)
 
 
     def __repr__(self):
-        return "User(%s, %s, %s)" % (self.email, self.state, self.email_confirmed)
+        return "User(%s, %s, %s)" % (self.email, self.user_authorized, self.email_confirmed)
 
 
     @hybrid_property
