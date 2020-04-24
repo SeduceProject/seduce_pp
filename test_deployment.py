@@ -2,7 +2,7 @@ from database.connector import open_session, close_session
 from database.states import progress_forward
 from database.tables import Deployment, User
 from datetime import datetime
-from lib.config.config_loader import get_cluster_desc
+from lib.config_loader import get_cluster_desc
 import json, logging, logging.config, os, random, subprocess, sys, time
 
 
@@ -65,13 +65,14 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
     for node in selected_nodes:
         new_deployment = Deployment()
         new_deployment.state = "nfs_boot_conf"
-        new_deployment.public_key = process.stdout
         new_deployment.environment = test_env
-        new_deployment.init_script = node['script']
-        new_deployment.system_pwd = "superC9PWD"
-        new_deployment.name = test_deployment_name
-        new_deployment.start_date = datetime.utcnow()
         new_deployment.node_name = node['name']
+        new_deployment.name = test_deployment_name
+        new_deployment.system_size = 200
+        new_deployment.system_pwd = "superC9PWD"
+        new_deployment.public_key = process.stdout
+        new_deployment.init_script = node['script']
+        new_deployment.start_date = datetime.utcnow()
         new_deployment.user_id = test_user_id
         db_session.add(new_deployment)
         # Write statistics about deployments
@@ -102,7 +103,7 @@ def state_register(dep, stats):
                         stats[dep.environment][dep.node_name][-1]['ip'])
                 return True
         else:
-            if from_change > 180:
+            if from_change > 300:
                 state_info[last_state] = from_change
                 logger.warning("Detected stuck deployment for the node '%s'" %
                         stats[dep.environment][dep.node_name][-1]['ip'])
@@ -228,9 +229,9 @@ if __name__ == "__main__":
     file_stats = 'json_test/%s_stats_tests.json' % file_id
     stats_data = {}
     cluster_desc = get_cluster_desc()
-    for env in [ { 'name': boot_test_environment } ]:
+    #for env in [ { 'name': boot_test_environment } ]:
     #for env in [ {'name': 'tiny_core'} ]:
-    #for env in cluster_desc["environments"].values():
+    for env in cluster_desc["environments"].values():
         logger.info("Deploying the '%s' environment" % env['name'])
         testing_environment(env['name'], file_id, stats_data, 10)
     logger.info("Destroy older deployments")

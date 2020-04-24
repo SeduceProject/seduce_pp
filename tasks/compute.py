@@ -223,13 +223,13 @@ def create_partition_fct(deployment, cluster_desc, db_session, logger):
         ssh.connect(server.get("ip"), username="root", timeout=1.0)
         moreMB = int(deployment.system_size)
         if moreMB == 8:
-            logger.info("%s: Create a partition with the whole free space" % server.get("ip"))
+            logger.info("%s: Create a partition with the whole free space" % server['name'])
             cmd = ("(echo n; echo p; echo 2; echo '%s'; echo ''; echo w) | fdisk -u /dev/mmcblk0" %
                     environment.get("sector_start"))
         else:
             # Total size of the new partition in sectors (512B)
             moreSpace = int(deployment.temp_info) + (moreMB * 1024 * 1024 / 512)
-            logger.info("%s: Create a partition with a size of %d sectors" % (server.get("ip"), moreSpace))
+            logger.info("%s: Create a partition with a size of %d sectors" % (server['name'], moreSpace))
             cmd = ("(echo n; echo p; echo 2; echo '%s'; echo '+%d'; echo w) | fdisk -u /dev/mmcblk0" %
                     (environment.get("sector_start"), moreSpace))
         (stdin, stdout, stderr) = ssh.exec_command(cmd)
