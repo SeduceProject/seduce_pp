@@ -217,8 +217,8 @@ def configure():
         cmd = "sed -i 's/SNMP_COMMUNITY_NAME/%s/' config.sh" % flask.request.form.get("snmp_community")
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         oid_offset = int(switch_oid[switch_oid.rindex('.') + 1:]) - 1
-        cmd = "sed -i 's/SNMP_OID_CONF_OFFSET/%d/' config.sh" % oid_offsetprocess = subprocess.run(
-                cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        cmd = "sed -i 's/SNMP_OID_CONF_OFFSET/%d/' config.sh" % oid_offset
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         cmd = "sed -i 's/SNMP_OID_CONF/%s/' config.sh" % switch_oid[:switch_oid.rindex('.')]
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         cmd = "sed -i 's/NETWORK_IP_CONF/%s/' config.sh" % new_ip[:new_ip.rindex('.')]
