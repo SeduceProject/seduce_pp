@@ -60,8 +60,9 @@ def login_required(response):
 
 def set_power_port(address, port, value):
     cluster_desc = get_cluster_desc()
-    snmp_address = "%s.%s" % (cluster_desc['switch']['snmp_oid'], port)
-    cmd = "snmpset -v2c -c private %s %s i %s" % (address, snmp_address, value)
+    snmp_address = "%s.%s" % (
+            cluster_desc['switch']['snmp_oid'], cluster_desc['switch']['snmp_oid_offset'] + port)
+    cmd = "snmpset -v2c -c %s %s %s i %s" % (cluster_desc['switch']['snmp_community'], address, snmp_address, value)
     subprocess.run(cmd.split(), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return True
 

@@ -24,6 +24,8 @@
                 <input id="dhcp_on" name="dhcp_on" type="hidden" value="{{ dhcp }}" />
               </div>
             </div>
+            <!-- Save the current ip -->
+            <input id="my_ip" name="my_ip" type="hidden" value="{{ ip }}"/>
             <fieldset id="ip-fields">
                 <!-- PiMaster IP -->
                 <div class="row my-1">
@@ -33,7 +35,6 @@
                   <div class="col-md-6">
                     <input id="master_ip" name="master_ip" type="text" size=20 value="{{ ip }}"
                     onfocusout="computeFromMasterIP()" required/>
-                    <input id="my_ip" name="my_ip" type="hidden" value="{{ ip }}"/>
                   </div>
                 </div>
                 <!-- PiMaster gateway -->
@@ -123,23 +124,24 @@
                     <span id="port_error" class="d-none">'Wrong PiMaster port number!'</span>
                   </div>
                 </div>
+                <!-- Switch SNMP Community -->
+                <div class="row my-1">
+                  <div class="col-md-3 pt-1 text-right">
+                    SNMP Community
+                  </div>
+                  <div class="col-md-3">
+                    <input id="snmp_community" name="snmp_community" type="text" size=20 value="private"
+                        required></input>
+                  </div>
+                </div>
                 <!-- Switch OID -->
                 <div class="row my-1">
                   <div class="col-md-3 pt-1 text-right">
-                    SNMP OID to turn off/on POE
+                    SNMP OID of the first POE port
                   </div>
                   <div class="col-md-3">
-                    <input id="switch_oid" name="switch_oid" type="text" size=20 value="1.3.6.1.2.1.105.1.1.1.3.1"
-                    onfocusout="displayFullOID()" required></input>
-                  </div>
-                </div>
-                <!-- Complete OID -->
-                <div class="row my-1">
-                  <div class="col-md-3 pt-1 text-right">
-                    Complete OID to turn off/on POE
-                  </div>
-                  <div class="col-md-6 pt-1">
-                    <span id="complete_oid"></span>
+                    <input id="switch_oid" name="switch_oid" type="text" size=20 value="1.3.6.1.2.1.105.1.1.1.3.1.1"
+                        required></input>
                   </div>
                 </div>
                 <!-- Database Configuration -->
@@ -260,11 +262,6 @@
             computeFromMasterIP();
         }
         
-        function displayFullOID() {
-            var myOID = document.getElementById('switch_oid').value;
-            document.getElementById('complete_oid').innerHTML = myOID + '.portnumber i 1/2';
-        }
-        
         function checkMasterPort() {
             document.getElementById('port_error').className = 'd-none';
             var portNb = parseInt(document.getElementById('nb_port').value);
@@ -292,7 +289,6 @@
         // Run functions on page load
         computeFromMasterIP();
         dhcpConf();
-        displayFullOID();
         checkMasterPort();
     </script>
 

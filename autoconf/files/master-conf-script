@@ -9,7 +9,9 @@ GATEWAY_IP="GATEWAY_IP_CONF"
 SWITCH_IP="SWITCH_IP_CONF"
 NB_PORT="NB_PORT_CONF"
 # SNMP Configuration
+SNMP_COMMUNITY="SNMP_COMMUNITY_NAME"
 SNMP_OID="SNMP_OID_CONF"
+SNMP_OID_OFFSET="SNMP_OID_CONF_OFFSET"
 ON="1"
 OFF="2"
 # Slave configuration
@@ -18,8 +20,8 @@ INC_IP="INC_IP_CONF"
 # Database configuration
 DB_ROOT_PWD="CHANGE_ME_ROOT"
 DB_USER_PWD="CHANGE_ME_USER"
-# Default value should be ""
-PORTS="2 8 21"
+# Restrict the switch ports to use. Default value should be "", otherwise use port numbers, e.g., "1 6 12"
+PORTS=""
 
 if [ -z "$PORTS" ]; then
     PORTS=$(seq 1 $NB_PORT)
@@ -48,7 +50,9 @@ echo "# Register the pimaster (me) to the cluster configuration"
 cp autoconf/files/main.json .
 sed -i "s/PIMASTERIP/$MASTER_IP/" main.json
 sed -i "s/SWITCHIP/$SWITCH_IP/" main.json
+sed -i "s/SNMPCOMMUNITY/$SNMP_COMMUNITY/" main.json
 sed -i "s/SNMPOID/$SNMP_OID/" main.json
+sed -i "s/SNMPOIDOFFSET/$SNMP_OID_OFFSET/" main.json
 mv main.json cluster_desc
 
 echo '# Configure the seduce_pp database access'
@@ -90,7 +94,7 @@ echo "# Turn off all nodes connected to $SWITCH_IP"
 for p in $PORTS; do
     retry="again"
     while [ ! -z "$retry" ]; do
-        snmpset -v2c -c private $SWITCH_IP $SNMP_OID.$p i $OFF
+        snmpset -v2c -c $SNMP_COMMUNITY $SWITCH_IP $SNMP_OID.$(( $p + $SNMP_OID_OFFSET)) i $OFF
         if [ $? -eq 0 ]; then
             retry=""
         fi
@@ -99,9 +103,10 @@ done
 
 sleep 1
 echo "# Detecting MAC addresses"
+success_ip_list=""
 for p in $PORTS; do
     echo " + Turn on the node on port $p"
-    snmpset -v2c -c private $SWITCH_IP $SNMP_OID.$p i $ON
+    snmpset -v2c -c $SNMP_COMMUNITY $SWITCH_IP $SNMP_OID.$(( $p + $SNMP_OID_OFFSET)) i $ON
     sleep 5
     echo " + Capturing PXE boot requests"
     tshark -nni eth0 -w port.pcap -a duration:10 port 67 and 68
@@ -109,19 +114,20 @@ for p in $PORTS; do
     mac=$(tshark -r port.pcap -Y "bootp.option.type == 53 and bootp.ip.client == 0.0.0.0"\
         -T fields -e frame.time -e bootp.ip.client -e bootp.hw.mac_addr |\
         awk '{ print $7 }' | uniq)
-    echo $mac
-    if [ $(echo $mac | wc -l) -eq 1 ]; then
+    echo "Detected MAC address: $mac"
+    if [ $(echo $mac | wc -c) -gt 16 ]; then
         echo "  - MAC node on port $p: $mac"
         node_ip=$NETWORK_IP.$(( $p + $INC_IP))
         echo "  - Associated the MAC address to $node_ip"
         echo "dhcp-host=$mac,node-$p,$node_ip" >> dnsmasq.conf
         echo " - Configure the mDNS hostname for 'node-$p'"
         echo "$node_ip node-$p.local" >> /etc/avahi/hosts
+        success_ip_list="$success_ip_list $node_ip"
     else
         echo "  - Failed to retrieve the MAC address for the node on port $p"
     fi
     echo " + Turn off the node on port $p"
-    snmpset -v2c -c private $SWITCH_IP $SNMP_OID.$p i $OFF
+    snmpset -v2c -c $SNMP_COMMUNITY $SWITCH_IP $SNMP_OID.$(( $p + $SNMP_OID_OFFSET)) i $OFF
 done
 rm -f port.pcap
 
@@ -139,45 +145,49 @@ cp -r /tftpboot/rpiboot_uboot/* /tftpboot/
 echo " + Turn on all nodes"
 for p in $PORTS; do
     echo "  - Turn on the node on port $p"
-    snmpset -v2c -c private $SWITCH_IP $SNMP_OID.$p i $ON
+    snmpset -v2c -c $SNMP_COMMUNITY $SWITCH_IP $SNMP_OID.$(( $p + $SNMP_OID_OFFSET)) i $ON
 done
 echo " + Waiting 45s for the nodes"
 sleep 45
 for p in $PORTS; do
     echo " + SSH connection to 'node-$p'"
     node_ip=$NETWORK_IP.$(( $p + $INC_IP))
-    SSH_OK=""
-    while [ -z "$SSH_OK" ]; do
-        ssh -o StrictHostKeyChecking=no $node_ip 'echo ""'
-        if [ $? -eq 0 ]; then
-            echo "  - SSH: OK"
-            SSH_OK="yes"
+    if [[ $success_ip_list == *"$node_ip"* ]]; then
+        SSH_OK=""
+        while [ -z "$SSH_OK" ]; do
+            ssh -o StrictHostKeyChecking=no $node_ip 'echo ""'
+            if [ $? -eq 0 ]; then
+                echo "  - SSH: OK"
+                SSH_OK="yes"
+            else
+                echo "  - SSH connection failed to '$node_ip'"
+            fi
+            sleep 5
+        done
+        echo " + Get the node identifier"
+        node_id=$(ssh -o StrictHostKeyChecking=no $node_ip "cat /proc/cpuinfo" | \
+            grep "Serial" | awk '{ print substr( $3, length($3) - 7, length($3) ) }')
+        echo " + Create the cluster configuration associated to 'node-$p'"
+        node_file="cluster_desc/nodes/node-$p.json"
+        if [ $p -lt 10 ]; then
+            json_file="autoconf/files/node-default.json"
         else
-            echo "  - SSH connection failed to '$node_ip'"
+            json_file="autoconf/files/node-default10.json"
         fi
-        sleep 5
-    done
-    echo " + Get the node identifier"
-    node_id=$(ssh -o StrictHostKeyChecking=no $node_ip "cat /proc/cpuinfo" | \
-        grep "Serial" | awk '{ print substr( $3, length($3) - 7, length($3) ) }')
-    echo " + Create the cluster configuration associated to 'node-$p'"
-    node_file="cluster_desc/nodes/node-$p.json"
-    if [ $p -lt 10 ]; then
-        json_file="autoconf/files/node-default.json"
+        cp $json_file $node_file
+        sed -i "s/NODENAME/node-$p/" $node_file
+        sed -i "s/NODEPORT/$p/" $node_file
+        sed -i "s/NODEIP/$node_ip/" $node_file
+        node_file="cluster_desc/nodes/node-$p.json"
+        sed -i "s/NODEID/$node_id/" $node_file
     else
-        json_file="autoconf/files/node-default10.json"
+        echo "Node IP '$node_ip' is not configured"
     fi
-    cp $json_file $node_file
-    sed -i "s/NODENAME/node-$p/" $node_file
-    sed -i "s/NODEPORT/$p/" $node_file
-    sed -i "s/NODEIP/$node_ip/" $node_file
-    node_file="cluster_desc/nodes/node-$p.json"
-    sed -i "s/NODEID/$node_id/" $node_file
 done
 echo " + Turn off all nodes"
 for p in $PORTS; do
     echo "  - Turn off the node on port $p"
-    snmpset -v2c -c private $SWITCH_IP $SNMP_OID.$p i $OFF
+    snmpset -v2c -c $SNMP_COMMUNITY $SWITCH_IP $SNMP_OID.$(( $p + $SNMP_OID_OFFSET)) i $OFF
 done
 echo " + Clean the tftpboot directory"
 for f in $(ls /tftpboot/rpiboot_uboot); do
@@ -189,3 +199,6 @@ sleep 10
 echo "# Connect to http://pimaster.local:9000/"
 echo "# login: 'admin@piseduce.fr', password: 'piseduceadmin'"
 service pifrontend restart
+systemctl enable dnsmasq
+systemctl enable nfs-kernel-server
+systemctl enable pitasks

@@ -193,8 +193,12 @@ def configure():
         return flask.redirect(flask.url_for("app.home"))
     old_ip = flask.request.form.get("my_ip")
     new_ip = flask.request.form.get("master_ip")
+    # For DHCP configuratin, the master ip field is disable (users can not edit it)
+    if new_ip is None:
+        new_ip = old_ip
     dhcp_old = flask.request.form.get("dhcp_on")
     dhcp_conf = flask.request.form.get("dhcp_conf")
+    switch_oid = flask.request.form.get("switch_oid")
     # Compare dhcp values to know if there is a change
     no_dhcp_change = (dhcp_conf is None and dhcp_old == 'False') or (dhcp_conf is not None and dhcp_old == 'True')
     if old_ip == new_ip and no_dhcp_change:
@@ -210,7 +214,12 @@ def configure():
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         cmd = "sed -i 's/NB_PORT_CONF/%s/' config.sh" % flask.request.form.get("nb_port")
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/SNMP_OID_CONF/%s/' config.sh" % flask.request.form.get("switch_oid")
+        cmd = "sed -i 's/SNMP_COMMUNITY_NAME/%s/' config.sh" % flask.request.form.get("snmp_community")
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        oid_offset = int(switch_oid[switch_oid.rindex('.') + 1:]) - 1
+        cmd = "sed -i 's/SNMP_OID_CONF_OFFSET/%d/' config.sh" % oid_offsetprocess = subprocess.run(
+                cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        cmd = "sed -i 's/SNMP_OID_CONF/%s/' config.sh" % switch_oid[:switch_oid.rindex('.')]
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         cmd = "sed -i 's/NETWORK_IP_CONF/%s/' config.sh" % new_ip[:new_ip.rindex('.')]
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)

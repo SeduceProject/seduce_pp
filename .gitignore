@@ -8,9 +8,12 @@ test.db
 celerybeat-schedule.db
 celerybeat-schedule
 celerybeat.pid
+# Generated configuration files
 cluster_desc/*.json
 cluster_desc/environments/*.json
 cluster_desc/nodes/*.json
+# Generated install script
+config.sh
 
 ## INTELLIJ / PyCharm GITIGNORE
 
