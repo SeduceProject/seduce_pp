@@ -313,11 +313,6 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
         # Delete the bootcode.bin to force PXE boot
         ssh.connect(server.get("ip"), username="root", timeout=1.0)
         if environment['type'] == 'default':
-            if environment['name'] == 'tiny_core':
-                # Copy the custom tiny core with SSH keys
-                cmd = "cp /mydata.tgz fs_dir/tce/"
-                (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                return_code = stdout.channel.recv_exit_status()
             if environment['name'].startswith('raspbian'):
                 # Create the ssh file in the boot partition to start SSH on startup
                 cmd = "touch boot_dir/ssh"
