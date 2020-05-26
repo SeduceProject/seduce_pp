@@ -142,9 +142,10 @@ def env_copy_fct(deployment, cluster_desc, db_session, logger):
         img_path = cluster_desc['img_dir'] + environment['img_name']
         logger.info("%s: copy %s to the SDCARD" % (server["name"], img_path))
         # Write the image of the environment on SD card
-        deploy_cmd = "rsh -o StrictHostKeyChecking=no %s@%s 'cat %s' | gunzip | pv -n -p -s %s 2> progress-%s.txt | \
-                dd of=/dev/mmcblk0 bs=4M conv=fsync &" % (cluster_desc["pimaster"]["user"],
-                        cluster_desc["pimaster"]["ip"], img_path, environment["img_size"], server["name"])
+        deploy_cmd = "rsh -o StrictHostKeyChecking=no %s@%s 'cat %s' | tar xzOf - | \
+                pv -n -p -s %s 2> progress-%s.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync &" % (
+                        cluster_desc["pimaster"]["user"], cluster_desc["pimaster"]["ip"], img_path,
+                        environment["img_size"], server["name"])
         (stdin, stdout, stderr) = ssh.exec_command(deploy_cmd)
         return_code = stdout.channel.recv_exit_status()
         ssh.close()
