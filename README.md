@@ -37,7 +37,7 @@ sysctl -p /etc/sysctl.conf
 
 ### Install the software stack
 ```
-apt install dnsmasq git libffi-dev mariadb-client mariadb-server nfs-kernel-server python3-mysqldb python3-pip snmp
+apt install dnsmasq git libffi-dev mariadb-client mariadb-server nfs-kernel-server ntp python3-mysqldb python3-pip snmp
 ```
 
 ### Prepare PXE boot
