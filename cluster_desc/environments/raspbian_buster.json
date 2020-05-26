@@ -1,7 +1,7 @@
 {
     "type": "default",
     "name": "raspbian_buster",
-    "img_name": "2020-02-13-raspbian-buster-lite.img.gz",
+    "img_name": "2020-02-13-raspbian-buster-lite.img.tar.gz",
     "img_size": 1849688064,
     "sector_start": 532480,
     "ssh_user": "root",
