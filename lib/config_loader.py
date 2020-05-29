@@ -65,14 +65,20 @@ def load_cluster_desc():
     logger = logging.getLogger("CONFIG_LOADER")
     global CLUSTER_DESC
     CLUSTER_DESC = {}
+    # Load the main properties
     with open('cluster_desc/main.json', 'r') as json_file:
         CLUSTER_DESC = json.load(json_file)
     CLUSTER_DESC['nodes'] = {}
     CLUSTER_DESC['environments'] = {}
-    for node_json in sorted(glob('cluster_desc/nodes/*.json'), key = lambda x: int(re.findall('\d+', x)[0])):
+    node_descriptions = []
+    # Load the node descriptions
+    for node_json in glob('cluster_desc/nodes/*.json'):
         with open(node_json, 'r') as json_file:
             node_desc = json.load(json_file)
-        CLUSTER_DESC['nodes'][node_desc['name']] = node_desc
+        node_descriptions.append(node_desc)
+    for desc in sorted(node_descriptions, key = lambda x: x['port_number']):
+        CLUSTER_DESC['nodes'][desc['name']] = desc
+    # Load the environment descriptions
     for env_json in sorted(glob('cluster_desc/environments/*.json')):
         try:
             with open(env_json, 'r') as json_file:
