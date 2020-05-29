@@ -9,6 +9,10 @@
         "snmp_oid": "SNMPOID",
         "snmp_oid_offset": SNMPOIDOFFSET
     },
+    "email_signup": false,
+    "email_filters": [
+        "@piseduce.fr"
+    ],
     "comments": "WARNING: Do NOT forget the ending /",
     "env_cfg_dir": "/root/seduce_pp/cluster_desc/environments/",
     "img_dir": "/root/environments/"
