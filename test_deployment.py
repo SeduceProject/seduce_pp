@@ -109,7 +109,7 @@ def state_register(dep, stats):
                         stats[dep.environment][dep.node_name][-1]['ip'])
                 return True
     if last_state != dep.state:
-        logger.info("id: %d, state: %s, updated_at: %s" % (dep.id, dep.state, dep.updated_at))
+        logger.info("node: %s, state: %s, updated_at: %s" % (dep.node_name, dep.state, dep.updated_at))
         if len(last_state) > 0:
             enter_date = datetime.strptime(state_info['last_date'], '%Y-%m-%d %H:%M:%S')
             exit_date = datetime.strptime(str(dep.updated_at), '%Y-%m-%d %H:%M:%S')
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     #for env in [ {'name': 'tiny_core'} ]:
     for env in cluster_desc["environments"].values():
         logger.info("Deploying the '%s' environment" % env['name'])
-        testing_environment(env['name'], file_id, stats_data, 10)
+        testing_environment(env['name'], file_id, stats_data, 2)
     logger.info("Destroy older deployments")
     destroy_test_deployment()
     logger.info("Write the detailed statistics to the '%s'" % file_stats)
