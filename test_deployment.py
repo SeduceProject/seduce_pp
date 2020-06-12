@@ -103,7 +103,7 @@ def state_register(dep, stats):
                         stats[dep.environment][dep.node_name][-1]['ip'])
                 return True
         else:
-            if from_change > 300:
+            if from_change > 180:
                 state_info[last_state] = from_change
                 logger.warning("Detected stuck deployment for the node '%s'" %
                         stats[dep.environment][dep.node_name][-1]['ip'])
