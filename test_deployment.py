@@ -233,7 +233,7 @@ if __name__ == "__main__":
     #for env in [ {'name': 'tiny_core'} ]:
     for env in cluster_desc["environments"].values():
         logger.info("Deploying the '%s' environment" % env['name'])
-        testing_environment(env['name'], file_id, stats_data, 2)
+        testing_environment(env['name'], file_id, stats_data, 10)
     logger.info("Destroy older deployments")
     destroy_test_deployment()
     logger.info("Write the detailed statistics to the '%s'" % file_stats)

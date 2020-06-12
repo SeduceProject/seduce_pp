@@ -70,30 +70,10 @@ def check_jupyter_is_ready(node_desc, env_desc, logger):
     return ret_bool
 
 
-# Tools used to deploy environments
-def is_file_ssh(ssh_session, path_file):
+# Test if the processus already exists on the remote nodes
+def ps_ssh(ssh_session, process):
     try:
-        (stdin, stdout, stderr) = ssh_session.exec_command("cat %s | wc -l" % path_file)
-        return_code = stdout.channel.recv_exit_status()
-        output = stdout.readlines()
-        return int(output[0].strip())
-    except SSHException:
-        return -1
-
-
-def md5sum_ssh(ssh_session, path_file):
-    try:
-        (stdin, stdout, stderr) = ssh_session.exec_command("md5sum %s | cut -d ' ' -f1" % path_file)
-        return_code = stdout.channel.recv_exit_status()
-        output = stdout.readlines()
-        return output[0].strip()
-    except SSHException:
-        return "error"
-
-
-def ps_ssh(ssh_session, bash_cmd):
-    try:
-        (stdin, stdout, stderr) = ssh_session.exec_command("ps aux | grep %s | grep -v grep | wc -l" % bash_cmd)
+        (stdin, stdout, stderr) = ssh_session.exec_command("ps aux | grep %s | grep -v grep | wc -l" % process)
         return_code = stdout.channel.recv_exit_status()
         output = stdout.readlines()
         return int(output[0].strip())
@@ -135,27 +115,35 @@ def env_copy_fct(deployment, cluster_desc, db_session, logger):
     server = cluster_desc['nodes'][deployment.node_name]
     environment = cluster_desc['environments'][deployment.environment]
     try:
+        ret_fct = False
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(server.get("ip"), username="root", timeout=1.0)
-        # Get the path to the IMG file
-        img_path = cluster_desc['img_dir'] + environment['img_name']
-        logger.info("%s: copy %s to the SDCARD" % (server["name"], img_path))
-        # Write the image of the environment on SD card
-        deploy_cmd = "rsh -o StrictHostKeyChecking=no %s@%s 'cat %s' | tar xzOf - | \
-                pv -n -p -s %s 2> progress-%s.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync &" % (
-                        cluster_desc["pimaster"]["user"], cluster_desc["pimaster"]["ip"], img_path,
-                        environment["img_size"], server["name"])
-        (stdin, stdout, stderr) = ssh.exec_command(deploy_cmd)
+        # Check the booted system is the NFS system
+        (stdin, stdout, stderr) = ssh.exec_command('cat /etc/hostname')
         return_code = stdout.channel.recv_exit_status()
+        myname = stdout.readlines()[0].strip()
+        if myname == 'nfspi':
+            # Get the path to the IMG file
+            img_path = cluster_desc['img_dir'] + environment['img_name']
+            logger.info("%s: copy %s to the SDCARD" % (server["name"], img_path))
+            # Write the image of the environment on SD card
+            deploy_cmd = "rsh -o StrictHostKeyChecking=no %s@%s 'cat %s' | tar xzOf - | \
+                    pv -n -p -s %s 2> progress-%s.txt | dd of=/dev/mmcblk0 bs=4M conv=fsync &" % (
+                            cluster_desc["pimaster"]["user"], cluster_desc["pimaster"]["ip"], img_path,
+                            environment["img_size"], server["name"])
+            (stdin, stdout, stderr) = ssh.exec_command(deploy_cmd)
+            return_code = stdout.channel.recv_exit_status()
+            deployment.temp_info = 0
+            ret_fct = True
+        else:
+            logger.error('Fail to detect the NFS filesystem: wrong hostname \'%s\'' % myname)
         ssh.close()
-        deployment.temp_info = 0
-        return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
         logger.warning("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
-    return False
+    return ret_fct
 
 
 def env_check_fct(deployment, cluster_desc, db_session, logger):
@@ -311,7 +299,6 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        # Delete the bootcode.bin to force PXE boot
         ssh.connect(server.get("ip"), username="root", timeout=1.0)
         if environment['type'] == 'default':
             if environment['name'].startswith('raspbian'):
@@ -373,29 +360,36 @@ def user_conf_fct(deployment, cluster_desc, db_session, logger):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
-        my_ssh_keys = ''
-        if db_user.ssh_key is not None and len(db_user.ssh_key) > 0:
-            my_ssh_keys = '\n%s' % db_user.ssh_key
-        if deployment.public_key is not None and len(deployment.public_key) > 0:
-            my_ssh_keys = '%s\n%s' % (my_ssh_keys, deployment.public_key)
-        if len(my_ssh_keys) > 0:
-            # Add the public key of the user
-            cmd = "echo '%s' >> .ssh/authorized_keys" % my_ssh_keys
-            (stdin, stdout, stderr) = ssh.exec_command(cmd)
-            return_code = stdout.channel.recv_exit_status()
-        if deployment.environment == 'tiny_core':
-            # Change the 'tc' user password
-            cmd = "echo -e '%s\n%s' | sudo passwd tc; filetool.sh -b" % (
-                    deployment.system_pwd, deployment.system_pwd)
-            (stdin, stdout, stderr) = ssh.exec_command(cmd)
-            return_code = stdout.channel.recv_exit_status()
-        if deployment.environment.startswith('raspbian'):
-            # Change the 'pi' user password
-            cmd = "echo -e '%s\n%s' | sudo passwd pi" % (deployment.system_pwd, deployment.system_pwd)
-            (stdin, stdout, stderr) = ssh.exec_command(cmd)
-            return_code = stdout.channel.recv_exit_status()
-        ssh.close()
-        return True
+        (stdin, stdout, stderr) = ssh.exec_command('cat /etc/hostname')
+        return_code = stdout.channel.recv_exit_status()
+        myname = stdout.readlines()[0].strip()
+        if myname == 'nfspi':
+            logger.error('\'%s\' Hangs on the NFS filesystem' % server['name'])
+            return False
+        else:
+            my_ssh_keys = ''
+            if db_user.ssh_key is not None and len(db_user.ssh_key) > 0:
+                my_ssh_keys = '\n%s' % db_user.ssh_key
+            if deployment.public_key is not None and len(deployment.public_key) > 0:
+                my_ssh_keys = '%s\n%s' % (my_ssh_keys, deployment.public_key)
+            if len(my_ssh_keys) > 0:
+                # Add the public key of the user
+                cmd = "echo '%s' >> .ssh/authorized_keys" % my_ssh_keys
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+            if deployment.environment == 'tiny_core':
+                # Change the 'tc' user password
+                cmd = "echo -e '%s\n%s' | sudo passwd tc; filetool.sh -b" % (
+                        deployment.system_pwd, deployment.system_pwd)
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+            if deployment.environment.startswith('raspbian'):
+                # Change the 'pi' user password
+                cmd = "echo -e '%s\n%s' | sudo passwd pi" % (deployment.system_pwd, deployment.system_pwd)
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+            ssh.close()
+            return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
@@ -786,6 +780,17 @@ def rebooting_fct(deployment, cluster_desc, db_session, logger):
 def destroy_request_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
+    environment = cluster_desc['environments'][deployment.environment]
+    # Remove the bootcode.bin file that can appear after updating the Raspbian OS
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+        (stdin, stdout, stderr) = ssh.exec_command('rm /boot/bootcode.bin && sync')
+        return_code = stdout.channel.recv_exit_status()
+        ssh.close()
+    except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+        logger.warning('No SSH connection: can not try to delete the bootcode.bin file')
     # Turn off port
     turn_off_port(cluster_desc["switch"]["ip"], server["port_number"])
     # Delete the tftpboot folder
