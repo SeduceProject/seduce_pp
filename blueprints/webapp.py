@@ -117,7 +117,9 @@ def ask_reboot(n_name):
     my_deployment = db_session.query(Deployment).filter_by(user_id = db_user.id,
             node_name = n_name).filter(Deployment.state != "destroyed").first()
     if my_deployment is not None:
-        my_deployment.temp_info = my_deployment.state
+        # Do not remember the 'lost' state but the state before it
+        if my_deployment.state != 'lost':
+            my_deployment.temp_info = my_deployment.state
         reboot_state(my_deployment)
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))

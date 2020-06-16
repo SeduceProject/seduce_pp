@@ -1,10 +1,21 @@
 from database.connector import open_session, close_session
-from database.states import progress_forward
+from database.states import progress_forward, use_env_ssh_user
 from database.tables import Deployment, User
 from lib.config_loader import get_cluster_desc, load_cluster_desc
 from lib.dgs121028p import turn_on_port, turn_off_port
 from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
 import datetime, json, logging, os, paramiko, re, requests, shutil, socket, subprocess, sys, time, uuid
+
+# After rebooting, nodes that are not reachable after 300 s are tagged 'lost'.
+# The 'lost' tag is removed when the deployment is destroyed.
+lost_timeout = 300
+lost_nodes = []
+
+def is_lost(deployment, logger):
+    logger.error('\'%s\' is lost. Hard reboot the node or destroy the deployment. '\
+            'Node monitoring will be stopped.' % deployment.node_name)
+    deployment.temp_info = deployment.state
+    deployment.state = 'lost'
 
 def collect_nodes(node_state):
     logger_compute = logging.getLogger("COMPUTE")
@@ -143,6 +154,8 @@ def env_copy_fct(deployment, cluster_desc, db_session, logger):
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
         logger.warning("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
+        if elapsedTime > lost_timeout:
+            is_lost(deployment, logger)
     return ret_fct
 
 
@@ -394,6 +407,8 @@ def user_conf_fct(deployment, cluster_desc, db_session, logger):
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
         logger.warning("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
+        if elapsedTime > lost_timeout:
+            is_lost(deployment, logger)
     return False
 
 
@@ -766,13 +781,18 @@ def rebooting_fct(deployment, cluster_desc, db_session, logger):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+        if use_env_ssh_user(deployment.temp_info):
+            ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+        else:
+            ssh.connect(server.get("ip"), username="root", timeout=1.0)
         ssh.close()
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
         logger.info("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
+        if elapsedTime > lost_timeout:
+            is_lost(deployment, logger)
     return False
 
 

@@ -66,3 +66,13 @@ def failure_state(state):
 
 def failure_forward(db_obj):
     db_obj.state = failure_state(db_obj.state)
+
+
+# Return True if SSH connections must use the 'ssh_user' property defined in the environment description
+def use_env_ssh_user(dep_state):
+    try:
+        last_nfs_state = progress['deployment'][0].index('system_conf')
+        dep_idx = progress['deployment'][0].index(dep_state)
+        return dep_idx > last_nfs_state
+    except:
+        return True

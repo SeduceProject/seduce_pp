@@ -154,6 +154,10 @@
     background-color: #7DFF8B;
 }
 
+.lost {
+    background-color: darkgrey;
+}
+
 /* Rebooting nodes */
 .off_requested {
     background-color: #ffe496;
