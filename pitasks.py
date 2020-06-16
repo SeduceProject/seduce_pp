@@ -1,6 +1,6 @@
 from database.connector import create_tables
 from database.states import progress, no_fct
-from tasks.compute import collect_nodes
+from state_exec import collect_nodes
 import logging, logging.config, os, time
 
 
