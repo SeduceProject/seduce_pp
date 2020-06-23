@@ -56,14 +56,21 @@ def user_deployments():
         deployed = True
         if d.name not in deployment_info.keys():
             deployment_info[d.name] = {"name": d.name, "env": d.environment, "state": d.state, "user_id": d.user_id,
-                    "ids": [], "server_names": [], "server_infos": [] }
+                    "ids": [], "server_names": [], "server_infos": [], "server_props": [] }
         deployment_info[d.name]["ids"].append(d.id)
         for s in cluster_desc["nodes"].values():
             if s["name"] == d.node_name:
-                deployment_info[d.name]["server_infos"].append({ "name": s["name"], "id": s["id"],
-                    "state": d.state, "ip": s["ip"], "model": s["model"], "public_ip": s["public_ip"],
-                    "public_port": s["public_port"], "password": d.system_pwd })
+                s_keys = list(s.keys())
+                s_keys.remove('name')
+                s_keys.remove('id')
+                s_keys.remove('model')
+                s_values = []
+                for key in s_keys:
+                    s_values.append(tuple([key, s[key]]))
                 deployment_info[d.name]["server_names"].append(s["name"])
+                deployment_info[d.name]["server_infos"].append({ "name": s["name"], "id": s["id"],
+                    "state": d.state, "model": s["model"], "password": d.system_pwd,
+                    "public_ip": s["public_ip"],  "other_props": s_values })
     close_session(session)
     if not deployments:
         return json.dumps({

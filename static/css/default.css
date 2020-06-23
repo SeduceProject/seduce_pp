@@ -36,10 +36,6 @@
     width: 120px;
 }
 
-.grey-border {
-    border: 2px solid #FAFAFA;
-}
-
 .table-title {
     padding: 10px;
     margin-bottom: 0px;
@@ -78,6 +74,55 @@
 .text-title {
     font-family: "Palatino Linotype";
     color: #123eab;
+}
+
+/* More Info panel */
+.nav-pills .nav-link.active {
+    background-color: #17a2b8;
+}
+
+.minfo {
+    height: 430px;
+    overflow: auto;
+}
+
+.minfo-title {
+    font-size: 20px;
+    text-align: center;
+    width: 400px;
+    margin: auto;
+    margin-bottom: 20px;
+}
+
+.minfo-header {
+    background-color: #dee2e6;
+}
+
+.minfo-table {
+    border: 1px solid #dee2e6;
+    border-bottom: 2px solid #dee2e6;
+    text-align: left;
+}
+
+.minfo-table .row:first-child {
+    background-color: #dee2e6;
+    text-align: center;
+}
+
+.minfo-table .row {
+    border-top: 1px solid #dee2e6;
+}
+
+.minfo-button {
+    width: 90%;
+}
+
+.minfo-selected {
+    background-color: #dc3545;
+}
+
+.grey-border {
+    border: 2px solid #FAFAFA;
 }
 
 /* state colors */

@@ -138,6 +138,20 @@ def ask_redeploy(n_name):
     return flask.redirect(flask.url_for("app.home"))
 
 
+@webapp_blueprint.route("/server/release/<string:n_name>")
+@flask_login.login_required
+def ask_release_node(n_name):
+    db_session = open_session()
+    db_user = db_session.query(User).filter_by(email = current_user.id).first()
+    # Get the deployment associated to the node
+    my_deployment = db_session.query(Deployment).filter_by(user_id = db_user.id,
+            node_name = n_name).filter(Deployment.state != "destroyed").first()
+    if my_deployment is not None:
+        destroy_state(my_deployment)
+    close_session(db_session)
+    return flask.redirect(flask.url_for("app.home"))
+
+
 @webapp_blueprint.route("/deployment/destroy/<string:deployment_ids>")
 @flask_login.login_required
 def ask_destruction(deployment_ids):

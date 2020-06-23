@@ -88,194 +88,217 @@
                                 v-bind:aria-controls="'collapse-' + [[ deployment.ids[0] ]]">More Info</a>
                         </div>
                     </div>
+                    <!-- More Info panel -->
                     <div v-bind:id="'collapse-' + [[ deployment.ids[0] ]]" class="collapse"
                         :aria-labelledby="'heading-' + [[ deployment.ids[0] ]]" data-parent="#accordionExample">
-                      <div class="card-body text-center grey-border">
-                            <h5 class="table-title">Environment Information</h5>
-							<table class="table text-center">
-							  <thead>
-								<tr>
-								  <th scope="col">Environment</th>
-								  <th scope="col">SSH with Password</th>
-								  <th scope="col">SSH with ssh key</th>
-								  <th scope="col">Web Interface</th>
-                                </tr>
-							  </thead>
-							  <tbody>
-									<tr>
-										<td>[[ deployment.env ]]</td>
-										<td v-if="[[ deployment.env ]] != 'tiny_core'">
-                                            ssh -l pi -p <i>public_port</i> <i>public_ip</i>
-                                        </td>
-										<td v-if="[[ deployment.env ]] == 'tiny_core'">
-                                            ssh -l tc -p <i>public_port</i> <i>public_ip</i>
-                                        </td>
-										<td v-if="[[ deployment.env ]] != 'tiny_core'">
-                                            ssh -l root -p <i>public_port</i> <i>public_ip</i>
-                                        </td>
-										<td v-if="[[ deployment.env ]] == 'tiny_core'">
-                                            ssh -l tc -p <i>public_port</i> <i>public_ip</i>
-                                        </td>
-										<td>
-                                            <span v-if="[[ deployment.env ]] != 'raspbian_cloud9' &&
-                                                [[ deployment.env ]] != 'raspbian_jupyter'">
-                                                None
-                                            </span>
-                                            <div v-if="[[ deployment.env ]] == 'raspbian_cloud9'" class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
-                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                C9 Interface
-                                              </button><br/>
-                                              <i>login: admin</i>
-                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-									            <span v-for="n in deployment.server_infos"
-                                                    v-if="[[ n.state ]] != 'deployed'" class="dropdown-item">
-                                                    Waiting [[ n.name ]]
-                                                </span>
-									            <a v-for="n in deployment.server_infos"
-                                                    v-if="[[ n.state ]] == 'deployed'" :href="'http://' + n.public_ip"
-                                                    target="_blank" class="dropdown-item">
-                                                    [[ n.name ]]
-                                                </a>
-                                              </div>
+                      <div class="card-body text-center grey-border minfo">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-3">
+                                    <nav class="nav nav-pills flex-column">
+                                        <div class="nav-link active"
+                                            :onclick="'loadInfo(this,\'' + deployment.ids[0] + '\', \'\')'">
+                                            Environment<br/>[[ deployment.ids.length ]] nodes
+                                        </div>
+                                        <div v-for="n in deployment.server_infos" class="nav-link"
+                                            :onclick="'loadInfo(this, \''+ deployment.ids[0] + '\', \'' + n.name + '\')'">
+                                            [[ n.name ]]
+                                        </div>
+                                    </nav>
+                                </div>
+                                <div :id="'container-info-' + [[ deployment.ids[0] ]]" class="col">
+                                    <div :id="'env-info-' + [[ deployment.ids[0] ]]">
+                                        <div class="bg-info text-light rounded minfo-title">Environment Configuration</div>
+                                        <div class="container">
+                                            <div class="row">
+                                                <!-- Hard Reboot nodes -->
+                                                <div class="col">
+                                                    <div class='minfo-header'>
+                                                        Hard Reboot
+                                                    </div>
+                                                    <div class="container">
+                                                        <div v-for="n in deployment.server_infos" class="row">
+                                                            <div :id="'hr-title-' + n.name" class="col">
+                                                                [[ n.name ]]
+                                                            </div>
+                                                            <div class="col-1">
+                                                                <input :id="'hr-' + n.name" class="form-check-input" type="checkbox">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div><!-- COL -->
+                                                <!-- Deploy again nodes -->
+                                                <div class="col">
+                                                    <div class='minfo-header'>
+                                                        Deploy Again
+                                                    </div>
+                                                    <div class="container">
+                                                        <div v-for="n in deployment.server_infos" class="row">
+                                                            <div :id="'da-title-' + n.name" class="col">
+                                                                [[ n.name ]]
+                                                            </div>
+                                                            <div class="col-1">
+                                                                <input :id="'da-'+n.name" class="form-check-input" type="checkbox">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div><!-- COL -->
+                                                <!-- Release nodes -->
+                                                <div class="col">
+                                                    <div class='minfo-header'>
+                                                        Release Nodes
+                                                    </div>
+                                                    <div class="container">
+                                                        <div v-for="n in deployment.server_infos" class="row">
+                                                            <div :id="'rn-title-' + n.name" class="col">
+                                                                [[ n.name ]]
+                                                            </div>
+                                                            <div class="col-1">
+                                                                <input :id="'rn-'+n.name" class="form-check-input" type="checkbox">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div><!-- COL -->
+                                            </div><!-- ROW -->
+                                            <div class="row mt-4">
+                                                <div class="col">
+                                                    <button class="shadow-none btn btn-outline-dark minfo-button"
+                                                    :onclick="'reconfigure(\'' + deployment.server_names + '\')'">Reconfigure</button>
+                                                </div>
                                             </div>
-                                            <div v-if="[[ deployment.env ]] == 'raspbian_jupyter'" class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
-                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                Jupyter Interface
-                                              </button>
-                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-									            <span v-for="n in deployment.server_infos"
-                                                    v-if="[[ n.state ]] != 'deployed'" class="dropdown-item">
-                                                    Waiting [[ n.name ]]
-                                                </span>
-									            <a v-for="n in deployment.server_infos"
-                                                    v-if="[[ n.state ]] == 'deployed'" :href="'http://' + n.public_ip"
-                                                    target="_blank" class="dropdown-item">
-                                                    [[ n.name ]]
-                                                </a>
-                                              </div>
+                                        </div><!-- CONTAINER - ENV/NODE DETAILS -->
+                                    </div>
+                                    <!-- Node information -->
+                                    <div v-for="n in deployment.server_infos" :id="n.name + '-info'" class="d-none">
+                                        <div class="bg-info text-light rounded minfo-title">
+                                            [[ n.name ]] Information
+                                        </div>
+                                        <div class="container">
+                                            <div class="row">
+                                                <div class="col">
+                                                    <div class="container minfo-table"><!-- required properties-->
+                                                        <!-- title -->
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                Common Properties
+                                                            </div>
+                                                        </div>
+                                                        <!-- STATE -->
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                State
+                                                            </div>
+                                                            <div :class="'col ' + n.state">
+                                                                [[ n.state ]]
+                                                            </div>
+                                                        </div>
+                                                        <!-- ENVIRONMENT -->
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                Environment
+                                                            </div>
+                                                            <div class="col">
+                                                                [[ deployment.env ]]
+                                                            </div>
+                                                        </div>
+                                                        <!-- IDENTIFIER -->
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                Identifier
+                                                            </div>
+                                                            <div :id="'id-' + n.name" class="col">
+                                                                [[ n.id ]]
+                                                            </div>
+                                                        </div>
+                                                        <!-- MODEL -->
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                Model
+                                                            </div>
+                                                            <div class="col">
+                                                                [[ n.model ]]
+                                                            </div>
+                                                        </div>
+                                                        <!-- WEB INTERFACE -->
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                Web Interface
+                                                            </div>
+                                                            <div class="col">
+                                                                <a v-if="[[ n.state ]] != 'deployed'">Installing...</a>
+                                                                <a v-if="[[ n.state ]] == 'deployed'"
+                                                                :href="'http://' + n.public_ip" target="_blank">
+                                                                    Web Interface
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div><!-- CONTAINER - required properties-->
+                                                </div><!-- COL -->
+                                                <div class="col">
+                                                    <div class="container minfo-table"><!-- optional properties-->
+                                                        <!-- title -->
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                Additional Properties
+                                                            </div>
+                                                        </div>
+                                                        <div v-for="(prop in n.other_props" class="row">
+                                                            <div class="col">
+                                                                [[ prop[0] ]]
+                                                            </div>
+                                                            <div class="col">
+                                                                [[ prop[1] ]]
+                                                            </div>
+                                                        </div>
+                                                    </div><!-- CONTAINER - optional properties-->
+                                                </div><!-- COL -->
+                                            </div><!-- ROW -->
+                                            <div class="row mt-3">
+                                                <div class="col">
+                                                    <div class="dropdown">
+                                                      <button class="btn btn-outline-dark dropdown-toggle minfo-button" type="button"
+                                                        id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                                        aria-expanded="false">
+                                                        Show
+                                                      </button>
+                                                      <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                                        <span class="dropdown-item">
+                                                            [[ n.password ]]
+                                                        </span>
+                                                        <span :title="[[ n.password ]]" class="dropdown-item"
+                                                            onclick="copyToClipboard(this)">
+                                                            Copy to Clipboard
+                                                        </span>
+                                                      </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col">
+                                                    <a :href="'/server/reboot/' + [[ n.name ]]"
+                                                        class="shadow-none btn btn-outline-dark minfo-button">
+                                                        Hard Reboot
+                                                    </a>
+                                                </div>
                                             </div>
-                                        </td>
-                                    </tr>
-									<tr>
-										<td>
-                                            <!-- Hard Reboot -->
-                                            <div class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
-                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                Hard Reboot
-                                              </button>
-                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-									            <a v-for="n in deployment.server_infos"
-                                                    :href="'/server/reboot/' + [[ n.name ]]" class="dropdown-item">
-                                                    [[ n.name ]]
-                                                </a>
-                                              </div>
+                                            <div class="row mt-1">
+                                                <div class="col">
+                                                    <a :href="'/server/save_env/' + [[ n.name ]]"
+                                                        class="shadow-none btn btn-outline-dark minfo-button">
+                                                        Save Environment
+                                                    </a>
+                                                </div>
+                                                <div class="col">
+                                                    <a :href="'/server/redeploy/' + [[ n.name ]]"
+                                                        class="shadow-none btn btn-outline-dark minfo-button">
+                                                        Deploy Again
+                                                    </a>
+                                                </div>
                                             </div>
-                                        </td>
-										<td>
-                                            <!-- Deploy again -->
-                                            <div class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
-                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                Deploy again
-                                              </button>
-                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-									            <a v-for="n in deployment.server_infos"
-                                                    :href="'/server/redeploy/' + [[ n.name ]]" class="dropdown-item">
-                                                    [[ n.name ]]
-                                                </a>
-                                              </div>
-                                            </div>
-                                        </td>
-										<td>
-                                            <!-- Save environment -->
-                                            <div class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
-                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                Save environment
-                                              </button>
-                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-									            <a v-for="n in deployment.server_infos"
-                                                    :href="'/server/save_env/' + [[ n.name ]]" class="dropdown-item">
-                                                    [[ n.name ]]
-                                                </a>
-                                              </div>
-                                            </div>
-                                        </td>
-										<td>
-                                            <!-- Nice feature
-                                            <div class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
-                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                Nice feature
-                                              </button>
-                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-									            <a v-for="n in deployment.server_infos"
-                                                    :href="'/server/redeploy/' + [[ n.name ]]" class="dropdown-item">
-                                                    [[ n.name ]]
-                                                </a>
-                                              </div>
-                                            </div>
-                                            -->
-                                        </td>
-                                    </tr>
-                              </tbody>
-                            </table>
-                            <h5 class="table-title">Node Information</h5>
-							<table class="table">
-							  <thead>
-								<tr>
-								  <th scope="col">Name</th>
-								  <th scope="col">Identifier</th>
-								  <th scope="col">Private IP</th>
-								  <th scope="col">Public IP</th>
-								  <th scope="col">Public port</th>
-								  <th scope="col">Model</th>
-                                  <th scope="col">Password</th>
-								  <th scope="col">State</th>
-								</tr>
-							  </thead>
-							  <tbody>
-									<tr v-for="n in deployment.server_infos">
-										<th scope="row">[[ n.name ]]</td>
-										<td>[[ n.id ]]</td>
-										<td>[[ n.ip ]]</td>
-										<td>[[ n.public_ip ]]</td>
-										<td>[[ n.public_port ]]</td>
-										<td>[[ n.model ]]</td>
-                                        <td>
-                                            <div class="dropdown">
-                                              <button class="btn btn-outline-dark dropdown-toggle" type="button"
-                                                id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                                                aria-expanded="false">
-                                                Show
-                                              </button>
-                                              <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                                                <span class="dropdown-item">
-                                                    [[ n.password ]]
-                                                </span>
-                                                <span :title="[[ n.password ]]" class="dropdown-item"
-                                                    onclick="copyToClipboard(this)">
-                                                    Copy to Clipboard
-                                                </span>
-                                              </div>
-                                            </div>
-                                        </td>
-                                        <td>[[ n.state ]]</td>
-										<td>
-										</td>
-									</tr>
-							  </tbody>
-							</table>
-                      </div>
+                                        </div><!-- CONTAINER - NODE-INFO -->
+                                    </div>
+                                </div>
+                            </div><!-- ROW -->
+                        </div>
+                      </div><!-- CARDBODY -->
                     </div>
                   </div>
                 </div>
@@ -286,6 +309,101 @@
     <script src="{{ url_for("static", filename="js/vue") }}"></script>
     <script src="{{ url_for("static", filename="js/jquery-3.3.1.js") }}"></script>
     <script>
+        function httpGet(api_endpoint) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open( "GET", api_endpoint, false ); // false for synchronous request
+            xmlHttp.send( null );
+            return xmlHttp.responseText;
+        }
+
+        function is_used(node_name, id_start, active_nodes) {
+            var cbox = document.getElementById(id_start + '-' + node_name);
+            if(cbox.checked) {
+                if(active_nodes.allNodes().includes(node_name)) {
+                    cbox.checked = false;
+                    alert('ERROR: Node \'' + node_name + '\' is in more than one category.' + 
+                    ' Only the first one will be considered.');
+                } else {
+                    active_nodes[id_start].push(node_name);
+                }
+            }
+        }
+
+        function reconfigure(node_list) {
+            // Node Names
+            var node_list = node_list.split(',');
+            // HardReboot, DeployAgain, ReleaseNodes ID prefixes
+            var prefix_id = [ 'hr', 'da', 'rn' ];
+            // Nodes to reconfigure
+            var used_nodes = {
+                hr: [],
+                da: [],
+                rn: [],
+                allNodes: function() {
+                    return this.hr.concat(this.da).concat(this.rn);
+                },
+                uncheckNodes() {
+                    // Uncheck the boxes
+                    for(var p = 0; p < prefix_id.length; p++) {
+                        selectedNodes = this[prefix_id[p]];
+                        for(var i = 0; i < selectedNodes.length; i++) {
+                            $('#' + prefix_id[p] + '-' + selectedNodes[i]).prop('checked', false);
+                            $('#' + prefix_id[p] + '-title-' + selectedNodes[i]).fadeOut(
+                                300,
+                                function() {
+                                    $(this).fadeIn(
+                                        200
+                                    ).removeClass('minfo-selected');
+                                }
+                            ).addClass('minfo-selected');
+                        }
+                    }
+                },
+                hardReboot: function() {
+                    for(var i = 0; i < this.hr.length; i++) {
+                        httpGet('/server/reboot/' + this.hr[i]);
+                    }
+                    this.hr = [];
+                },
+                deployAgain: function() {
+                    for(var i = 0; i < this.da.length; i++) {
+                        httpGet('/server/redeploy/' + this.da[i]);
+                    }
+                    this.da = [];
+                },
+                releaseNodes: function() {
+                    for(var i = 0; i < this.rn.length; i++) {
+                        httpGet('/server/release/' + this.rn[i]);
+                    }
+                    this.rn = [];
+                }
+            };
+            // Add the selected nodes
+            for(var i = 0; i < node_list.length; i++) {
+                for(var p = 0; p < prefix_id.length; p++) {
+                    is_used(node_list[i], prefix_id[p], used_nodes);
+                }
+            }
+            used_nodes.uncheckNodes();
+            // Send API requests
+            used_nodes.hardReboot();
+            used_nodes.deployAgain();
+            used_nodes.releaseNodes();
+        }
+
+        function loadInfo(link, id_suffix, node) {
+            link.parentNode.getElementsByClassName('active')[0].className = 'nav-link';
+            link.className = 'nav-link active';
+            document.getElementById('container-info-' + id_suffix).childNodes.forEach(div => {
+                div.className = 'd-none';
+            });
+            if(node == '') {
+                document.getElementById('env-info-' + id_suffix).className = 'd-block';
+            } else {
+                document.getElementById(node + '-info').className = 'd-block';
+            }
+        }
+
         function selectNode(node) {
             var nodeHTML = node.children[0].children[2].children[0]
             var nodeClass = nodeHTML.className;
