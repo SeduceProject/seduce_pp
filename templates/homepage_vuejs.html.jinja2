@@ -39,7 +39,7 @@
                             <div>[[ s.name ]]</div>
                             <div>[[ s.ip ]]</div>
                             <div class="progress position-relative" style="width: 90%; height: 24px; margin: auto;">
-                                <div v-if="[[ s.state ]] != 'free'"
+                                <div v-if="s.state != 'free'"
                                     v-bind:class="'progress-bar text-dark ' + [[ s.state ]]" role="progressbar"
                                     v-bind:style="'width: ' + [[ s.progress ]] + '%; font-size: 16px'"
                                     v-bind:aria-valuenow="[[ s.progress ]]" aria-valuemin="0" aria-valuemax="100">
@@ -47,19 +47,19 @@
                                         [[ s.state.substring(0,18) ]]
                                     </span>
                                 </div>
-                                <div v-if="[[ s.state ]] == 'free'" class="progress-bar text-dark free"
+                                <div v-if="s.state == 'free'" class="progress-bar text-dark free"
                                     role="progressbar" style="width: 100%; font-size: 16px"
                                     aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
                                     [[ s.state.substring(0,18) ]]
                                 </div>
                             </div>
-                            <div v-if="[[ s.state ]] == 'free'" class="deployment-name">
+                            <div v-if="s.state == 'free'" class="deployment-name">
                                 Ready to deploy
                             </div>
-                            <div v-if="[[ s.state ]] != 'free'" class="deployment-name">
+                            <div v-if="s.state != 'free'" class="deployment-name">
                                 [[ s.dname.substring(0,18) ]]
                             </div>
-                            <div v-if="[[ s.state ]] == 'in_use'" class="deployment-name">
+                            <div v-if="s.state == 'in_use'" class="deployment-name">
                                 <a :href="'mailto:' + [[ s.email ]]">[[ s.email.substring(0,18) ]]</a>
                             </div>
                         </div>
@@ -78,11 +78,11 @@
                             [[ deployment.name ]]: <span class="node-list">[[ deployment.server_names ]]</span>
                         </div>
                         <div class="card-text text-center">
-                            <a v-if="[[ deployment.state ]] != 'destroy_request' &&
-                                [[ deployment.state ]] != 'destroying'" :href="'/deployment/destroy/' + deployment.ids"
-                                class="btn btn-outline-danger btn-size">Destroy</a>
-                            <a v-if="[[ deployment.state ]] != 'destroy_request' &&
-                                [[ deployment.state ]] != 'destroying'" href="#"
+                            <a v-if="deployment.state != 'destroy_request' && deployment.state != 'destroying'"
+                                :href="'/deployment/destroy/' + deployment.ids" class="btn btn-outline-danger btn-size">
+                                Destroy
+                            </a>
+                            <a v-if="deployment.state != 'destroy_request' && deployment.state != 'destroying'" href="#"
                                 class="shadow-none btn btn-outline-info btn-size" data-toggle="collapse"
                                 v-bind:data-target="'#collapse-' + [[ deployment.ids[0] ]]" aria-expanded="true"
                                 v-bind:aria-controls="'collapse-' + [[ deployment.ids[0] ]]">More Info</a>
@@ -180,6 +180,11 @@
                                         <div class="bg-info text-light rounded minfo-title">
                                             [[ n.name ]] Information
                                         </div>
+                                        <div class="minfo-desc">
+                                            <ul>
+                                                <li v-for="info in n.desc">[[ info ]]</li>
+                                            </ul>
+                                        </div>
                                         <div class="container">
                                             <div class="row">
                                                 <div class="col">
@@ -205,7 +210,7 @@
                                                                 Environment
                                                             </div>
                                                             <div class="col">
-                                                                [[ deployment.env ]]
+                                                                [[ n.env ]]
                                                             </div>
                                                         </div>
                                                         <!-- IDENTIFIER -->
@@ -232,8 +237,9 @@
                                                                 Web Interface
                                                             </div>
                                                             <div class="col">
-                                                                <a v-if="[[ n.state ]] != 'deployed'">Installing...</a>
-                                                                <a v-if="[[ n.state ]] == 'deployed'"
+                                                                <a v-if="n.web_ui == false">None</a>
+                                                                <a v-if="n.web_ui == true && n.state != 'deployed'">Installing...</a>
+                                                                <a v-if="n.web_ui == true && n.state == 'deployed'"
                                                                 :href="'http://' + n.public_ip" target="_blank">
                                                                     Web Interface
                                                                 </a>
@@ -266,7 +272,7 @@
                                                       <button class="btn btn-outline-dark dropdown-toggle minfo-button" type="button"
                                                         id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
                                                         aria-expanded="false">
-                                                        Show
+                                                        Show Password
                                                       </button>
                                                       <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
                                                         <span class="dropdown-item">

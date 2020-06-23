@@ -1,11 +1,17 @@
 {
     "type": "default",
     "name": "raspbian_buster",
+    "desc": [ 
+        "Raspbian Buster Lite without modification.",
+        "SSH connections are available with passwords for the 'pi' user.",
+        "SSH connections are available with keys for the 'root' user.",
+        "Use the port 22 with the private IP and the public_port with the public_ip."
+    ],
     "img_name": "2020-02-13-raspbian-buster-lite.img.tar.gz",
     "img_size": 1849688064,
     "sector_start": 532480,
     "ssh_user": "root",
     "shell": "bash",
-    "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt",
-    "kernel": "4.19.97-v8+"
+    "web": false,
+    "script_test": "echo 'riri\nfifi\nloulou' > /root/picsou.txt"
 }

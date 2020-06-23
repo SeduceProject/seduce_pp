@@ -82,7 +82,7 @@
 }
 
 .minfo {
-    height: 430px;
+    height: 600px;
     overflow: auto;
 }
 
@@ -92,6 +92,16 @@
     width: 400px;
     margin: auto;
     margin-bottom: 20px;
+}
+
+.minfo-desc {
+    width: 650px;
+    margin: auto;
+    text-align: left;
+}
+
+.minfo-desc li:first-child {
+    font-weight: bold;
 }
 
 .minfo-header {

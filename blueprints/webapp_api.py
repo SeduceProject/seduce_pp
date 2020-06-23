@@ -50,27 +50,34 @@ def user_deployments():
     misc = {}
     session = open_session()
     db_user = session.query(User).filter_by(email=user.id).first()
-    deployments = session.query(Deployment).filter(Deployment.state != "destroyed").filter_by(user_id = db_user.id).all()
+    deployments = session.query(Deployment).filter(Deployment.state != "destroyed").filter_by(
+            user_id = db_user.id).order_by(Deployment.node_name).all();
     deployment_info = {}
     for d in deployments:
         deployed = True
         if d.name not in deployment_info.keys():
-            deployment_info[d.name] = {"name": d.name, "env": d.environment, "state": d.state, "user_id": d.user_id,
+            # Deployment state is used to show/hide both the 'destroy' and the 'More info' buttons
+            deployment_info[d.name] = {"name": d.name, "state": d.state, "user_id": d.user_id,
                     "ids": [], "server_names": [], "server_infos": [], "server_props": [] }
         deployment_info[d.name]["ids"].append(d.id)
-        for s in cluster_desc["nodes"].values():
-            if s["name"] == d.node_name:
-                s_keys = list(s.keys())
-                s_keys.remove('name')
-                s_keys.remove('id')
-                s_keys.remove('model')
-                s_values = []
-                for key in s_keys:
-                    s_values.append(tuple([key, s[key]]))
-                deployment_info[d.name]["server_names"].append(s["name"])
-                deployment_info[d.name]["server_infos"].append({ "name": s["name"], "id": s["id"],
-                    "state": d.state, "model": s["model"], "password": d.system_pwd,
-                    "public_ip": s["public_ip"],  "other_props": s_values })
+        env_desc = cluster_desc["environments"][d.environment]
+        node_desc = cluster_desc["nodes"][d.node_name]
+        web_interface = False
+        if 'web' in env_desc:
+            web_interface = env_desc['web']
+        s_keys = list(node_desc.keys())
+        s_keys.remove('name')
+        s_keys.remove('id')
+        s_keys.remove('model')
+        s_values = []
+        for key in s_keys:
+            s_values.append(tuple([key, node_desc[key]]))
+        deployment_info[d.name]["server_names"].append(node_desc["name"])
+        deployment_info[d.name]["server_infos"].append({
+            "name": node_desc["name"], "env": d.environment, "id": node_desc["id"], "state": d.state,
+            "model": node_desc["model"], "password": d.system_pwd, "public_ip": node_desc["public_ip"],
+            "web_ui": web_interface, "desc": env_desc['desc'], "other_props": s_values
+        })
     close_session(session)
     if not deployments:
         return json.dumps({
