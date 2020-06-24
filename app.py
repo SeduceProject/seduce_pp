@@ -1,6 +1,7 @@
 from database.base import Session
 from database.tables import User as dbUser
 from initialization import login_manager, app, User
+from lib.config_loader import load_config
 import datetime, flask, flask_login, initialization, logging, logging.config, database.connector
 
 
@@ -50,4 +51,6 @@ def timesince(dt, default="just now"):
 
 if __name__ == '__main__':
     logging_config()
-    app.run(debug=True, port=9000, host="0.0.0.0")
+    port_number = load_config().get('frontend', { 'port': 9000 }).get('port')
+    print('Running on port %s' % port_number)
+    app.run(debug=True, port=port_number, host="0.0.0.0")
