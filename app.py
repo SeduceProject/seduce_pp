@@ -7,6 +7,7 @@ import datetime, flask, flask_login, initialization, logging, logging.config, da
 
 def logging_config():
     logging.config.fileConfig('logging-pifrontend.conf', disable_existing_loggers=1)
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 
 @login_manager.user_loader
@@ -50,7 +51,11 @@ def timesince(dt, default="just now"):
 
 
 if __name__ == '__main__':
-    logging_config()
-    port_number = load_config().get('frontend', { 'port': 9000 }).get('port')
-    print('Running on port %s' % port_number)
-    app.run(debug=True, port=port_number, host="0.0.0.0")
+    try:
+        logging_config()
+        port_number = load_config().get('frontend', { 'port': 9000 }).get('port')
+        logger = logging.getLogger('APP')
+        logger.info('Running on port %s' % port_number)
+        app.run(debug=True, port=port_number, host="0.0.0.0")
+    except:
+        logger.exception('The frontend is crashed:')

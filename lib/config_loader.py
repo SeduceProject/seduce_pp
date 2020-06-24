@@ -90,7 +90,7 @@ def load_cluster_desc():
                 logger.error("Can not load the environment '%s', the file '%s' does not exist" %
                         (env_desc['name'], img_path))
         except:
-            logger.exception("Can not load the environment '%s':")
+            logger.exception("Can not load the environment:")
     logger.info("%d nodes and %d environments loaded" %
             (len(CLUSTER_DESC['nodes']), len(CLUSTER_DESC['environments'])))
     return CLUSTER_DESC
