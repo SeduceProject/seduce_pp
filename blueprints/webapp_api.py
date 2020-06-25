@@ -60,24 +60,25 @@ def user_deployments():
             deployment_info[d.name] = {"name": d.name, "state": d.state, "user_id": d.user_id,
                     "ids": [], "server_names": [], "server_infos": [], "server_props": [] }
         deployment_info[d.name]["ids"].append(d.id)
-        env_desc = cluster_desc["environments"][d.environment]
         node_desc = cluster_desc["nodes"][d.node_name]
-        web_interface = False
-        if 'web' in env_desc:
-            web_interface = env_desc['web']
-        s_keys = list(node_desc.keys())
-        s_keys.remove('name')
-        s_keys.remove('id')
-        s_keys.remove('model')
-        s_values = []
-        for key in s_keys:
-            s_values.append(tuple([key, node_desc[key]]))
         deployment_info[d.name]["server_names"].append(node_desc["name"])
-        deployment_info[d.name]["server_infos"].append({
-            "name": node_desc["name"], "env": d.environment, "id": node_desc["id"], "state": d.state,
-            "model": node_desc["model"], "password": d.system_pwd, "public_ip": node_desc["public_ip"],
-            "web_ui": web_interface, "desc": env_desc['desc'], "other_props": s_values
-        })
+        if d.environment is not None:
+            env_desc = cluster_desc["environments"][d.environment]
+            web_interface = False
+            if 'web' in env_desc:
+                web_interface = env_desc['web']
+            s_keys = list(node_desc.keys())
+            s_keys.remove('name')
+            s_keys.remove('id')
+            s_keys.remove('model')
+            s_values = []
+            for key in s_keys:
+                s_values.append(tuple([key, node_desc[key]]))
+            deployment_info[d.name]["server_infos"].append({
+                "name": node_desc["name"], "env": d.environment, "id": node_desc["id"], "state": d.state,
+                "model": node_desc["model"], "password": d.system_pwd, "public_ip": node_desc["public_ip"],
+                "web_ui": web_interface, "desc": env_desc['desc'], "other_props": s_values
+            })
     close_session(session)
     if not deployments:
         return json.dumps({

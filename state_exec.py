@@ -800,17 +800,18 @@ def rebooting_fct(deployment, cluster_desc, db_session, logger):
 def destroy_request_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
-    environment = cluster_desc['environments'][deployment.environment]
-    # Remove the bootcode.bin file that can appear after updating the Raspbian OS
-    try:
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
-        (stdin, stdout, stderr) = ssh.exec_command('rm /boot/bootcode.bin && sync')
-        return_code = stdout.channel.recv_exit_status()
-        ssh.close()
-    except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning('No SSH connection: can not try to delete the bootcode.bin file')
+    if deployment.environment is not None:
+        environment = cluster_desc['environments'][deployment.environment]
+        # Remove the bootcode.bin file that can appear after updating the Raspbian OS
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+            (stdin, stdout, stderr) = ssh.exec_command('rm /boot/bootcode.bin && sync')
+            return_code = stdout.channel.recv_exit_status()
+            ssh.close()
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            logger.warning('No SSH connection: can not try to delete the bootcode.bin file')
     # Turn off port
     turn_off_port(cluster_desc["switch"]["ip"], server["port_number"])
     # Delete the tftpboot folder
