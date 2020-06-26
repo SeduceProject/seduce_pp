@@ -51,8 +51,8 @@ cp autoconf/files/main.json .
 sed -i "s/PIMASTERIP/$MASTER_IP/" main.json
 sed -i "s/SWITCHIP/$SWITCH_IP/" main.json
 sed -i "s/SNMPCOMMUNITY/$SNMP_COMMUNITY/" main.json
-sed -i "s/SNMPOID/$SNMP_OID/" main.json
 sed -i "s/SNMPOIDOFFSET/$SNMP_OID_OFFSET/" main.json
+sed -i "s/SNMPOID/$SNMP_OID/" main.json
 mv main.json cluster_desc
 
 echo '# Configure the seduce_pp database access'

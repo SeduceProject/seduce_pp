@@ -97,7 +97,7 @@ def nfs_boot_conf_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Create a folder containing network boot files that will be served via TFTP
-    tftpboot_template_folder = "/tftpboot/%s" % server['model']
+    tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
     tftpboot_node_folder = "/tftpboot/%s" % server["id"]
     if os.path.isdir(tftpboot_node_folder):
         shutil.rmtree(tftpboot_node_folder)
