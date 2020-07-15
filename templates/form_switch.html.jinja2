@@ -1,0 +1,77 @@
+{% extends "layout.html.jinja2" %}
+
+{% block css %}
+<script src="{{ url_for("static", filename="js/jquery-3.4.1.slim.min.js") }}"></script>
+<script src="{{ url_for("static", filename="js/codemirror.js") }}"></script>
+<link rel="stylesheet" href="{{ url_for("static", filename="css/codemirror.css") }}">
+<script src="{{ url_for("static", filename="js/shell.js") }}"></script>
+
+<style>
+.CodeMirror {
+    border: 1px solid #ced4da;
+    border-radius: .25rem;
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+    <main role="main" class="container">
+      <div class="my-3 p-3 bg-white rounded shadow-sm">
+        <h4>Please provide the following information to add the switch:</h4>
+        <form action="{{ url_for("app_admin.add_switch") }}" method="post">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label>Name of the switch</label>
+                <input class="form-control" id="name" name="name" type="text" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label>IP Address of the switch</label>
+                <input class="form-control" id="ip" name="ip" type="text" required>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label>SNMP Community</label>
+                <input class="form-control" id="community" name="community" type="text" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label>Number of ports</label>
+                <input class="form-control" id="port_nb" name="port_nb" type="number" value="8" required>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label>PiMaster port number (0 if there is no PiMaster on the switch)</label>
+                <input class="form-control" id="master_port" name="master_port" type="number" value="1">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label>OID to turn off/on the first port</label>
+                <input class="form-control" id="oid" name="oid" type="text">
+              </div>
+            </div>
+            <input class="btn btn-warning w-100" type="submit" value="ADD SWITCH">
+        </form>
+        <center><a href="/admin" class="btn btn-danger btn-size mt-2 w-100">CANCEL</a></center>
+      </div>
+    </main>
+
+    <script>
+  var editor = CodeMirror.fromTextArea(document.getElementById('init_script'), {
+    mode: 'shell',
+    lineNumbers: true,
+    matchBrackets: true
+  });
+  // Slider helpers
+  var duration_slider = document.getElementById('duration');
+  function displayValue(val) {
+    var durationInput = document.getElementById('duration_text');
+    durationInput.value = val;
+  }
+  function setSlider(val) {
+    var durationSlider = document.getElementById('duration');
+    durationSlider.value = val;
+  }
+</script>
+
+{% endblock %}

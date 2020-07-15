@@ -135,6 +135,40 @@
     border: 2px solid #FAFAFA;
 }
 
+/* Admin page */
+.switch-header {
+    width: 100%;
+    background-color: #dee2e6;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.port-table {
+    width: 98%;
+    margin: auto;
+    margin-bottom: 20px;
+}
+
+.port-node {
+    height: 78px;
+    padding-top: 4px;
+    border: 2px solid white;
+    text-align: center;
+}
+
+.ON {
+    background-color: #c1ff9b;
+}
+
+.OFF {
+    background-color: #fec2b2;
+}
+
+.UNKNOWN {
+    background-color: #e7eae6;
+}
+
 /* state colors */
 .in_selection {
     background-color: #7d9bff;

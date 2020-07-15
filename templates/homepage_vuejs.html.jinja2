@@ -98,7 +98,7 @@
                                     <nav class="nav nav-pills flex-column">
                                         <div class="nav-link active"
                                             :onclick="'loadInfo(this,\'' + deployment.ids[0] + '\', \'\')'">
-                                            Environment<br/>[[ deployment.ids.length ]] nodes
+                                            Deployment<br/>[[ deployment.ids.length ]] nodes
                                         </div>
                                         <div v-for="n in deployment.server_infos" class="nav-link"
                                             :onclick="'loadInfo(this, \''+ deployment.ids[0] + '\', \'' + n.name + '\')'">
@@ -108,7 +108,7 @@
                                 </div>
                                 <div :id="'container-info-' + [[ deployment.ids[0] ]]" class="col">
                                     <div :id="'env-info-' + [[ deployment.ids[0] ]]">
-                                        <div class="bg-info text-light rounded minfo-title">Environment Configuration</div>
+                                        <div class="bg-info text-light rounded minfo-title">Deployment Configuration</div>
                                         <div class="container">
                                             <div class="row">
                                                 <!-- Hard Reboot nodes -->

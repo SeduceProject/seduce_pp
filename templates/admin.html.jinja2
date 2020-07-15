@@ -2,264 +2,400 @@
 
 {% block content %}
     <div id="app" v-cloak>
-		<!-- Last update information -->
-        <main role="main" class="container pt-5">
-            <div id="admin-info"class="my-3 p-3 bg-white rounded shadow-sm">
-                <h4 class="mt-3 text-title">Pending User Requests</h4>
-                <span v-if="users.pending.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
-                <table v-if="users.pending.length > 0" class="table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Identifier</th>
-                      <th scope="col">First Name</th>
-                      <th scope="col">Last Name</th>
-                      <th scope="col">Email</th>
-                      <th scope="col">Authorize</th>
-                      <th scope="col">Remove</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="user in users.pending">
-                      <td class="p-3">[[ user.email ]]</td>
-                      <td class="p-3">[[ user.firstname ]]</td>
-                      <td class="p-3">[[ user.lastname ]]</td>
-                      <td class="p-3">[[ user.email_confirmed ]]</td>
-                      <td>
-                        <a :href="'/config/add_user_auth/' + user.id" class="btn btn-info"
-                            style="width: 85.6px;">&#x002B;</a>
-                      </td>
-                      <td>
-                        <a :href="'/config/del_user/' + user.id" class="btn btn-warning"
-                            style="width: 85.6px;">&#x2212;</a>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <h4 class="mt-3 text-title">Authorized Users</h4>
-                <span v-if="users.authorized.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
-                <table v-if="users.authorized.length > 0" class="table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Identifier</th>
-                      <th scope="col">First Name</th>
-                      <th scope="col">Last Name</th>
-                      <th scope="col">Email</th>
-                      <th scope="col">Promote</th>
-                      <th scope="col">Revoke</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="user in users.authorized">
-                      <td class="p-3">[[ user.email ]]</td>
-                      <td class="p-3">[[ user.firstname ]]</td>
-                      <td class="p-3">[[ user.lastname ]]</td>
-                      <td class="p-3">[[ user.email_confirmed ]]</td>
-                      <td>
-                        <a :href="'/config/add_admin/' + user.id" class="btn btn-info"
-                            style="width: 85.6px;">&#x002B;</a>
-                      </td>
-                      <td>
-                        <a :href="'/config/del_user_auth/' + user.id" class="btn btn-warning"
-                            style="width: 85.6px;">&#x2212;</a>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <h4 class="mt-3 text-title">Admin Users</h4>
-                <span v-if="users.admin.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
-                <table v-if="users.admin.length > 0" class="table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Identifier</th>
-                      <th scope="col">First Name</th>
-                      <th scope="col">Last Name</th>
-                      <th scope="col">Email</th>
-                      <th scope="col">Revoke</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="user in users.admin">
-                      <td class="p-3">[[ user.email ]]</td>
-                      <td class="p-3">[[ user.firstname ]]</td>
-                      <td class="p-3">[[ user.lastname ]]</td>
-                      <td class="p-3">[[ user.email_confirmed ]]</td>
-                      <td>
-                        <a :href="'/config/del_admin/' + user.id" class="btn btn-warning"
-                            style="width: 85.6px;">&#x2212;</a>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <h4 class="mt-3 text-title">Email Configuration</h4>
-                <form action="{{ url_for("app_admin.email_config") }}" method="post">
-                    <div v-if="users.email_signup == true" style="margin-left: 50px; margin-bottom: 20px;">
-                        <span style="font-size: 1rem; font-weight: bold;">Email Signup</span>
-                        <a id="esup_button"class="btn btn-danger text-light ml-1" style="width: 130px;"
-                            onclick="emailSignup()">
-                            Enabled
-                        </a>
-                        <input id="esup_value" name="esup_value" type="hidden" :value="[[ users.email_signup ]]">
-                        <br/>
-                        When email signup is enabled, the email confirmation link authorizes users to connect to
-                        the cluster without admin approval.
-                    </div>
-                    <div v-if="users.email_signup == false" style="margin-left: 50px; margin-bottom: 20px;">
-                        <span style="font-size: 1rem; font-weight: bold;">Email Signup</span>
-                        <a id="esup_button"class="btn btn-secondary text-light ml-1" style="width: 130px;"
-                            onclick="emailSignup()">
-                            Disabled
-                        </a>
-                        <input id="esup_value" name="esup_value" type="hidden" :value="[[ users.email_signup ]]">
-                        <br/>
-                        When email signup is enabled, the email confirmation link authorizes users to connect to
-                        the cluster without admin approval.
-                    </div>
-                    <div class="row">
-                        <div class="col-md-2 pt-1 text-right font-weight-bold">
-                            SMTP Server
+        <div id="admin-info" class="container my-3 p-3 bg-white rounded shadow-sm">
+            <!-- Nav tabs -->
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="infrastructure-tab" data-toggle="tab" href="#infrastructure"
+                        role="tab" aria-controls="infrastructure" aria-selected="true">Infrastructure</a>
+                </li>
+                <li class="nav-item">
+                        <a class="nav-link" id="usermanagement-tab" data-toggle="tab" href="#usermanagement"
+                            role="tab" aria-controls="usermanagement" aria-selected="false">User Management</a>
+                </li>
+            </ul>
+            <!-- Tab panels -->
+            <div class="tab-content">
+                <!-- Infrastructure panel -->
+                <div class="tab-pane active pt-2 pane-user" id="infrastructure" role="tabpanel"
+                    aria-labelledby="infrastructure-tab">
+                    <a href="form_switch" class="btn btn-warning w-100"><b>ADD SWITCH</b></a>
+                    <h4 class="mt-4">List of existing switches</h4>
+                    <div :id="sw.name + '-ports'" v-for="sw in switches" class="port-table">
+                        <div class="row">
+                            <div class="col switch-header bg-secondary text-white">[[ sw.name ]] - [[ sw.ip ]]</div>
                         </div>
-                        <div class="col-md-3">
-                            <input id="smtp_server" name="smtp_server" type="text">
+                        <div v-for="port in sw.ports" class="row">
+                            <div v-for="node in port" :id="sw.name + '-' + node.port" class="col port-node UNKNOWN">
+                              <div>[[ node.port ]]: [[ node.name ]]</div>
+                              <div>[[ node.ip ]] - [[ node.node_state ]] </div>
+                              <div><input type="checkbox"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-2 text-right">
-                            Current value
-                        </div>
-                        <div class="col-md-3">
-                            <span>
-                                [[ users.smtp_config.smtp_address ]]
-                            </span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-2 pt-1 text-right font-weight-bold">
-                            SMTP Port
-                        </div>
-                        <div class="col-md-3">
-                            <input id="smtp_port" name="smtp_port" type="text">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-2 text-right">
-                            Current value
-                        </div>
-                        <div class="col-md-3">
-                            <span>
-                                [[ users.smtp_config.smtp_port ]]
-                            </span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-2 pt-1 text-right font-weight-bold">
-                            SMTP User
-                        </div>
-                        <div class="col-md-3">
-                            <input id="smtp_user" name="smtp_user" type="text">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-2 text-right">
-                            Current value
-                        </div>
-                        <div class="col-md-3">
-                            <span>
-                                [[ users.smtp_config.account ]]
-                            </span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-2 pt-1 text-right font-weight-bold">
-                            SMTP Password
-                        </div>
-                        <div class="col-md-3">
-                            <input id="smtp_pwd" name="smtp_pwd" type="password">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-2 text-right">
-                            Current value
-                        </div>
-                        <div class="col-md-3">
-                            <span id="pwd_text">
-                                ************
-                            </span>
-                            <input id="pwd_value" type="hidden" :value="[[ users.smtp_config.password ]]">
-                            <a id="show_pwd" class="btn btn-dark text-white" style="width: 210px;"
-                                onclick="showPassword()">
-                                Show Password
-                            </a>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-info ml-3" >Update Email Configuration</button>
-                </form>
-                <h4 class="mt-3 text-title">Send Confirmation Email</h4>
-                <span class="ml-2">
-                    An email with a confirm link will be sent to the user. If 'Email Signup' is enabled, the email
-                    confirmation will allow users to connect to the cluster.
-                </span>
-                <div class="dropdown ml-3">
-                  <button class="btn btn-outline-info dropdown-toggle" type="button"
-                    id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
-                    aria-expanded="false">
-                    Send Confirmation Email
-                  </button>
-                  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                    <a v-for="user in users.authorized"
-                        :href="'/users/confirm_email/' + [[ user.id ]]" class="dropdown-item">
-                        [[ user.email ]]
-                    </a>
-                    <a v-for="user in users.pending"
-                        :href="'/config/confirm_email/' + [[ user.id ]]" class="dropdown-item">
-                        [[ user.email ]]
-                    </a>
-                  </div>
-                </div>
-                <h4 class="mt-3 text-title">Email Filters</h4>
-                <form action="{{ url_for("app_admin.add_domain") }}" method="post">
-                    <table class="table" style="width: 600px;">
-                      <thead>
-                        <tr>
-                          <th scope="col">Email Domain Name</th>
-                          <th scope="col">
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td class="p-3">
-                            <input id="email_filter" name="email_filter" type="text"/>
-                          </td>
-                          <td class="pt-3">
-                            <button type="submit" class="btn btn-info" style="width: 84.6px;">&#x002B;
+                        <img :id="sw.name + '-loading'" src="{{ url_for("static", filename="img/loading.gif") }}" width="30px"
+                            class="mt-1 float-left d-none">
+                        <center>
+                            <button class="btn btn-info" :onclick="'poeStatus(\'' + sw.name + '\')'">
+                                Update PoE Status
                             </button>
-                          </td>
-                        </tr>
-                        <tr v-if="users.filters.length == 0">
-                            <td>
-                                <span class="ml-3" style="font-size: 14pt;">
-                                    No email filter
-                                </span>
-                            </td>
-                            <td>
-                            </td>
-                        </tr>
-                        <tr v-for="f in users.filters">
-                          <td class="p-3">[[ f ]]</td>
-                          <td>
-                            <a :href="'/config/del_domain/' + f" class="btn btn-warning"
-                                style="width: 85.6px;">&#x2212;</a>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                </form>
-            </div>
-        </main>
+                            <button class="btn btn-info btn-size shadow-none"
+                                :onclick="'turnOn(\'' + sw.name + '\')'">
+                                Turn Ports On
+                            </button>
+                            <button class="btn btn-info btn-size shadow-none"
+                                :onclick="'turnOff(\'' + sw.name + '\')'">
+                                Turn Ports Off
+                            </button>
+                            <button class="btn btn-info btn-size shadow-none"
+                                :onclick="'analyzePorts(\'' + sw.name + '\')'">
+                                Analyze Ports
+                            </button>
+                            <button class="btn btn-info" onclick="">
+                                Clean Ports
+                            </button>
+                        </center>
+                    </div>
+                </div><!-- Infrastructure panel -->
+                <div class="tab-pane pt-2" id="usermanagement" role="tabpanel" aria-labelledby="usermanagement-tab">
+                    <!-- User Management panel -->
+                    <div class="my-3 bg-white rounded shadow-sm">
+                        <h4 class="mt-3 text-title">Pending User Requests</h4>
+                        <span v-if="users.pending.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
+                        <table v-if="users.pending.length > 0" class="table">
+                          <thead>
+                            <tr>
+                              <th scope="col">Identifier</th>
+                              <th scope="col">First Name</th>
+                              <th scope="col">Last Name</th>
+                              <th scope="col">Email</th>
+                              <th scope="col">Authorize</th>
+                              <th scope="col">Remove</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="user in users.pending">
+                              <td class="p-3">[[ user.email ]]</td>
+                              <td class="p-3">[[ user.firstname ]]</td>
+                              <td class="p-3">[[ user.lastname ]]</td>
+                              <td class="p-3">[[ user.email_confirmed ]]</td>
+                              <td>
+                                <a :href="'/config/add_user_auth/' + user.id" class="btn btn-info"
+                                    style="width: 85.6px;">&#x002B;</a>
+                              </td>
+                              <td>
+                                <a :href="'/config/del_user/' + user.id" class="btn btn-warning"
+                                    style="width: 85.6px;">&#x2212;</a>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <h4 class="mt-3 text-title">Authorized Users</h4>
+                        <span v-if="users.authorized.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
+                        <table v-if="users.authorized.length > 0" class="table">
+                          <thead>
+                            <tr>
+                              <th scope="col">Identifier</th>
+                              <th scope="col">First Name</th>
+                              <th scope="col">Last Name</th>
+                              <th scope="col">Email</th>
+                              <th scope="col">Promote</th>
+                              <th scope="col">Revoke</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="user in users.authorized">
+                              <td class="p-3">[[ user.email ]]</td>
+                              <td class="p-3">[[ user.firstname ]]</td>
+                              <td class="p-3">[[ user.lastname ]]</td>
+                              <td class="p-3">[[ user.email_confirmed ]]</td>
+                              <td>
+                                <a :href="'/config/add_admin/' + user.id" class="btn btn-info"
+                                    style="width: 85.6px;">&#x002B;</a>
+                              </td>
+                              <td>
+                                <a :href="'/config/del_user_auth/' + user.id" class="btn btn-warning"
+                                    style="width: 85.6px;">&#x2212;</a>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <h4 class="mt-3 text-title">Admin Users</h4>
+                        <span v-if="users.admin.length == 0" class="ml-3" style="font-size: 14pt;">None</span>
+                        <table v-if="users.admin.length > 0" class="table">
+                          <thead>
+                            <tr>
+                              <th scope="col">Identifier</th>
+                              <th scope="col">First Name</th>
+                              <th scope="col">Last Name</th>
+                              <th scope="col">Email</th>
+                              <th scope="col">Revoke</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="user in users.admin">
+                              <td class="p-3">[[ user.email ]]</td>
+                              <td class="p-3">[[ user.firstname ]]</td>
+                              <td class="p-3">[[ user.lastname ]]</td>
+                              <td class="p-3">[[ user.email_confirmed ]]</td>
+                              <td>
+                                <a :href="'/config/del_admin/' + user.id" class="btn btn-warning"
+                                    style="width: 85.6px;">&#x2212;</a>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <h4 class="mt-3 text-title">Email Configuration</h4>
+                        <form action="{{ url_for("app_admin.email_config") }}" method="post">
+                            <div v-if="users.email_signup == true" style="margin-left: 50px; margin-bottom: 20px;">
+                                <span style="font-size: 1rem; font-weight: bold;">Email Signup</span>
+                                <a id="esup_button"class="btn btn-danger text-light ml-1" style="width: 130px;"
+                                    onclick="emailSignup()">
+                                    Enabled
+                                </a>
+                                <input id="esup_value" name="esup_value" type="hidden" :value="[[ users.email_signup ]]">
+                                <br/>
+                                When email signup is enabled, the email confirmation link authorizes users to connect to
+                                the cluster without admin approval.
+                            </div>
+                            <div v-if="users.email_signup == false" style="margin-left: 50px; margin-bottom: 20px;">
+                                <span style="font-size: 1rem; font-weight: bold;">Email Signup</span>
+                                <a id="esup_button"class="btn btn-secondary text-light ml-1" style="width: 130px;"
+                                    onclick="emailSignup()">
+                                    Disabled
+                                </a>
+                                <input id="esup_value" name="esup_value" type="hidden" :value="[[ users.email_signup ]]">
+                                <br/>
+                                When email signup is enabled, the email confirmation link authorizes users to connect to
+                                the cluster without admin approval.
+                            </div>
+                            <div class="row">
+                                <div class="col-md-2 pt-1 text-right font-weight-bold">
+                                    SMTP Server
+                                </div>
+                                <div class="col-md-3">
+                                    <input id="smtp_server" name="smtp_server" type="text">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-2 text-right">
+                                    Current value
+                                </div>
+                                <div class="col-md-3">
+                                    <span>
+                                        [[ users.smtp_config.smtp_address ]]
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-2 pt-1 text-right font-weight-bold">
+                                    SMTP Port
+                                </div>
+                                <div class="col-md-3">
+                                    <input id="smtp_port" name="smtp_port" type="text">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-2 text-right">
+                                    Current value
+                                </div>
+                                <div class="col-md-3">
+                                    <span>
+                                        [[ users.smtp_config.smtp_port ]]
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-2 pt-1 text-right font-weight-bold">
+                                    SMTP User
+                                </div>
+                                <div class="col-md-3">
+                                    <input id="smtp_user" name="smtp_user" type="text">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-2 text-right">
+                                    Current value
+                                </div>
+                                <div class="col-md-3">
+                                    <span>
+                                        [[ users.smtp_config.account ]]
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-2 pt-1 text-right font-weight-bold">
+                                    SMTP Password
+                                </div>
+                                <div class="col-md-3">
+                                    <input id="smtp_pwd" name="smtp_pwd" type="password">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-2 text-right">
+                                    Current value
+                                </div>
+                                <div class="col-md-3">
+                                    <span id="pwd_text">
+                                        ************
+                                    </span>
+                                    <input id="pwd_value" type="hidden" :value="[[ users.smtp_config.password ]]">
+                                    <a id="show_pwd" class="btn btn-dark text-white" style="width: 210px;"
+                                        onclick="showPassword()">
+                                        Show Password
+                                    </a>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-info ml-3" >Update Email Configuration</button>
+                        </form>
+                        <h4 class="mt-3 text-title">Send Confirmation Email</h4>
+                        <span class="ml-2">
+                            An email with a confirm link will be sent to the user. If 'Email Signup' is enabled, the email
+                            confirmation will allow users to connect to the cluster.
+                        </span>
+                        <div class="dropdown ml-3">
+                          <button class="btn btn-outline-info dropdown-toggle" type="button"
+                            id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                            aria-expanded="false">
+                            Send Confirmation Email
+                          </button>
+                          <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                            <a v-for="user in users.authorized"
+                                :href="'/users/confirm_email/' + [[ user.id ]]" class="dropdown-item">
+                                [[ user.email ]]
+                            </a>
+                            <a v-for="user in users.pending"
+                                :href="'/config/confirm_email/' + [[ user.id ]]" class="dropdown-item">
+                                [[ user.email ]]
+                            </a>
+                          </div>
+                        </div>
+                        <h4 class="mt-3 text-title">Email Filters</h4>
+                        <form action="{{ url_for("app_admin.add_domain") }}" method="post">
+                            <table class="table" style="width: 600px;">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Email Domain Name</th>
+                                  <th scope="col">
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td class="p-3">
+                                    <input id="email_filter" name="email_filter" type="text"/>
+                                  </td>
+                                  <td class="pt-3">
+                                    <button type="submit" class="btn btn-info" style="width: 84.6px;">&#x002B;
+                                    </button>
+                                  </td>
+                                </tr>
+                                <tr v-if="users.filters.length == 0">
+                                    <td>
+                                        <span class="ml-3" style="font-size: 14pt;">
+                                            No email filter
+                                        </span>
+                                    </td>
+                                    <td>
+                                    </td>
+                                </tr>
+                                <tr v-for="f in users.filters">
+                                  <td class="p-3">[[ f ]]</td>
+                                  <td>
+                                    <a :href="'/config/del_domain/' + f" class="btn btn-warning"
+                                        style="width: 85.6px;">&#x2212;</a>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                        </form>
+                    </div>
+                </div><!-- User Management panel -->
+            </div><!-- tab-content -->
+        </div>
     </div>
     <script src="{{ url_for("static", filename="js/vue") }}"></script>
     <script src="{{ url_for("static", filename="js/jquery-3.3.1.js") }}"></script>
     <script>
+        function httpGet(api_endpoint) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open( "GET", api_endpoint, false ); // false for synchronous request
+            xmlHttp.send( null );
+            return xmlHttp.responseText;
+        }
+
+        function poeStatus(switchName) {
+            var wheel = document.getElementById(switchName + '-loading');
+            wheel.className = 'mt-1 float-left d-block';
+            var result = httpGet('/config/poe_status/' + switchName);
+            result = JSON.parse(result);
+            for(i = 0; i < result['status'].length; i++) {
+                document.getElementById(switchName + '-' + (i + 1)).className = 'col port-node ' + result['status'][i];
+            }
+            wheel.className = 'mt-1 float-left d-none';
+        }
+
+        function getSelectedPorts(switchName) {
+            var switchDesc = document.getElementById(switchName + '-ports');
+            var selectedNode = [];
+            var cboxes = switchDesc.getElementsByTagName('INPUT');
+            for(var i = 0; i < cboxes.length; i++) {
+                if(cboxes[i].checked) {
+                    selectedNode.push(cboxes[i].parentNode.parentNode);
+                }
+            }
+            return selectedNode;
+        }
+
+        function turnOn(switchName) {
+            var selectedBoxes = getSelectedPorts(switchName);
+            var idString = '';
+            for(var i = 0; i < selectedBoxes.length; i++) {
+                idString += selectedBoxes[i].id + ',';
+            }
+            if(idString.length > 1) {
+                idString = idString.substring(0, idString.length - 1);
+                httpGet('/config/turn_on/' + idString);
+                for(var i = 0; i < selectedBoxes.length; i++) {
+                    selectedBoxes[i].className = 'col port-node ON';
+                    selectedBoxes[i].getElementsByTagName('INPUT')[0].checked = false;
+                }
+            }
+        }
+
+        function turnOff(switchName) {
+            var selectedBoxes = getSelectedPorts(switchName);
+            var idString = '';
+            for(var i = 0; i < selectedBoxes.length; i++) {
+                idString += selectedBoxes[i].id + ',';
+            }
+            if(idString.length > 1) {
+                idString = idString.substring(0, idString.length - 1);
+                httpGet('/config/turn_off/' + idString);
+                for(var i = 0; i < selectedBoxes.length; i++) {
+                    selectedBoxes[i].className = 'col port-node OFF';
+                    selectedBoxes[i].getElementsByTagName('INPUT')[0].checked = false;
+                }
+            }
+        }
+
+        function analyzePorts(switchName) {
+            var wheel = document.getElementById(switchName + '-loading');
+            wheel.className = 'mt-1 float-left d-block';
+            var selectedBoxes = getSelectedPorts(switchName);
+            var idString = '';
+            for(var i = 0; i < selectedBoxes.length; i++) {
+                idString += selectedBoxes[i].id + ',';
+            }
+            if(idString.length > 1) {
+                idString = idString.substring(0, idString.length - 1);
+                httpGet('/config/analyze_port/' + idString);
+                for(var i = 0; i < selectedBoxes.length; i++) {
+                    selectedBoxes[i].getElementsByTagName('INPUT')[0].checked = false;
+                }
+            }
+            wheel.className = 'mt-1 float-left d-none';
+        }
+
         function emailSignup() {
             var button = document.getElementById("esup_button");
             var i_value = document.getElementById("esup_value");
@@ -296,6 +432,7 @@
             el: '#admin-info',
             data: {
                 users: [],
+                switches: [],
                 loading: true
             },
             methods: {
@@ -306,8 +443,16 @@
                             this.users = res.user_info;
                         });
                 },
+                fetch_switches: function() {
+                    fetch("{{ url_for("app_admin.switches") }}")
+                        .then(res => res.json())
+                        .then(res => {
+                            this.switches = res.switches;
+                        });
+                },
                 reload_all_data: function () {
                     this.fetch_users();
+                    this.fetch_switches();
                     this.loading = false;
                 }
             },

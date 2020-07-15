@@ -3,10 +3,12 @@ from database.tables import User, Deployment
 from flask import Blueprint
 from flask_login import current_user
 from lib.admin_decorators import admin_login_required
+from lib.dgs121028p import get_poe_status
 from lib.email_notification import send_confirmation_request
-from lib.config_loader import add_domain_filter, del_domain_filter, get_cluster_desc
+from lib.config_loader import add_domain_filter, del_domain_filter, get_cluster_desc, load_cluster_desc
 from lib.config_loader import load_config, save_mail_config, set_email_signup
-import datetime, flask, flask_login, json
+from lib.dgs121028p import turn_on_port, turn_off_port
+import datetime, flask, flask_login, json, subprocess, time
 
 
 webapp_admin_blueprint = Blueprint('app_admin', __name__, template_folder='templates')
@@ -17,6 +19,143 @@ webapp_admin_blueprint = Blueprint('app_admin', __name__, template_folder='templ
 @admin_login_required
 def dump_cluster_desc():
     return '<pre>' + json.dumps(get_cluster_desc(), indent=2) + '</pre>'
+    
+
+@webapp_admin_blueprint.route("/config/switches")
+@flask_login.login_required
+@admin_login_required
+def switches():
+    cluster_desc = get_cluster_desc()
+    # Read the state of the nodes from the deployment table
+    db_session = open_session()
+    states = db_session.query(Deployment).filter_by(state = 'destroyed').all()
+    node_states = {}
+    for s in states:
+        node_states[s.node_name] = s.state
+    close_session(db_session)
+    # Read the switch information
+    all_switches = []
+    for switch in cluster_desc['switches'].values():
+        switch_desc = { 'name': switch['name'], 'ip': switch['ip'], 'ports': [] }
+        for port in range(0, switch['port_nb']):
+            # Get the PoE status (on or off)
+            if port % 4 == 0:
+                switch_desc['ports'].append({})
+            switch_desc['ports'][-1][str(port + 1)] = {'port': port + 1, 'poe_state': 'UNKNOWN'}
+        for node in cluster_desc['nodes'].values():
+            if 'switch' in node and node['switch'] == switch['name']:
+                port_row = int((node['port_number'] - 1) / 4)
+                my_state = 'UNKNOWN'
+                if node['name'] in node_states:
+                    my_state = node_states[node['name']]
+                switch_desc['ports'][port_row][str(node['port_number'])] = {
+                        'port': node['port_number'], 'name': node['name'], 'ip': node['ip'],
+                        'poe_state': 'ON', 'node_state': my_state }
+        all_switches.append(switch_desc)
+    return { 'switches': all_switches }
+    
+
+@webapp_admin_blueprint.route("/config/poe_status/<string:switch_name>")
+@flask_login.login_required
+@admin_login_required
+def poe_status(switch_name):
+    cluster_desc = get_cluster_desc()
+    switch = cluster_desc['switches'][switch_name]
+    poe = get_poe_status(switch['name'])
+    status = []
+    for port in range(0, switch['port_nb']):
+        if poe[port] == '1':
+            status.append('ON')
+        elif poe[port] == '2':
+            status.append('OFF')
+        else:
+            status.append('UNKNOWN')
+    return { 'status': status }
+
+
+@webapp_admin_blueprint.route("/config/turn_on/<string:switch_ports>")
+@flask_login.login_required
+@admin_login_required
+def turn_on(switch_ports):
+    cluster_desc = get_cluster_desc()
+    switch_ports = switch_ports.split(',')
+    switch = cluster_desc['switches'][switch_ports[0].split('-')[0]]
+    if switch is not None:
+        for port in switch_ports:
+            turn_on_port(switch['ip'], port.split('-')[1])
+        return {'status': 'ok' }
+    else:
+        return {'status': 'ko' }
+
+
+@webapp_admin_blueprint.route("/config/turn_off/<switch_ports>")
+@flask_login.login_required
+@admin_login_required
+def turn_off(switch_ports):
+    cluster_desc = get_cluster_desc()
+    switch_ports = switch_ports.split(',')
+    switch = cluster_desc['switches'][switch_ports[0].split('-')[0]]
+    if switch is not None:
+        for port in switch_ports:
+            turn_off_port(switch['ip'], port.split('-')[1])
+        return {'status': 'ok' }
+    else:
+        return {'status': 'ko' }
+
+
+@webapp_admin_blueprint.route("/config/analyze_port/<string:switch_ports>")
+@flask_login.login_required
+@admin_login_required
+def analyze_port(switch_ports):
+    cluster_desc = get_cluster_desc()
+    switch_ports = switch_ports.split(',')
+    switch = cluster_desc['switches'][switch_ports[0].split('-')[0]]
+    if switch is None:
+        return {'status': 'ko' }
+    #TODO Check there is no deployment using the node attached to this port
+    for port in switch_ports:
+        port_number = port.split('-')[1]
+        # Turn off the port
+        turn_off_port(switch['ip'], port_number)
+        time.sleep(1)
+        # Turn on the port
+        turn_on_port(switch['ip'], port_number)
+        time.sleep(5)
+        # Listening DHCP Requests during 10 seconds
+        cmd = "sudo tshark -nni eth0 -w /tmp/port.pcap -a duration:10 port 67 and 68"
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                universal_newlines=True)
+        print(process.stdout.split('\n'))
+        # Analyzing the captured requests
+        cmd = "tshark -r /tmp/port.pcap -Y 'bootp.option.type == 53 and bootp.ip.client == 0.0.0.0' -T fields -e frame.time \
+                -e bootp.ip.client -e bootp.hw.mac_addr | awk '{ print $7 }' | uniq"
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                universal_newlines=True)
+        mac = process.stdout.split('\n')
+        print(mac)
+        return { 'status': 'ko' }
+
+
+
+@webapp_admin_blueprint.route("/config/add_switch", methods=["POST"])
+@flask_login.login_required
+@admin_login_required
+def add_switch():
+    name  = flask.request.form.get("name")
+    ip  = flask.request.form.get("ip")
+    community  = flask.request.form.get("community")
+    port_nb = int(flask.request.form.get("port_nb"))
+    master_port  = int(flask.request.form.get("master_port"))
+    oid  = flask.request.form.get("oid")
+    # Remove the last digit that identifies the first port of the switch
+    switch_oid = oid[:oid.rindex('.')]
+    # The offset to add to reach a specific port
+    oid_offset = int(oid[oid.rindex('.') + 1:]) - 1
+    with open('cluster_desc/switches/%s.json' % name, 'w+') as json_file:
+        json.dump({ 'name': name, 'ip': ip, 'community': community, 'port_nb': port_nb, 'master_port': master_port,
+            'oid': switch_oid, 'oid_offset': oid_offset }, json_file, indent=4)
+    load_cluster_desc()
+    return flask.redirect(flask.url_for("app.admin"))
     
 
 @webapp_admin_blueprint.route("/config/users")

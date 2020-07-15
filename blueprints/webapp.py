@@ -266,6 +266,11 @@ def configure():
     return flask.redirect(flask.url_for("app.configuration"))
 
 
+@webapp_blueprint.route("/form_switch")
+def add_switch():
+    return flask.render_template("form_switch.html.jinja2")
+
+
 @webapp_blueprint.route("/configuration")
 def configuration():
     return flask.render_template("first_boot_exec.html.jinja2")

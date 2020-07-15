@@ -70,7 +70,16 @@ def load_cluster_desc():
         CLUSTER_DESC = json.load(json_file)
     CLUSTER_DESC['nodes'] = {}
     CLUSTER_DESC['environments'] = {}
+    CLUSTER_DESC['switches'] = {}
     node_descriptions = []
+    switch_descriptions = []
+    # Load the switch descriptions
+    for switch_json in glob('cluster_desc/switches/*.json'):
+        with open(switch_json, 'r') as json_file:
+            switch_desc = json.load(json_file)
+        switch_descriptions.append(switch_desc)
+    for desc in sorted(switch_descriptions, key = lambda x: x['name']):
+        CLUSTER_DESC['switches'][desc['name']] = desc
     # Load the node descriptions
     for node_json in glob('cluster_desc/nodes/*.json'):
         with open(node_json, 'r') as json_file:
@@ -91,8 +100,8 @@ def load_cluster_desc():
                         (env_desc['name'], img_path))
         except:
             logger.exception("Can not load the environment:")
-    logger.info("%d nodes and %d environments loaded" %
-            (len(CLUSTER_DESC['nodes']), len(CLUSTER_DESC['environments'])))
+    logger.info("Found: %d switches, %d nodes, %d environments" %
+            (len(CLUSTER_DESC['switches']), len(CLUSTER_DESC['nodes']), len(CLUSTER_DESC['environments'])))
     return CLUSTER_DESC
 
 
