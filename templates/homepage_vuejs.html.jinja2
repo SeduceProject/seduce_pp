@@ -15,8 +15,8 @@
             <div class="my-3 p-3 bg-white rounded shadow-sm">
                 <h4>Last update</h4>
                 <h6>
-                    The <b>Settings</b> panel allows you to register one SSH key associated to your user. This key will
-                    be automatically deployed on your nodes.
+                    <b>Raspberry Pi 4</b> nodes with 4 Gb of memory are available ! Deploy environments on 'node-[23-28]' to test
+                    them.
                 </h6>
             </div>
         </main>
@@ -237,12 +237,14 @@
                                                                 Web Interface
                                                             </div>
                                                             <div class="col">
-                                                                <a v-if="n.web_ui == false">None</a>
-                                                                <a v-if="n.web_ui == true && n.state != 'deployed'">Installing...</a>
-                                                                <a v-if="n.web_ui == true && n.state == 'deployed'"
-                                                                :href="'http://' + n.public_ip" target="_blank">
-                                                                    Web Interface
-                                                                </a>
+                                                                <span v-if="n.web_ui == false">None</span>
+                                                                <span v-if="n.web_ui == true && n.state != 'deployed'">
+                                                                    Installing...
+                                                                </span>
+                                                                <span v-if="n.web_ui == true && n.state == 'deployed'">
+                                                                    <a :href="'https://pi' + n.number + '.seduce.fr'"
+                                                                    target="_blank">https://pi[[n.number]].seduce.fr</a>
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     </div><!-- CONTAINER - required properties-->

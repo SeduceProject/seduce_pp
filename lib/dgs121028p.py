@@ -67,22 +67,21 @@ def get_poe_status(switch_name):
     return [p[-1] for p in power_state if len(p) > 0]
 
 
-def set_power_port(address, port, value):
-    cluster_desc = get_cluster_desc()
-    snmp_address = "%s.%s" % (
-            cluster_desc['switch']['snmp_oid'], cluster_desc['switch']['snmp_oid_offset'] + int(port))
-    cmd = "snmpset -v2c -c %s %s %s i %s" % (cluster_desc['switch']['snmp_community'], address, snmp_address, value)
+def set_power_port(switch_name, port, value):
+    switch_desc = get_cluster_desc()['switches'][switch_name]
+    snmp_address = "%s.%d" % (switch_desc['oid'], switch_desc['oid_offset'] + int(port))
+    cmd = "snmpset -v2c -c %s %s %s i %s" % (switch_desc['community'], switch_desc['ip'], snmp_address, value)
     subprocess.run(cmd.split(), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return True
 
 
-def turn_on_port(address, port):
-    set_power_port(address, port, 1)
+def turn_on_port(switch_name, port):
+    set_power_port(switch_name, port, 1)
     return True
 
 
-def turn_off_port(address, port):
-    set_power_port(address, port, 2)
+def turn_off_port(switch_name, port):
+    set_power_port(switch_name, port, 2)
     return True
 
 

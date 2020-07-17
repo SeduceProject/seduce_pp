@@ -75,9 +75,9 @@ def user_deployments():
             for key in s_keys:
                 s_values.append(tuple([key, node_desc[key]]))
             deployment_info[d.name]["server_infos"].append({
-                "name": node_desc["name"], "env": d.environment, "id": node_desc["id"], "state": d.state,
-                "model": node_desc["model"], "password": d.system_pwd, "public_ip": node_desc["public_ip"],
-                "web_ui": web_interface, "desc": env_desc['desc'], "other_props": s_values
+                "name": node_desc["name"], "number": int(node_desc["name"].split('-')[1]), "env": d.environment, "id": node_desc["id"], "state": d.state,
+                "model": node_desc["model"], "password": d.system_pwd, "web_ui": web_interface,
+                "desc": env_desc['desc'], "other_props": s_values
             })
     close_session(session)
     if not deployments:

@@ -35,7 +35,7 @@ def collect_nodes(node_state):
                 ret_fct = False
                 ret_fct = state_fct(d, cluster_desc, db_session, logger_compute)
                 if ret_fct == True:
-                    d.updated_at = datetime.datetime.utcnow()
+                    d.updated_at = datetime.datetime.now()
                     progress_forward(d)
             except:
                 logger_compute.exception("Exception in '%s' state:" % node_state)
@@ -51,33 +51,23 @@ def check_ssh_is_ready(node_desc, env_desc, logger):
         ssh.close()
         return True
     except:
-        logger.warning("Could not connect to %s" % node_desc.get("ip"))
+        logger.warning("Could not connect to %s" % node_desc['name'])
         return False
 
 
 def check_cloud9_is_ready(node_desc, env_desc, logger):
-    ret_bool = False
-    cloud9_ide_url = "http://%s/ide.html" % (node_desc.get("public_ip"))
-    result = requests.get(cloud9_ide_url)
-    if result.status_code == 200 and "<title>Cloud9</title>" in result.text:
+    if not 'public_ip' in node_desc:
         ret_bool = True
-    if result.status_code == 401 and "Unauthorized" in result.text:
-        ret_bool = True
-    if not ret_bool:
-        logger.error("%s: status code %d" % (node_desc.get("ip"), result.status_code))
-    return ret_bool
-
-
-def check_jupyter_is_ready(node_desc, env_desc, logger):
-    ret_bool = False
-    cloud9_ide_url = "http://%s/tree?" % (node_desc.get("public_ip"))
-    result = requests.get(cloud9_ide_url)
-    if "<title>Home</title>" in result.text:
-        ret_bool = True
-    if "/static/style/style.min.css" in result.text:
-        ret_bool = True
-    if not ret_bool:
-        logger.error("%s: status code %d" % (node_desc.get("ip"), result.status_code))
+    else:
+        ret_bool = False
+        cloud9_ide_url = "http://%s/ide.html" % (node_desc.get("public_ip"))
+        result = requests.get(cloud9_ide_url)
+        if result.status_code == 200 and "<title>Cloud9</title>" in result.text:
+            ret_bool = True
+        if result.status_code == 401 and "Unauthorized" in result.text:
+            ret_bool = True
+        if not ret_bool:
+            logger.error("%s: status code %d" % (node_desc.get("ip"), result.status_code))
     return ret_bool
 
 
@@ -109,7 +99,7 @@ def nfs_boot_off_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn off port
-    turn_off_port(cluster_desc["switch"]["ip"], server["port_number"])
+    turn_off_port(server["switch"], server["port_number"])
     return True
 
 
@@ -117,7 +107,7 @@ def nfs_boot_on_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn on port
-    turn_on_port(cluster_desc["switch"]["ip"], server["port_number"])
+    turn_on_port(server['switch'], server["port_number"])
     return True
 
 
@@ -152,8 +142,8 @@ def env_copy_fct(deployment, cluster_desc, db_session, logger):
         ssh.close()
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
-        elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
-        logger.warning("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
+        elapsedTime = (datetime.datetime.now() - updated).total_seconds()
+        logger.warning("Could not connect to %s since %d seconds" % (server['name'], elapsedTime))
         if elapsedTime > lost_timeout:
             is_lost(deployment, logger)
     return ret_fct
@@ -178,7 +168,7 @@ def env_check_fct(deployment, cluster_desc, db_session, logger):
             if len(output) == 0:
                 logger.warning("%s: No progress value for the running environment copy" % server.get("ip"))
                 updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
-                elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+                elapsedTime = (datetime.datetime.now() - updated).total_seconds()
                 # Compute the progress value with an assumed transfert rate of 8 MB/s
                 percent = elapsedTime * 8000000 * 100 / environment.get('img_size')
             else:
@@ -186,7 +176,7 @@ def env_check_fct(deployment, cluster_desc, db_session, logger):
             deployment.temp_info = percent
         ssh.close()
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return ret_fct
 
 
@@ -211,7 +201,7 @@ def delete_partition_fct(deployment, cluster_desc, db_session, logger):
         ssh.close()
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return False
 
 
@@ -242,7 +232,7 @@ def create_partition_fct(deployment, cluster_desc, db_session, logger):
         ssh.close()
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return False
 
 
@@ -267,7 +257,7 @@ def mount_partition_fct(deployment, cluster_desc, db_session, logger):
         ssh.close()
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return False
 
 
@@ -284,7 +274,7 @@ def resize_partition_fct(deployment, cluster_desc, db_session, logger):
         ssh.close()
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return False
 
 
@@ -301,7 +291,7 @@ def wait_resizing_fct(deployment, cluster_desc, db_session, logger):
         ssh.close()
         return ret_fct
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return False
 
 
@@ -336,8 +326,7 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
             if environment['name'] == 'raspbian_cloud9':
-                cmd = "echo '#!/bin/sh\nnodejs /var/lib/c9sdk/server.js -l 0.0.0.0 --listen 0.0.0.0 --port 8181 \
-                        -a admin:%s -w /workspace' > fs_dir/usr/local/bin/c9" % deployment.system_pwd
+                cmd = "sed -i 's/-a :/-a admin:%s/' fs_dir/etc/systemd/system/cloud9.service" % deployment.system_pwd
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
         else:
@@ -358,7 +347,7 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
         ssh.close()
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return False
 
 
@@ -405,8 +394,8 @@ def user_conf_fct(deployment, cluster_desc, db_session, logger):
             return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
-        elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
-        logger.warning("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
+        elapsedTime = (datetime.datetime.now() - updated).total_seconds()
+        logger.warning("Could not connect to %s since %d seconds" % (server['name'], elapsedTime))
         if elapsedTime > lost_timeout:
             is_lost(deployment, logger)
     return False
@@ -451,15 +440,12 @@ def user_script_fct(deployment, cluster_desc, db_session, logger):
         if environment.get("name") == "raspbian_cloud9":
             no_check = False
             finish_deployment = check_cloud9_is_ready(server, environment, logger)
-        if environment.get("name") == "raspbian_jupyter":
-            no_check = False
-            finish_deployment = check_jupyter_is_ready(server, environment, logger)
         if no_check:
             finish_deployment = check_ssh_is_ready(server, environment, logger)
         logger.info("%s: finish_deployment: %s" % (server.get('id'), finish_deployment))
         return finish_init and finish_deployment
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return False
 
 
@@ -507,7 +493,7 @@ def img_create_part_fct(deployment, cluster_desc, db_session, logger):
                         (server.get('id'), (nb_sectors - last_sector), partition_size))
         ssh.close()
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return ret_fct
 
 
@@ -537,7 +523,7 @@ def img_format_part_fct(deployment, cluster_desc, db_session, logger):
         deployment.temp_info = '%s %s' % (deployment.temp_info, partition_name)
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return False
 
 
@@ -587,7 +573,7 @@ def img_copy_fct(deployment, cluster_desc, db_session, logger):
                 logger.error("%s: Can not mount the partition '%s'" % (server['name'], partition_name))
         ssh.close()
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server["name"])
+        logger.warning("Could not connect to %s" % server['name'])
     return ret_fct
 
 
@@ -610,7 +596,7 @@ def img_copy_check_fct(deployment, cluster_desc, db_session, logger):
             if len(output) == 0:
                 logger.warning("%s: No progress value for the running image copy" % server["name"])
                 updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
-                elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+                elapsedTime = (datetime.datetime.now() - updated).total_seconds()
                 # Compute the progress value with an assumed transfert rate of 8 MB/s
                 percent = elapsedTime * 8000000 * 100 / environment.get('img_size')
             else:
@@ -618,7 +604,7 @@ def img_copy_check_fct(deployment, cluster_desc, db_session, logger):
             deployment.temp_info = percent
         ssh.close()
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return ret_fct
 
 
@@ -651,7 +637,7 @@ def img_customize_fct(deployment, cluster_desc, db_session, logger):
         return_code = stdout.channel.recv_exit_status()
         ret_fct = True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return ret_fct
 
 
@@ -671,7 +657,7 @@ def img_compress_fct(deployment, cluster_desc, db_session, logger):
         ssh.close()
         ret_fct = True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return ret_fct
 
 
@@ -700,7 +686,7 @@ def img_compress_check_fct(deployment, cluster_desc, db_session, logger):
             if len(output) == 0:
                 logger.warning("%s: No progress value for the running image compression" % server["name"])
                 updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
-                elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+                elapsedTime = (datetime.datetime.now() - updated).total_seconds()
                 # Compute the progress value from past experiments on Pi 3B+
                 percent = elapsedTime * 1500000 * 100 / environment.get('img_size')
             else:
@@ -708,7 +694,7 @@ def img_compress_check_fct(deployment, cluster_desc, db_session, logger):
             deployment.temp_info = percent
         ssh.close()
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.warning("Could not connect to %s" % server.get("ip"))
+        logger.warning("Could not connect to %s" % server['name'])
     return ret_fct
 
 
@@ -748,7 +734,7 @@ def upload_check_fct(deployment, cluster_desc, db_session, logger):
         if len(output) == 0:
             logger.warning("%s: No progress value for the running environment copy" % server.get("ip"))
             updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
-            elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
+            elapsedTime = (datetime.datetime.now() - updated).total_seconds()
             # Compute the progress value with an assumed transfert rate of 8 MB/s
             percent = elapsedTime * 8000000 * 100 / environment.get('img_size')
         else:
@@ -762,7 +748,7 @@ def off_requested_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn off port
-    turn_off_port(cluster_desc["switch"]["ip"], server["port_number"])
+    turn_off_port(server["switch"], server["port_number"])
     return True
 
 
@@ -770,7 +756,7 @@ def on_requested_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     # Turn off port
-    turn_on_port(cluster_desc["switch"]["ip"], server["port_number"])
+    turn_on_port(server["switch"], server["port_number"])
     return True
 
 
@@ -789,8 +775,8 @@ def rebooting_fct(deployment, cluster_desc, db_session, logger):
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
-        elapsedTime = (datetime.datetime.utcnow() - updated).total_seconds()
-        logger.info("Could not connect to %s since %d seconds" % (server.get("ip"), elapsedTime))
+        elapsedTime = (datetime.datetime.now() - updated).total_seconds()
+        logger.info("Could not connect to %s since %d seconds" % (server['name'], elapsedTime))
         if elapsedTime > lost_timeout:
             is_lost(deployment, logger)
     return False
@@ -813,7 +799,7 @@ def destroy_request_fct(deployment, cluster_desc, db_session, logger):
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning('No SSH connection: can not try to delete the bootcode.bin file')
     # Turn off port
-    turn_off_port(cluster_desc["switch"]["ip"], server["port_number"])
+    turn_off_port(server["switch"], server["port_number"])
     # Delete the tftpboot folder
     tftpboot_node_folder = "/tftpboot/%s" % server["id"]
     if os.path.isdir(tftpboot_node_folder):

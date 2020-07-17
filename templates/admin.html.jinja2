@@ -346,36 +346,43 @@
             return selectedNode;
         }
 
-        function turnOn(switchName) {
+
+        function turnMe(switchName, onOff) {
             var selectedBoxes = getSelectedPorts(switchName);
             var idString = '';
+            var result = '';
             for(var i = 0; i < selectedBoxes.length; i++) {
                 idString += selectedBoxes[i].id + ',';
             }
             if(idString.length > 1) {
                 idString = idString.substring(0, idString.length - 1);
-                httpGet('/config/turn_on/' + idString);
-                for(var i = 0; i < selectedBoxes.length; i++) {
-                    selectedBoxes[i].className = 'col port-node ON';
-                    selectedBoxes[i].getElementsByTagName('INPUT')[0].checked = false;
+                if(onOff == 'on') {
+                    result = httpGet('/config/turn_on/' + idString);
+                } else {
+                    result = httpGet('/config/turn_off/' + idString);
+                }
+                result = JSON.parse(result)['status'];
+                if(result.length == selectedBoxes.length) {
+                    for(var i = 0; i < selectedBoxes.length; i++) {
+                        if(result[i] == 'done') {
+                            if(onOff == 'on') {
+                                selectedBoxes[i].className = 'col port-node ON';
+                            } else {
+                                selectedBoxes[i].className = 'col port-node OFF';
+                            }
+                        }
+                        selectedBoxes[i].getElementsByTagName('INPUT')[0].checked = false;
+                    }
                 }
             }
         }
 
+        function turnOn(switchName) {
+            turnMe(switchName, 'on');
+        }
+
         function turnOff(switchName) {
-            var selectedBoxes = getSelectedPorts(switchName);
-            var idString = '';
-            for(var i = 0; i < selectedBoxes.length; i++) {
-                idString += selectedBoxes[i].id + ',';
-            }
-            if(idString.length > 1) {
-                idString = idString.substring(0, idString.length - 1);
-                httpGet('/config/turn_off/' + idString);
-                for(var i = 0; i < selectedBoxes.length; i++) {
-                    selectedBoxes[i].className = 'col port-node OFF';
-                    selectedBoxes[i].getElementsByTagName('INPUT')[0].checked = false;
-                }
-            }
+            turnMe(switchName, 'off');
         }
 
         function analyzePorts(switchName) {

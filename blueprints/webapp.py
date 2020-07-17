@@ -78,7 +78,7 @@ def cancel():
     # Delete previous deployments still in initialized state
     old_dep = db_session.query(Deployment).filter_by(user_id=db_user.id, state="initialized").delete()
     close_session(db_session)
-    return flask.redirect(flask.url_for("app.configuration"))
+    return flask.redirect(flask.url_for("app.home"))
 
 
 @webapp_blueprint.route("/user/ssh_put/", methods=["POST"])

@@ -85,7 +85,8 @@ def load_cluster_desc():
         with open(node_json, 'r') as json_file:
             node_desc = json.load(json_file)
         node_descriptions.append(node_desc)
-    for desc in sorted(node_descriptions, key = lambda x: x['port_number']):
+    # Sort the node by name (requirement for 'analyze ports' of the admin page)
+    for desc in sorted(node_descriptions, key = lambda x: int(x['name'].split('-')[1])):
         CLUSTER_DESC['nodes'][desc['name']] = desc
     # Load the environment descriptions
     for env_json in sorted(glob('cluster_desc/environments/*.json')):

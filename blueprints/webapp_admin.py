@@ -2,13 +2,15 @@ from database.connector import open_session, close_session
 from database.tables import User, Deployment
 from flask import Blueprint
 from flask_login import current_user
+from glob import glob
 from lib.admin_decorators import admin_login_required
 from lib.dgs121028p import get_poe_status
 from lib.email_notification import send_confirmation_request
 from lib.config_loader import add_domain_filter, del_domain_filter, get_cluster_desc, load_cluster_desc
 from lib.config_loader import load_config, save_mail_config, set_email_signup
 from lib.dgs121028p import turn_on_port, turn_off_port
-import datetime, flask, flask_login, json, subprocess, time
+from paramiko.ssh_exception import AuthenticationException, SSHException
+import datetime, flask, flask_login, json, os, paramiko, shutil, socket, subprocess, time
 
 
 webapp_admin_blueprint = Blueprint('app_admin', __name__, template_folder='templates')
@@ -28,7 +30,7 @@ def switches():
     cluster_desc = get_cluster_desc()
     # Read the state of the nodes from the deployment table
     db_session = open_session()
-    states = db_session.query(Deployment).filter_by(state = 'destroyed').all()
+    states = db_session.query(Deployment).filter(Deployment.state != 'destroyed').all()
     node_states = {}
     for s in states:
         node_states[s.node_name] = s.state
@@ -41,11 +43,15 @@ def switches():
             # Get the PoE status (on or off)
             if port % 4 == 0:
                 switch_desc['ports'].append({})
-            switch_desc['ports'][-1][str(port + 1)] = {'port': port + 1, 'poe_state': 'UNKNOWN'}
+            if port + 1 == switch['master_port']:
+                switch_desc['ports'][-1][str(port + 1)] = { 'port': port + 1, 'name': 'pimaster',
+                        'ip': cluster_desc['pimaster']['ip'], 'poe_state': 'ON', 'node_state': 'private' }
+            else:
+                switch_desc['ports'][-1][str(port + 1)] = { 'port': port + 1, 'poe_state': 'UNKNOWN' }
         for node in cluster_desc['nodes'].values():
             if 'switch' in node and node['switch'] == switch['name']:
                 port_row = int((node['port_number'] - 1) / 4)
-                my_state = 'UNKNOWN'
+                my_state = 'free'
                 if node['name'] in node_states:
                     my_state = node_states[node['name']]
                 switch_desc['ports'][port_row][str(node['port_number'])] = {
@@ -73,34 +79,38 @@ def poe_status(switch_name):
     return { 'status': status }
 
 
+def turnMe(switch_ports, onOff):
+    cluster_desc = get_cluster_desc()
+    switch_ports = switch_ports.split(',')
+    switch = cluster_desc['switches'][switch_ports[0].split('-')[0]]
+    result = []
+    if switch is not None:
+        for port in switch_ports:
+            port_number = int(port.split('-')[1])
+            if switch['master_port'] == port_number:
+                result.append('error')
+            else:
+                if onOff == 'on':
+                    turn_on_port(switch['name'], port_number)
+                else:
+                    turn_off_port(switch['name'], port_number)
+                result.append('done')
+        return {'status': result }
+    else:
+        return {'status': result }
+
 @webapp_admin_blueprint.route("/config/turn_on/<string:switch_ports>")
 @flask_login.login_required
 @admin_login_required
 def turn_on(switch_ports):
-    cluster_desc = get_cluster_desc()
-    switch_ports = switch_ports.split(',')
-    switch = cluster_desc['switches'][switch_ports[0].split('-')[0]]
-    if switch is not None:
-        for port in switch_ports:
-            turn_on_port(switch['ip'], port.split('-')[1])
-        return {'status': 'ok' }
-    else:
-        return {'status': 'ko' }
+    return turnMe(switch_ports, 'on')
 
 
 @webapp_admin_blueprint.route("/config/turn_off/<switch_ports>")
 @flask_login.login_required
 @admin_login_required
 def turn_off(switch_ports):
-    cluster_desc = get_cluster_desc()
-    switch_ports = switch_ports.split(',')
-    switch = cluster_desc['switches'][switch_ports[0].split('-')[0]]
-    if switch is not None:
-        for port in switch_ports:
-            turn_off_port(switch['ip'], port.split('-')[1])
-        return {'status': 'ok' }
-    else:
-        return {'status': 'ko' }
+    return turnMe(switch_ports, 'off')
 
 
 @webapp_admin_blueprint.route("/config/analyze_port/<string:switch_ports>")
@@ -110,31 +120,123 @@ def analyze_port(switch_ports):
     cluster_desc = get_cluster_desc()
     switch_ports = switch_ports.split(',')
     switch = cluster_desc['switches'][switch_ports[0].split('-')[0]]
+    existing_nodes = list(cluster_desc['nodes'].keys())
+    # Node index to compute new node names
+    if len(existing_nodes) == 0:
+        node_name_idx = 0
+    else:
+        node_name_idx = int(existing_nodes[-1].split('-')[1])
     if switch is None:
         return {'status': 'ko' }
+    new_nodes = []
+    last_dot_idx = cluster_desc['first_node_ip'].rindex('.')
+    network_ip = cluster_desc['first_node_ip'][:last_dot_idx]
+    ip_offset = int(cluster_desc['first_node_ip'].split('.')[-1]) - 1
+    # Expose TFTP files to all nodes (boot from the NFS server)
+    print('Copy TFTP files to the tftpboot directory')
+    tftp_files = glob('/tftpboot/rpiboot_uboot/*')
+    for f in tftp_files:
+        if os.path.isdir(f):
+            new_f = '/tftpboot/%s' % os.path.basename(f)
+            if not os.path.isdir(new_f):
+                shutil.copytree(f, new_f)
+        else:
+            shutil.copy(f, '/tftpboot/%s' % os.path.basename(f))
     #TODO Check there is no deployment using the node attached to this port
     for port in switch_ports:
-        port_number = port.split('-')[1]
-        # Turn off the port
-        turn_off_port(switch['ip'], port_number)
+        port_number = int(port.split('-')[1])
+        if switch['master_port'] == port_number:
+            print('Can not analyze the pimaster port. Aborting !')
+        else:
+            print('Analyzing the node on the port %d' % port_number)
+            # Turn off the node
+            turn_off_port(switch['name'], port_number)
+            time.sleep(1)
+            # Turn on the node
+            turn_on_port(switch['name'], port_number)
+            time.sleep(5)
+            print('Capturing DHCP requests')
+            # Listening DHCP Requests during 10 seconds
+            cmd = "rm -f /tmp/port.pcap; tshark -nni eth0 -w /tmp/port.pcap -a duration:20 port 67 and 68"
+            subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Analyzing the captured requests to detect the MAC address
+            cmd = "tshark -r /tmp/port.pcap -Y 'bootp.option.type == 53 and bootp.ip.client == 0.0.0.0' -T fields \
+                    -e frame.time -e bootp.ip.client -e bootp.hw.mac_addr | awk '{ print $7 }' | uniq"
+            process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                    universal_newlines=True)
+            # Cast to set to remove duplicate strings
+            mac = set(process.stdout.split('\n'))
+            # Keep only string that looks like mac addresses
+            mac = [m for m in mac if len(m) == 17]
+            if len(mac) == 1:
+                # The MAC address is detected
+                node_name_idx += 1
+                node_ip = '%s.%d' % (network_ip, node_name_idx + ip_offset)
+                node_name = 'node-%d' % node_name_idx
+                mac = mac[0]
+                print('The MAC address is %s' % mac)
+                # Add the IP to the DHCP server
+                cmd = "sed -i '/%s/d' /etc/dnsmasq.conf; echo 'dhcp-host=%s,%s,%s' >> /etc/dnsmasq.conf" % (
+                        mac, mac, node_name, node_ip)
+                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # Restart the DHCP server
+                cmd = 'service dnsmasq restart'
+                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # Turn off the node
+                turn_off_port(switch['name'], port_number)
+                new_nodes.append({
+                    'name': node_name, 'port_number': port_number, 'ip': node_ip, 'switch': switch['name'] })
+            else:
+                print("Wrong MAC addresses detected: %s" % mac)
+    # Start all nodes
+    for node in new_nodes:
+        print("%s: Starting..." % node['name'])
         time.sleep(1)
-        # Turn on the port
-        turn_on_port(switch['ip'], port_number)
-        time.sleep(5)
-        # Listening DHCP Requests during 10 seconds
-        cmd = "sudo tshark -nni eth0 -w /tmp/port.pcap -a duration:10 port 67 and 68"
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                universal_newlines=True)
-        print(process.stdout.split('\n'))
-        # Analyzing the captured requests
-        cmd = "tshark -r /tmp/port.pcap -Y 'bootp.option.type == 53 and bootp.ip.client == 0.0.0.0' -T fields -e frame.time \
-                -e bootp.ip.client -e bootp.hw.mac_addr | awk '{ print $7 }' | uniq"
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                universal_newlines=True)
-        mac = process.stdout.split('\n')
-        print(mac)
-        return { 'status': 'ko' }
-
+        turn_on_port(switch['name'], node['port_number'])
+    # Let nodes boot
+    time.sleep(30)
+    # Get the model and the identifier of nodes from SSH connections
+    for node in new_nodes:
+        again = 0
+        while again < 9:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            try:
+                ssh.connect(node['ip'], username='root', timeout=1.0)
+                again = 42
+                (stdin, stdout, stderr) = ssh.exec_command("cat /proc/cpuinfo")
+                return_code = stdout.channel.recv_exit_status()
+                for line in  stdout.readlines():
+                    output = line.strip()
+                    if 'Revision' in output:
+                        rev = output.split()[-1]
+                        if rev == 'c03111':
+                            node['model'] = 'RPI4B'
+                        if rev == 'a020d3':
+                            node['model'] = 'RPI3B+'
+                    if 'Serial' in output:
+                        node['id'] = output.split()[-1][-8:]
+                ssh.close()
+                # Write the configuration file of the node
+                print('%s: Writing the configuration file' % node['name'])
+                with open('cluster_desc/nodes/%s.json' % node['name'], 'w+') as conf:
+                    json.dump(node, conf, indent=4)
+                load_cluster_desc()
+            except (AuthenticationException, SSHException, socket.error):
+                print('%s: Can not connect via SSH' % node['name'])
+                again += 1
+                time.sleep(10)
+        # Turn off the node
+        turn_off_port(switch['name'], node['port_number'])
+    # Clean the TFTP folder
+    for f in tftp_files:
+        new_f = f.replace('/rpiboot_uboot','')
+        if os.path.isdir(new_f):
+            shutil.rmtree(new_f)
+        else:
+            if not 'bootcode.bin' in new_f:
+                os.remove(new_f)
+    return { 'nodes': new_nodes }
 
 
 @webapp_admin_blueprint.route("/config/add_switch", methods=["POST"])
