@@ -26,8 +26,19 @@ def destroy_test_deployment():
                 "VALUES('confirmed', '%s', 'Test','Test', "
                 "'$2b$12$PJCxhXp6vwLkEm8y2hctVudY/EQCfq2njV0SuFbglZoJMar0FDm6i', 1, 0, 0);" % test_email)
     test_user_id = test_user[0].id
-    db_session.query(Deployment).filter(
-            Deployment.user_id == test_user_id).filter(Deployment.name == test_deployment_name).delete()
+    deployments = db_session.query(Deployment).filter(
+            Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').all()
+    for d in deployments:
+        d.state = 'destroy_request'
+        db_session.add(d)
+    db_session.commit()
+    destroyed = set()
+    while len(destroyed) < len(deployments):
+        for d in deployments:
+            if d.state == 'destroyed':
+                destroyed.add(d.node_name)
+        db_session.commit()
+        time.sleep(4)
     close_session(db_session)
     time.sleep(2)
     return test_user_id
@@ -160,7 +171,7 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
     db_session = open_session()
     while len(deployed_env) < len(nodes):
         deployments = db_session.query(Deployment).filter(
-                Deployment.user_id == test_user_id).filter(Deployment.name == test_deployment_name).all()
+                Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').all()
         for d in deployments:
             my_state = d.state
             if d.id not in deployed_env:
@@ -232,8 +243,9 @@ if __name__ == "__main__":
     #for env in [ { 'name': boot_test_environment } ]:
     #for env in [ {'name': 'tiny_core'} ]:
     for env in cluster_desc["environments"].values():
-        logger.info("Deploying the '%s' environment" % env['name'])
-        testing_environment(env['name'], file_id, stats_data, 10)
+        if env['name'] != boot_test_environment:
+            logger.info("Deploying the '%s' environment" % env['name'])
+            testing_environment(env['name'], file_id, stats_data, 10)
     logger.info("Destroy older deployments")
     destroy_test_deployment()
     logger.info("Write the detailed statistics to the '%s'" % file_stats)

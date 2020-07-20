@@ -33,7 +33,9 @@ def collect_nodes(node_state):
                 logger_compute.info("### Node '%s' enters in '%s' state at %s" %
                         (d.node_name, node_state, last_update))
                 ret_fct = False
-                ret_fct = state_fct(d, cluster_desc, db_session, logger_compute)
+                # When running boot tests, do not try to copy the environment
+                if not (node_state == 'env_copy' and d.environment == 'boot_test'):
+                    ret_fct = state_fct(d, cluster_desc, db_session, logger_compute)
                 if ret_fct == True:
                     d.updated_at = datetime.datetime.now()
                     progress_forward(d)
@@ -327,6 +329,10 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
                 return_code = stdout.channel.recv_exit_status()
             if environment['name'] == 'raspbian_cloud9':
                 cmd = "sed -i 's/-a :/-a admin:%s/' fs_dir/etc/systemd/system/cloud9.service" % deployment.system_pwd
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+            if environment['name'] == 'raspbian_ttyd':
+                cmd = "sed -i 's/toto/%s/' fs_dir/etc/rc.local" % deployment.system_pwd
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
         else:

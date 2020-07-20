@@ -1,4 +1,4 @@
-from database.base import Session
+from database.connector import open_session, close_session
 from database.tables import User as dbUser
 from initialization import login_manager, app, User
 from lib.config_loader import load_config
@@ -12,9 +12,9 @@ def logging_config():
 
 @login_manager.user_loader
 def user_loader(user_email):
-    db_session = Session()
+    db_session = open_session()
     db_user = db_session.query(dbUser).filter(dbUser.email == user_email).first()
-    db_session.close()
+    ret_val = None
     if db_user is not None and db_user.user_authorized:
         user = User()
         user.id = db_user.email
@@ -23,8 +23,9 @@ def user_loader(user_email):
         user.ssh_key = db_user.ssh_key
         user.is_admin = db_user.is_admin
         user.user_authorized = db_user.user_authorized
-        return user
-    return None
+        ret_val = user
+    close_session(db_session)
+    return ret_val
 
 
 @app.template_filter()

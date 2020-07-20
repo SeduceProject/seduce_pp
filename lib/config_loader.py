@@ -93,12 +93,16 @@ def load_cluster_desc():
         try:
             with open(env_json, 'r') as json_file:
                 env_desc = json.load(json_file)
-            img_path = CLUSTER_DESC['img_dir'] + env_desc['img_name']
-            if len(glob(img_path)) == 1:
-                CLUSTER_DESC['environments'][env_desc['name']] = env_desc
-            else:
-                logger.error("Can not load the environment '%s', the file '%s' does not exist" %
-                        (env_desc['name'], img_path))
+                if len(env_desc['img_name']) > 0:
+                    img_path = CLUSTER_DESC['img_dir'] + env_desc['img_name']
+                    if len(glob(img_path)) == 1:
+                        CLUSTER_DESC['environments'][env_desc['name']] = env_desc
+                    else:
+                        logger.error("Can not load the environment '%s', the file '%s' does not exist" %
+                                (env_desc['name'], img_path))
+                else:
+                    # If there is no image name, load the environment (only used for the 'boot_test' environment)
+                    CLUSTER_DESC['environments'][env_desc['name']] = env_desc
         except:
             logger.exception("Can not load the environment:")
     logger.info("Found: %d switches, %d nodes, %d environments" %

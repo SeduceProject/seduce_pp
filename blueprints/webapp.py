@@ -43,7 +43,8 @@ def take(server_info):
     return flask.render_template("form_take.html.jinja2",
                                  server_ids=server_ids,
                                  server_names=server_names,
-                                 environments=cluster_desc["environments"].values())
+                                 environments=[env 
+                                     for env in cluster_desc["environments"].values() if env['type'] != 'hidden'])
 
 
 @webapp_blueprint.route("/server/process_take/", methods=["POST"])
