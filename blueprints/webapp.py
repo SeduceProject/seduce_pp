@@ -65,7 +65,7 @@ def process_take():
         d.environment = flask.request.form.get("environment")
         d.duration = flask.request.form.get("duration_text")
         d.system_size = flask.request.form.get("more_space")
-        d.start_date = datetime.datetime.utcnow()
+        d.start_date = datetime.datetime.now()
         d.state = deployment_initial_state
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))

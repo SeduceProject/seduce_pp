@@ -34,7 +34,7 @@ def timesince(dt, default="just now"):
     Returns string representing "time since" e.g.
     3 days ago, 5 hours ago etc.
     """
-    now = datetime.utcnow()
+    now = datetime.now()
     diff = now - dt
     periods = (
         (diff.days / 365, "year", "years"),

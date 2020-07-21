@@ -83,7 +83,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
         new_deployment.system_pwd = "superC9PWD"
         new_deployment.public_key = process.stdout
         new_deployment.init_script = node['script']
-        new_deployment.start_date = datetime.utcnow()
+        new_deployment.start_date = datetime.now()
         new_deployment.user_id = test_user_id
         db_session.add(new_deployment)
         # Write statistics about deployments
@@ -92,7 +92,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
                 stats[test_env][node['name']] = []
         else:
             stats[test_env] = { node['name']: [] }
-        stats[test_env][node['name']].append({ 'ip': node['ip'], 'start_date': str(datetime.utcnow()), 
+        stats[test_env][node['name']].append({ 'ip': node['ip'], 'start_date': str(datetime.now()), 
             'states': { 'last_state': '', 'last_date': None }, 'total': 0,
             'ping': False, 'ssh': False, 'init_script': False })
     close_session(db_session)
@@ -106,7 +106,7 @@ def state_register(dep, stats):
     last_date = state_info['last_date']
     if dep.updated_at is not None:
         last_change = datetime.strptime(str(dep.updated_at), '%Y-%m-%d %H:%M:%S')
-        from_change = (datetime.utcnow() - last_change).total_seconds()
+        from_change = (datetime.now() - last_change).total_seconds()
         if dep.state == 'env_check':
             if from_change > 600:
                 state_info[last_state] = from_change
@@ -236,13 +236,13 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
 
 
 if __name__ == "__main__":
-    file_id = datetime.utcnow().strftime("%y_%m_%d_%H_%M")
+    file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
     file_stats = 'json_test/%s_stats_tests.json' % file_id
     stats_data = {}
     cluster_desc = get_cluster_desc()
     #for env in [ { 'name': boot_test_environment } ]:
-    #for env in [ {'name': 'tiny_core'} ]:
-    for env in cluster_desc["environments"].values():
+    for env in [ {'name': 'raspbian_cloud9'} ]:
+    #for env in cluster_desc["environments"].values():
         if env['name'] != boot_test_environment:
             logger.info("Deploying the '%s' environment" % env['name'])
             testing_environment(env['name'], file_id, stats_data, 10)
