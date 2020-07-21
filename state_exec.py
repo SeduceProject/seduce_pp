@@ -1,6 +1,7 @@
 from database.connector import open_session, close_session
 from database.states import progress_forward, use_env_ssh_user
 from database.tables import Deployment, User
+from glob import glob
 from lib.config_loader import get_cluster_desc, load_cluster_desc
 from lib.dgs121028p import turn_on_port, turn_off_port
 from paramiko.ssh_exception import BadHostKeyException, AuthenticationException, SSHException
@@ -93,7 +94,12 @@ def nfs_boot_conf_fct(deployment, cluster_desc, db_session, logger):
     tftpboot_node_folder = "/tftpboot/%s" % server["id"]
     if os.path.isdir(tftpboot_node_folder):
         shutil.rmtree(tftpboot_node_folder)
-    shutil.copytree(tftpboot_template_folder, tftpboot_node_folder)
+    os.mkdir(tftpboot_node_folder)
+    for tftpfile in glob('%s/*' % tftpboot_template_folder):
+        if tftpfile.endswith('cmdline.txt'):
+            shutil.copyfile(tftpfile, tftpfile.replace(tftpboot_template_folder, tftpboot_node_folder))
+        else:
+            os.symlink(tftpfile, tftpfile.replace(tftpboot_template_folder, tftpboot_node_folder))
     return True
 
 
