@@ -38,6 +38,9 @@
                             <button class="btn btn-info" :onclick="'poeStatus(\'' + sw.name + '\')'">
                                 Update PoE Status
                             </button>
+                            <button class="btn btn-info btn-size" :onclick="'checkPort(\'' + sw.name + '\')'">
+                                Check Node
+                            </button>
                             <button class="btn btn-info btn-size shadow-none"
                                 :onclick="'turnOn(\'' + sw.name + '\')'">
                                 Turn Ports On
@@ -316,6 +319,24 @@
     <script src="{{ url_for("static", filename="js/vue") }}"></script>
     <script src="{{ url_for("static", filename="js/jquery-3.3.1.js") }}"></script>
     <script>
+        function httpGetAsync(api_endpoint, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", api_endpoint, true);
+            xhr.onload = function (e) {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        callback.analyze(xhr.responseText);
+                    } else {
+                        console.error(xhr.statusText);
+                    }
+                }
+            };
+            xhr.onerror = function (e) {
+                console.error(xhr.statusText);
+            };
+            xhr.send(null);
+        }
+
         function httpGet(api_endpoint) {
             var xmlHttp = new XMLHttpRequest();
             xmlHttp.open( "GET", api_endpoint, false ); // false for synchronous request
@@ -346,6 +367,44 @@
             return selectedNode;
         }
 
+        function checkPort(switchName) {
+            var selectedBoxes = getSelectedPorts(switchName);
+            for(var i = 0; i < selectedBoxes.length; i++) {
+                blinking = function(box_id) {
+                    $('#' + box_id).children().first().fadeOut(600, function() {
+                        $(this).fadeIn(400);
+                    });
+                };
+                var test = {
+                    box: selectedBoxes[i],
+                    blinker: '',
+                    startBlinking: function() {
+                        blinking(this.box.id);
+                        this.blinker = setInterval(blinking, 1000, this.box.id);
+                    },
+                    analyze: function(api_result) {
+                        api_result = JSON.parse(api_result)['status']
+                        if(api_result == 'succeed') {
+                            this.onSuccess();
+                        } else {
+                            this.onFailure();
+                        }
+                        if(this.blinker != '') {
+                            clearInterval(this.blinker);
+                        }
+                        this.box.getElementsByTagName('INPUT')[0].checked = false;
+                    },
+                    onSuccess: function() {
+                        this.box.className = 'col port-node ON';
+                    },
+                    onFailure: function() {
+                        this.box.className = 'col port-node OFF';
+                    }
+                };
+                test.startBlinking();
+                httpGetAsync('/config/check_port/' + selectedBoxes[i].id, test);
+            }
+        }
 
         function turnMe(switchName, onOff) {
             var selectedBoxes = getSelectedPorts(switchName);

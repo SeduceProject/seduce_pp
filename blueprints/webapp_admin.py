@@ -113,6 +113,74 @@ def turn_off(switch_ports):
     return turnMe(switch_ports, 'off')
 
 
+@webapp_admin_blueprint.route("/config/check_port/<string:switch_port>")
+@flask_login.login_required
+@admin_login_required
+def check_port(switch_port):
+    cluster_desc = get_cluster_desc()
+    switch = cluster_desc['switches'][switch_port.split('-')[0]]
+    port_number = int(switch_port.split('-')[1])
+    # Do not turn off the pimaster
+    if switch['master_port'] == port_number:
+        return { 'status': 'failed' }
+    # Looking for the node on the port
+    my_node = None
+    for node in cluster_desc['nodes'].values():
+        if node['switch'] == switch['name'] and node['port_number'] == port_number:
+            my_node = node
+    # No node linked to the port
+    if my_node is None:
+        return { 'status': 'failed' }
+    else:
+        # Check the node is not currently used
+        db_session = open_session()
+        states = db_session.query(Deployment).filter(Deployment.state != 'destroyed').filter(
+                Deployment.node_name == node['name']).all()
+        close_session(db_session)
+        if len(states) > 0:
+            return { 'status': 'failed' }
+        # Create the TFTP boot folder
+        tftpboot_template_folder = "/tftpboot/rpiboot_uboot"
+        tftpboot_node_folder = "/tftpboot/%s" % my_node["id"]
+        if os.path.isdir(tftpboot_node_folder):
+            shutil.rmtree(tftpboot_node_folder)
+        os.mkdir(tftpboot_node_folder)
+        for tftpfile in glob('%s/*' % tftpboot_template_folder):
+            if tftpfile.endswith('cmdline.txt'):
+                shutil.copyfile(tftpfile, tftpfile.replace(tftpboot_template_folder, tftpboot_node_folder))
+            else:
+                os.symlink(tftpfile, tftpfile.replace(tftpboot_template_folder, tftpboot_node_folder))
+        # Turn off the PoE port
+        turn_off_port(switch['name'], port_number)
+        # Ping the node IP address
+        cmd = 'ping -c 1 -W 1 %s' % my_node['ip']
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ret_code = process.returncode
+        if ret_code == 0:
+            return { 'status': 'failed' }
+        # Turn on the PoE port
+        turn_on_port(switch['name'], port_number)
+        # Try to ping the node
+        time.sleep(30)
+        ret_code = 1
+        nb = 0
+        while ret_code != 0 and nb < 6:
+            cmd = 'ping -c 1 -W 1 %s' % my_node['ip']
+            process = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            ret_code = process.returncode
+            nb += 1
+            if ret_code != 0:
+                time.sleep(10)
+        # Delete tftp directory
+        shutil.rmtree(tftpboot_node_folder)
+        # Turn off the PoE port
+        turn_off_port(switch['name'], port_number)
+        if ret_code == 0:
+            return { 'status': 'succeed' }
+        else:
+            return { 'status': 'failed' }
+
+
 @webapp_admin_blueprint.route("/config/analyze_port/<string:switch_ports>")
 @flask_login.login_required
 @admin_login_required
