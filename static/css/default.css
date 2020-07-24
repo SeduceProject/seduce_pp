@@ -1,6 +1,130 @@
-.welcome_message {
-    color: white;
+/* Header */
+.centered-menu {
+    position: relative;
+    left: -76px;
 }
+
+/* Resources page */
+.resources .row {
+    padding: 6px;
+}
+
+.legend {
+    padding-left: 32px;
+}
+
+.legend div {
+    width: 120px;
+    height: 30px;
+    border: 1px solid #17a2b8;
+    padding-top: 2px;
+    margin-left: 6px;
+    margin-top: 14px;
+    font-size: 14px;
+    text-align: center;
+    display: inline-block;
+}
+
+.sort-by {
+    font-size: 14px;
+}
+
+.resources .tab-pane {
+    height: 500px;
+    overflow: auto;
+}
+
+.node {
+    margin: 5px 0px 0px 5px;
+    display: inline-block;
+    border: 1px solid #17a2b8;
+}
+
+.node img:first-child {
+    margin-left: 6px;
+}
+
+.node > * {
+    display: inline-block;
+}
+
+.cell {
+    cursor: cell;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.props-table {
+    border: 1px solid #dee2e6;
+    margin-top: 48px;
+    text-align: left;
+}
+
+.props-table .row:first-child {
+    background-color: #dee2e6;
+    text-align: center;
+}
+
+.mailto-text {
+    font-size: 14px;
+    text-align: center;
+}
+
+.selected-nodes {
+    padding-left: 14px;
+}
+
+.node-list {
+    height: 100px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 20px;
+    overflow: auto;
+}
+
+.node-list div {
+    display: inline-block;
+}
+
+.deploy-btn {
+    border: 1px solid #17a2b8;
+    color: #17a2b8 !important;
+}
+
+.deploy-btn:hover {
+    background-color: #17a2b8;
+    color: white !important;
+}
+
+.in_selection {
+    background-color: #b5c5fa;
+}
+
+.free {
+    background-color: #fafafa;
+}
+
+.free:hover {
+    background-color: #effefd;
+}
+
+.mine {
+    cursor: auto; 
+    background-color: #dbfed6;
+}
+
+.selecting {
+    cursor: crosshair;
+    background-color: #fafafa;
+}
+
+.in_use {
+    cursor: auto; 
+    background-color: #fde3e0;
+}
+
+/* End of Resources page */
 
 .server-container {
     width: 100%;
@@ -26,10 +150,6 @@
 
 .select-nodes {
     height: 60px;
-}
-
-.node-list {
-    color: #17a2b8;
 }
 
 .btn-size {
@@ -169,24 +289,11 @@
     background-color: #e7eae6;
 }
 
-/* state colors */
-.in_selection {
-    background-color: #7d9bff;
-}
-
+/* Deploying nodes */
 .initialized {
     background-color: #ece4ff;
 }
 
-.free {
-    background-color: #17a2b8;
-}
-
-.in_use {
-    background-color: #ff7d7d;
-}
-
-/* Deploying nodes */
 .nfs_boot_conf {
     background-color: #E97DFF;
 }

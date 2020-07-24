@@ -267,14 +267,22 @@ def configure():
     return flask.redirect(flask.url_for("app.configuration"))
 
 
-@webapp_blueprint.route("/form_switch")
-def add_switch():
-    return flask.render_template("form_switch.html.jinja2")
+@webapp_blueprint.route("/")
+@flask_login.login_required
+def home():
+    return flask.render_template("homepage_vuejs.html.jinja2")
 
 
-@webapp_blueprint.route("/configuration")
-def configuration():
-    return flask.render_template("first_boot_exec.html.jinja2")
+@webapp_blueprint.route("/resources")
+@flask_login.login_required
+def resources():
+    return flask.render_template("resources.html.jinja2")
+
+
+@webapp_blueprint.route("/deployments")
+@flask_login.login_required
+def deployments():
+    return flask.render_template("deployments.html.jinja2")
 
 
 @webapp_blueprint.route("/user")
@@ -290,7 +298,12 @@ def admin():
     return flask.render_template("admin.html.jinja2")
 
 
-@webapp_blueprint.route("/")
+@webapp_blueprint.route("/form_switch")
 @flask_login.login_required
-def home():
-    return flask.render_template("homepage_vuejs.html.jinja2")
+def add_switch():
+    return flask.render_template("form_switch.html.jinja2")
+
+
+@webapp_blueprint.route("/configuration")
+def configuration():
+    return flask.render_template("first_boot_exec.html.jinja2")

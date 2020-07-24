@@ -1,0 +1,284 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+    <div id="app" v-cloak>
+        <main role="main" class="container">
+            <div class="bg-white rounded shadow-sm resources p-2">
+                <!-- table container -->
+                <div class="container">
+                    <!-- first row -->
+                    <div class="row">
+                        <div class="col-8 legend">
+                            Legends:
+                            <div class="rounded free">Free nodes</div> 
+                            <div class="rounded in_use">Reserved nodes</div> 
+                            <div class="rounded mine">My nodes</div>
+                        </div>
+                        <div class="col text-right">
+                            <span class="mr-1">Resources available on site</span>
+                            <select name="site">
+                                <option>Nantes</option>
+                                <option>Paris</option>
+                            </select>
+                            <div class="sort-by">
+                                Sort by
+                                <input type="radio" id="switch" name="node-type" value="switch"
+                                    onchange="selectResources('switch')" checked>
+                                <label for="switch">Switch</label>
+                                <input type="radio" id="model" name="node-type" value="model"
+                                    onchange="selectResources('model')">
+                                <label for="model">Model</label>
+                            </div>
+                        </div>
+                    </div><!-- first row -->
+                    <!-- second row -->
+                    <div class="row">
+                        <div class="col-8">
+                            <!-- Tab panel container -->
+                            <div class="container">
+                                <!-- Tab panel menu -->
+                                <ul class="nav nav-pills" id="myTab" role="tablist">
+                                    <li v-for="(parent, index) in resources" class="nav-item">
+                                        <a v-if="index == 0" class="nav-link active" :id="parent.name + '-tab'" data-toggle="tab"
+                                            :href="'#' + parent.name" role="tab" :aria-controls="parent.name"
+                                            aria-selected="true">
+                                            [[ parent.name ]]
+                                        </a>
+                                        <a v-if="index > 0" class="nav-link" :id="parent.name + '-tab'" data-toggle="tab"
+                                            :href="'#' + parent.name" role="tab" :aria-controls="parent.name"
+                                            aria-selected="false">
+                                            [[ parent.name ]]
+                                        </a>
+                                    </li>
+                                </ul>
+                                <!-- Tab panel content -->
+                                <div class="tab-content border mt-2 p-1">
+                                    <!-- Fist panel - selected panel -->
+                                    <div v-for="(parent, index) in resources" class="tab-pane pt-2 active" v-if="index == 0"
+                                        :id="parent.name" role="tabpanel" :aria-labelledby="parent.name + '-tab'">
+                                        <div v-for="r in parent.values" class="d-inline-block cell" onclick="selectNode(this)">
+                                            <div v-if="r.user == ''" class="node rounded shadow-sm free">
+                                                <img :src="'/static/img/' + r.model.toLowerCase() + '.png'" width="30px">
+                                                <div :id=r.id>[[ r.name ]]</div>
+                                                <img src="{{ url_for("static", filename="img/right_arrow.png") }}"
+                                                    class="pointer" width="30px"
+                                                    :onclick="'information(\'' + parent.name + '\',\'' + r.name + '\')'">
+                                            </div>
+                                            <div v-if="r.user == 'me'" class="node rounded shadow-sm mine">
+                                                <img :src="'/static/img/' + r.model.toLowerCase() + '.png'" width="30px">
+                                                <div>[[ r.name ]]</div>
+                                                <img src="{{ url_for("static", filename="img/right_arrow.png") }}"
+                                                    class="pointer" width="30px"
+                                                    :onclick="'information(\'' + parent.name + '\',\'' + r.name + '\')'">
+                                            </div>
+                                            <div v-if="r.user != '' && r.user != 'me'" class="node rounded shadow-sm in_use">
+                                                <img :src="'/static/img/' + r.model.toLowerCase() + '.png'" width="30px">
+                                                <div>[[ r.name ]]</div>
+                                                <img src="{{ url_for("static", filename="img/right_arrow.png") }}"
+                                                    class="pointer" width="30px"
+                                                    :onclick="'information(\'' + parent.name + '\',\'' + r.name + '\')'">
+                                            </div>
+                                        </div>
+                                    </div><!-- First panel -->
+                                    <!-- Other panels - hidden panels -->
+                                    <div v-for="(parent, index) in resources" class="tab-pane pt-2" v-if="index > 0"
+                                        :id="parent.name" role="tabpanel" :aria-labelledby="parent.name + '-tab'">
+                                        <div v-for="r in parent.values" class="d-inline-block cell" onclick="selectNode(this)">
+                                            <div v-if="r.user == ''" class="node rounded shadow-sm free">
+                                                <img :src="'/static/img/' + r.model.toLowerCase() + '.png'" width="30px">
+                                                <div :id=r.id>[[ r.name ]]</div>
+                                                <img src="{{ url_for("static", filename="img/right_arrow.png") }}"
+                                                    class="pointer" width="30px"
+                                                    :onclick="'information(\'' + parent.name + '\',\'' + r.name + '\')'">
+                                            </div>
+                                            <div v-if="r.user == 'me'" class="node rounded shadow-sm mine">
+                                                <img :src="'/static/img/' + r.model.toLowerCase() + '.png'" width="30px">
+                                                <div>[[ r.name ]]</div>
+                                                <img src="{{ url_for("static", filename="img/right_arrow.png") }}"
+                                                    class="pointer" width="30px"
+                                                    :onclick="'information(\'' + parent.name + '\',\'' + r.name + '\')'">
+                                            </div>
+                                            <div v-if="r.user != '' && r.user != 'me'" class="node rounded shadow-sm in_use">
+                                                <img :src="'/static/img/' + r.model.toLowerCase() + '.png'" width="30px">
+                                                <div>[[ r.name ]]</div>
+                                                <img src="{{ url_for("static", filename="img/right_arrow.png") }}"
+                                                    class="pointer" width="30px"
+                                                    :onclick="'information(\'' + parent.name + '\',\'' + r.name + '\')'">
+                                            </div>
+                                        </div>
+                                    </div><!-- Other panels -->
+                                </div><!-- Tab panel content -->
+                            </div><!-- Tab panel container -->
+                        </div>
+                        <div class="col">
+                            <!-- Node properties table -->
+                            <div id="node-props" class="container props-table">
+                                <div class="row">
+                                    <div class="col">
+                                        Node Properties
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col">
+                                        Click on the left arrow of nodes to display their properties.
+                                    </div>
+                                </div>
+                            </div><!-- Node properties table -->
+                            <div id="owner-mail" class="mailto-text"></div>
+                        </div>
+                    </div><!-- second row -->
+                    <!-- third row -->
+                    <div class="row">
+                        <div class="col">
+                            <div class="selected-nodes">
+                                Selected nodes (click on free nodes to select/unselect them):
+                                <div id="mynodes" class="node-list"></div>
+                            </div>
+                            <center>
+                                <a href="" class="btn btn-size btn-outline-danger">Cancel</a>
+                                <a id="deploy-fct" href="" class="btn btn-size btn-outline-info">Deploy</a>
+                            </center>
+                        </div>
+                    </div><!-- third row -->
+                </div><!-- table container -->
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for("static", filename="js/vue") }}"></script>
+    <script>
+        const app = new Vue({
+            el: '#app',
+            data: {
+                term: '',
+                endpoint: "/api/resources/switch",
+                resources: [],
+                loading: true
+            },
+            methods: {
+                fetch_resources: function () {
+                    fetch(this.endpoint)
+                        .then(res => res.json())
+                        .then(res => {
+                            this.resources = res.resources;
+                        });
+                },
+                reload_all_data: function () {
+                    this.fetch_resources();
+                    this.loading = false;
+                }
+            },
+            beforeMount: function () {
+                this.reload_all_data();
+                this.loading = true;
+                setInterval(function () {
+                    this.reload_all_data();
+                }.bind(this), 5000);
+            },
+            delimiters: ['[[', ']]']
+        });
+
+        function selectResources(type) {
+            app.endpoint = "/api/resources/" + type;
+            app.reload_all_data();
+        }
+
+        function newRow(table, prop_name, prop_value) {
+            // Create a new row
+            var row = document.createElement('div');
+            row.className = 'row';
+            var title = document.createElement('div');
+            title.className = 'col';
+            title.innerHTML = prop_name;
+            var value = document.createElement('div');
+            if(prop_name == 'state') {
+                value.className = 'col ' + prop_value;
+            } else {
+                value.className = 'col';
+            }
+            value.innerHTML = prop_value;
+            row.appendChild(title);
+            row.appendChild(value);
+            table.appendChild(row);
+        }
+
+        function information(switchName, nodeName) {
+            for(var i = 0; i < app.resources.length; i++) {
+                if(app.resources[i].name == switchName) {
+                    for(var n = 0; n < app.resources[i].values.length; n++) {
+                        if(app.resources[i].values[n].name == nodeName) {
+                            var node = {};
+                            Object.assign(node, app.resources[i].values[n]);
+                            var propsTable = document.getElementById('node-props');
+                            while(propsTable.childNodes.length > 1) {
+                                propsTable.removeChild(propsTable.lastChild);
+                            }
+                            var mailto = document.getElementById('owner-mail');
+                            if(node['user'] == 'me' || node['user'] == '') {
+                                mailto.innerHTML = '';
+                            } else {
+                                mailto.innerHTML = 'Contact the owner:<br/>' + '<a href="mailto:' + node['user'] +
+                                    '">' + node['user'] + "</a>";
+                            }
+                            delete node['user'];
+                            props = ['name', 'switch', 'model', 'port_number', 'id', 'ip' ];
+                            for(var p = 0; p < props.length; p++) {
+                                newRow(propsTable, props[p], node[props[p]]);
+                                delete node[props[p]];
+                            }
+                            for(var key in node) {
+                                newRow(propsTable, key, node[key]);
+                            }
+                        }
+                    }
+                }
+            }
+            event.stopPropagation();
+        }
+
+        function selectNode(nodeParent) {
+            var node = nodeParent.children[0];
+            var nodeClass = node.className;
+            var nodeState = nodeClass.split(" ")[3]
+            if(nodeState != "in_use") {
+                switch (nodeState) {
+                    case "free":
+                        node.className = nodeClass.replace(nodeState, "in_selection");
+                        break;
+                    case "in_selection":
+                        node.className = nodeClass.replace(nodeState, "free");
+                        break;
+                }
+                var mynodes = document.getElementsByClassName("in_selection");
+                var selectedContainer = document.getElementById("mynodes");
+                var names = "";
+                var ids = "";
+                selectedContainer.innerHTML = "";
+                Array.from(mynodes).forEach(function (n) {
+                    names += n.children[1].innerHTML + ", ";
+                    ids += n.children[1].id + ",";
+                    var myclone = n.parentNode.cloneNode(true);
+                    myclone.addEventListener("click", unselectNode);
+                    myclone.children[0].className = myclone.children[0].className.replace('in_selection', 'selecting');
+                    selectedContainer.appendChild(myclone);
+                });
+                // Remove both the last space and the last comma
+                names = names.substring(0, names.length - 2);
+                // Remove the last comma
+                ids = ids.substring(0, ids.length - 1);
+                //document.getElementById("mynodes").innerText = names;
+                if (names.length == 0) {
+                    document.getElementById("deploy-fct").setAttribute('href', "");
+                } else {
+                    document.getElementById("deploy-fct").setAttribute('href', "/server/take/" + ids+";"+names);
+                }
+            }
+        }
+
+        function unselectNode() {
+            var nodeid = this.children[0].children[1].id;
+            this.remove();
+            selectNode(document.getElementById(nodeid).parentNode.parentNode);
+        }
+    </script>
+{% endblock %}

@@ -3,7 +3,7 @@ from database.tables import User, Deployment
 from flask import Blueprint
 from flask_login import current_user
 from lib.config_loader import get_cluster_desc
-import flask, flask_login, json, logging, uuid
+import datetime, flask, flask_login, json, logging, uuid
 
 
 webappapp_api_blueprint = Blueprint('app_api', __name__, template_folder='templates')
@@ -19,6 +19,45 @@ def authorized():
         return "You are logged in! Sweet!"
     else:
         return 'Sorry, but unfortunately you\'re not logged in.', 401
+
+
+@webappapp_api_blueprint.route("/api/resources/<string:res_type>")
+@flask_login.login_required
+def resources(res_type):
+    cluster_desc = get_cluster_desc()
+    session = open_session()
+    # Get my user_id
+    db_user = session.query(User).filter(User.email == current_user.id).first()
+    # Get information about the used resources
+    not_destroyed_deployments = session.query(Deployment).filter(Deployment.state != "destroyed").all()
+    used_nodes = {}
+    id2email = {}
+    for d in not_destroyed_deployments:
+        if d.user_id == db_user.id:
+            # This is one of my deployments
+            used_nodes[d.node_name] = { 'user': 'me', 'dep_name': d.name, 'state': d.state }
+        else:
+            # This is not my deployment, get information about the user
+            if d.user_id not in id2email:
+                foreign = session.query(User).filter(User.id == d.user_id).first()
+                id2email[foreign.id] = foreign.email
+            used_nodes[d.node_name] = { 'user': id2email[d.user_id], 'dep_name': d.name }
+        if d.start_date is not None:
+            s_date = datetime.datetime.strptime(str(d.start_date), '%Y-%m-%d %H:%M:%S')
+            used_nodes[d.node_name]['since'] = s_date.strftime("%d %b. at %H:%M")
+    close_session(session)
+    result = {}
+    for node in cluster_desc['nodes'].values():
+        if res_type in node:
+            if not node[res_type] in result:
+                result[node[res_type]] = {'name': node[res_type], 'values': [] }
+            if node['name'] in used_nodes:
+                for key in used_nodes[node['name']]:
+                    node[key] = used_nodes[node['name']][key]
+            else:
+                node['user'] = ''
+            result[node[res_type]]['values'].append(node)
+    return { 'resources': list(result.values()) } 
 
 
 @webappapp_api_blueprint.route("/api/deployment/<string:deployment_id>")

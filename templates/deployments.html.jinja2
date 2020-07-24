@@ -1,0 +1,43 @@
+{% extends "layout.html.jinja2" %}
+
+{% block content %}
+    <div id="app" v-cloak>
+        <main role="main" class="container">
+            <div class="bg-white rounded shadow-sm resources p-2">
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for("static", filename="js/vue") }}"></script>
+    <script>
+        const app = new Vue({
+            el: '#app',
+            data: {
+                term: '',
+                resources: [],
+                loading: true
+            },
+            methods: {
+                fetch_resources: function () {
+                    fetch("/api/resources/switch")
+                        .then(res => res.json())
+                        .then(res => {
+                            this.resources = res.resources;
+                        });
+                },
+                reload_all_data: function () {
+                    this.fetch_resources();
+                    this.loading = false;
+                },
+            },
+            beforeMount: function () {
+                this.reload_all_data();
+                this.loading = true;
+                setInterval(function () {
+                    this.reload_all_data();
+                }.bind(this), 5000);
+            },
+            delimiters: ['[[', ']]']
+        });
+    </script>
+{% endblock %}
