@@ -96,10 +96,7 @@ def nfs_boot_conf_fct(deployment, cluster_desc, db_session, logger):
         shutil.rmtree(tftpboot_node_folder)
     os.mkdir(tftpboot_node_folder)
     for tftpfile in glob('%s/*' % tftpboot_template_folder):
-        if tftpfile.endswith('cmdline.txt'):
-            shutil.copyfile(tftpfile, tftpfile.replace(tftpboot_template_folder, tftpboot_node_folder))
-        else:
-            os.symlink(tftpfile, tftpfile.replace(tftpboot_template_folder, tftpboot_node_folder))
+        os.symlink(tftpfile, tftpfile.replace(tftpboot_template_folder, tftpboot_node_folder))
     return True
 
 
@@ -349,9 +346,13 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
                 return_code = stdout.channel.recv_exit_status()
         # Copy boot files to the tftp folder
         tftpboot_node_folder = "/tftpboot/%s" % server['id']
+        # Delete the existing tftp directory
+        shutil.rmtree(tftpboot_node_folder)
+        os.mkdir(tftpboot_node_folder)
         # Do NOT copy the *.dat files of the boot partition, they immensely slow down the raspberry
-        cmd = f"scp -o 'StrictHostKeyChecking no' -r root@{server.get('ip')}:\"boot_dir/*.gz boot_dir/*.dtb \
-                boot_dir/*.img boot_dir/*.txt boot_dir/overlays/\" {tftpboot_node_folder}/"
+        #cmd = f"scp -o 'StrictHostKeyChecking no' -r root@{server.get('ip')}:\"boot_dir/*.gz boot_dir/*.dtb \
+        #        boot_dir/*.img boot_dir/*.txt boot_dir/overlays/\" {tftpboot_node_folder}/"
+        cmd = "scp -o 'StrictHostKeyChecking no' -r root@%s:boot_dir/* %s" % (server['ip'], tftpboot_node_folder)
         subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         # Reboot to initialize the operating system
         (stdin, stdout, stderr) = ssh.exec_command("reboot")
