@@ -171,7 +171,8 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
     db_session = open_session()
     while len(deployed_env) < len(nodes):
         deployments = db_session.query(Deployment).filter(
-                Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').all()
+                Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').filter(
+                        Deployment.name == test_deployment_name).all()
         for d in deployments:
             my_state = d.state
             if d.id not in deployed_env:
@@ -241,8 +242,8 @@ if __name__ == "__main__":
     stats_data = {}
     cluster_desc = get_cluster_desc()
     #for env in [ { 'name': boot_test_environment } ]:
-    for env in [ {'name': 'raspbian_cloud9'} ]:
-    #for env in cluster_desc["environments"].values():
+    #for env in [ {'name': 'raspbian_cloud9'} ]:
+    for env in cluster_desc["environments"].values():
         if env['name'] != boot_test_environment:
             logger.info("Deploying the '%s' environment" % env['name'])
             testing_environment(env['name'], file_id, stats_data, 10)
