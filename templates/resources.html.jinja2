@@ -221,6 +221,10 @@
                                     '">' + node['user'] + "</a>";
                             }
                             delete node['user'];
+                            delete node['desc'];
+                            delete node['number'];
+                            delete node['password'];
+                            delete node['web'];
                             props = ['name', 'switch', 'model', 'port_number', 'id', 'ip' ];
                             for(var p = 0; p < props.length; p++) {
                                 newRow(propsTable, props[p], node[props[p]]);

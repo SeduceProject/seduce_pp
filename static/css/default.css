@@ -124,8 +124,119 @@
     background-color: #fde3e0;
 }
 
-/* End of Resources page */
+/* Deployments page */
+.deployment-title {
+    margin-top: 18px;
+    font-size: 20px;
+}
 
+.deployment-legend {
+    text-align: center;
+}
+
+.deployment-legend div {
+    width: 110px;
+    height: 30px;
+    border: 1px solid #17a2b8;
+    padding-top: 2px;
+    margin-left: 6px;
+    margin-top: 14px;
+    font-size: 14px;
+    text-align: center;
+    display: inline-block;
+}
+
+.deployment-list {
+    max-height: 400px;
+    overflow: auto;
+}
+
+.deploying-node {
+    height: 50px;
+    border: 1px solid #17a2b8;
+    border-radius: 6px;
+    margin: 4px;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.deploying-node > div {
+    border-radius: 6px;
+}
+
+.deploying-node > div > div {
+    margin-left: 30px;
+    padding-left: 5px;
+    padding-right: 10px;
+    border-radius: 0px 6px 6px 0px;
+    background: white;
+}
+
+.deployment-info {
+    height: 400px;
+    padding: 5px;
+    margin-top: 5px;
+}
+
+.deployment-info > div:first-child {
+    width: 300px;
+    margin: auto;
+    background: #dee2e6;
+    font-size: 18px;
+    text-align: center;
+}
+
+.reconfigure-table {
+    width: 740px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.reconfigure-table a > div {
+    background-color: #dee2e6;
+}
+
+.reconfigure-table > .row > .col {
+    max-height: 200px;
+    overflow: auto;
+}
+
+.reconfigure-table button {
+    width: 90%;
+}
+
+.node-info {
+    height: 500px;
+    padding: 5px;
+    margin-top: 5px;
+}
+
+.node-info > div:first-child {
+    width: 300px;
+    margin: auto;
+    background: #dee2e6;
+    font-size: 18px;
+    text-align: center;
+}
+
+.desc-col div:first-child {
+    background: #dee2e6;
+    font-size: 18px;
+    text-align: center;
+}
+
+.desc-col div:nth-child(2n + 3) {
+    background-color: #ecf0fe;
+}
+
+.node-props .row:first-child {
+    background: #dee2e6;
+    font-size: 18px;
+    text-align: center;
+}
+
+/* Old classes: sort them to delete useless classes */
 .server-container {
     width: 100%;
     overflow: auto;
@@ -197,6 +308,10 @@
 }
 
 /* More Info panel */
+.nav-pills .nav-link {
+    color: #17a2b8;
+}
+
 .nav-pills .nav-link.active {
     background-color: #17a2b8;
 }
@@ -416,8 +531,6 @@
 .upload_check {
     background-color: #a4ff8f;
 }
-
-/* End of state colors */
 
 /* Slider of the node reservation form */
 .slider_input {

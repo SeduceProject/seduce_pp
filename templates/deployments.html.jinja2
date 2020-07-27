@@ -3,7 +3,91 @@
 {% block content %}
     <div id="app" v-cloak>
         <main role="main" class="container">
-            <div class="bg-white rounded shadow-sm resources p-2">
+            <div class="bg-white rounded shadow-sm p-2">
+                <!-- table container -->
+                <div class="container">
+                    <div class="row">
+                        <div class="col">
+                            <center style="font-size: 20px;">State Colors</center>
+                        </div>
+                    </div>
+                    <!-- row legend -->
+                    <div class="row">
+                        <div class="col deployment-legend">
+                            <div class="rounded initialized">initialized</div>
+                            <div class="rounded nfs_boot_conf">nfs_boot_conf</div>
+                            <div class="rounded nfs_boot_off">nfs_boot_off</div>
+                            <div class="rounded nfs_boot_on">nfs_boot_on</div>
+                            <div class="rounded env_copy">env_copy</div>
+                            <div class="rounded env_check">env_check</div>
+                            <div class="rounded delete_partition">delete_partition</div>
+                            <div class="rounded create_partition">create_partition</div>
+                            <div class="rounded mount_partition">mount_partition</div>
+                            <div class="rounded resize_partition">resize_partition</div>
+                            <div class="rounded wait_resizing">wait_resizing</div>
+                            <div class="rounded system_conf">system_conf</div>
+                            <div class="rounded user_conf">user_conf</div>
+                            <div class="rounded user_script">user_script</div>
+                            <div class="rounded deployed">deployed</div>
+                            <div class="rounded lost">lost</div>
+                            <div class="rounded off_requested">off_requested</div>
+                            <div class="rounded on_requested">on_requested</div>
+                            <div class="rounded rebooting">rebooting</div>
+                            <div class="rounded destroy_request">destroy_request</div>
+                            <div class="rounded destroying">destroying</div>
+                            <div class="rounded destroyed">destroyed</div>
+                            <!-- Too many states
+                            <div class="rounded img_create_part">img_create_part</div>
+                            <div class="rounded img_format_part">img_format_part</div>
+                            <div class="rounded img_copy">img_copy</div>
+                            <div class="rounded img_copy_check">img_copy_check</div>
+                            <div class="rounded img_customize">img_customize</div>
+                            <div class="rounded img_compress">img_compress</div>
+                            <div class="rounded img_compress_check">compress_check</div>
+                            <div class="rounded img_upload">img_upload</div>
+                            <div class="rounded upload_check">upload_check</div>
+                            <!-- Too many states -->
+                        </div>
+                    </div><!-- row legend -->
+                    <center class="deployment-title">Running Deployments</center>
+                    <!-- row deployment nodes -->
+                    <div class="row">
+                        <div class="container deployment-list">
+                            <div v-if="deployments.length == 0" class="text-center">
+                                No deployments ! Reserve nodes from the <a href="/resources">resources page</a>
+                            </div>
+                            <!-- row one deployment -->
+                            <div v-for="d in deployments" class="row mb-2">
+                                <div class="col-2 border-right text-center pointer"
+                                    :onclick="'deploymentInfo(\''+ d.ids[0] + '\')'">
+                                    [[ d.name ]]<br>
+                                    [[ d.server_infos.length ]] nodes
+                                </div>
+                                <div class="col">
+                                    <div v-for="n in d.server_infos" class="deploying-node"
+                                        :onclick="'nodeInfo(\'' + n.name + '\')'">
+                                        <div :class="n.state" :style="'height: ' + n.progress + '%;'">
+                                            <div>
+                                                <div>[[ n.name ]]</div>
+                                                <div>[[ n.ip ]]</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div><!-- row one deployment -->
+                        </div>
+                    </div><!-- row deployment nodes -->
+                    <!-- row deployment information -->
+                    <div class="row">
+                        <div class="col">
+                            <center class="deployment-title">Deployment information</center>
+                            <div id="dep-info" class="deployment-info border">
+                                Click on deployment squares to reconfigure your deployments.<br/>
+                                Click on node squares to display the node information.
+                            </div>
+                        </div>
+                    </div><!-- row deployment information -->
+                </div><!-- table container -->
             </div>
         </main>
     </div>
@@ -14,21 +98,53 @@
             el: '#app',
             data: {
                 term: '',
-                resources: [],
+                deployments: [],
                 loading: true
             },
             methods: {
                 fetch_resources: function () {
-                    fetch("/api/resources/switch")
+                    fetch("/api/deployments")
                         .then(res => res.json())
                         .then(res => {
-                            this.resources = res.resources;
+                            this.deployments = res.deployments;
+                            this.reload_info();
                         });
                 },
                 reload_all_data: function () {
                     this.fetch_resources();
                     this.loading = false;
                 },
+                reload_info: function() {
+                    var info = document.getElementById('dep-info');
+                    if(info.children[0].tagName == 'DIV') {
+                        if(info.className.includes('node-info')) {
+                            var nodeName = info.children[0].innerHTML;
+                            var displayedState = document.getElementById('node-state');
+                            for(var d = 0; d < this.deployments.length; d++) {
+                                var myDep = app.deployments[d];
+                                var nodeIdx = myDep.server_names.indexOf(nodeName);
+                                if(nodeIdx >= 0) {
+                                    if(myDep.server_infos[nodeIdx].state != displayedState) {
+                                        nodeInfo(nodeName);
+                                    }
+                                }
+                            }
+                        } else {
+                            var depName = info.children[0].id;
+                            var not_found = true;
+                            for(var d = 0; d < this.deployments.length; d++) {
+                                if(alphaString(this.deployments[d].name) == depName) {
+                                    not_found = false;
+                                    deploymentInfo(this.deployments[d].ids[0]);
+                                }
+                            }
+                            if(not_found) {
+                                info.innerHTML = 'Click on deployment squares to reconfigure your deployments.<br/>' +
+                                    'Click on node squares to display the node information.';
+                            }
+                        }
+                    }
+                }
             },
             beforeMount: function () {
                 this.reload_all_data();
@@ -39,5 +155,324 @@
             },
             delimiters: ['[[', ']]']
         });
+
+        // Return a string containing only alphanumeric chars
+        function alphaString(str){
+            return str.replace(/\W/g, '')
+        }
+
+        function deploymentInfo(dep_id) {
+            var info = document.getElementById('dep-info');
+            info.className = 'deployment-info border';
+            for(var d = 0; d < app.deployments.length; d++) {
+                var myDep = app.deployments[d];
+                if(myDep.ids[0] == dep_id) {
+                    info.innerHTML = '<div id="' + alphaString(myDep.name) + '" class="mt-2">' + app.deployments[d].name +
+                        '</div><center>Number of nodes: ' + app.deployments[d].ids.length + '</center>';
+                    // Table containing the action tables
+                    var table = document.createElement('div');
+                    table.className = "container reconfigure-table";
+                    var actions = [];
+                    actions.push({
+                        name: 'Hard Reboot',
+                        desc: 'Turn off and on the node. This will reboot the node.',
+                        id: 'hr'
+                    });
+                    actions.push({
+                        name: 'Deploy Again',
+                        desc: 'Deploy the environment again. This will erase all the existing data.',
+                        id: 'da'
+                    });
+                    actions.push({
+                        name: 'Release Nodes',
+                        desc: 'Take the node out of the deployment. The node will go back to the free state.',
+                        id: 'rn'
+                    });
+                    // The row of the action tables
+                    row = document.createElement('div');
+                    row.className = 'row';
+                    actions.forEach(function(action) {
+                        // Build the node list to execute actions
+                        var node_list = document.createElement('div');
+                        node_list.className = 'container';
+                        for(var n = 0; n < app.deployments[d].server_infos.length; n++) {
+                            var node = app.deployments[d].server_infos[n];
+                            var nodeRow = document.createElement('div');
+                            nodeRow.className = 'row';
+                            var colName = document.createElement('div');
+                            colName.className = 'col';
+                            colName.id = action.id + '-title-' + node.name;
+                            colName.innerHTML = node.name;
+                            var colBox = document.createElement('div');
+                            colBox.className = 'col-1';
+                            var box = document.createElement('input');
+                            box.type = 'checkbox';
+                            box.id = action.id + '-' + node.name;
+                            colBox.appendChild(box);
+                            nodeRow.appendChild(colName);
+                            nodeRow.appendChild(colBox);
+                            node_list.appendChild(nodeRow);
+                        }
+                        var col = document.createElement('div');
+                        col.className = 'col';
+                        var desc = document.createElement('a');
+                        desc.title = action.desc;
+                        var text = document.createElement('div');
+                        text.innerHTML = action.name;
+                        desc.appendChild(text);
+                        col.appendChild(desc);
+                        col.appendChild(node_list);
+                        row.appendChild(col);
+                    });
+                    table.appendChild(row);
+                    // The row of the reconfigure button
+                    row = document.createElement('div');
+                    row.className = 'row mt-4';
+                    col = document.createElement('div');
+                    col.className = 'col';
+                    var b = document.createElement('button');
+                    b.innerHTML = "Reconfigure";
+                    b.className = 'shadow-none btn btn-outline-dark';
+                    b.setAttribute('onclick', 'reconfigure(\'' + myDep.server_names + '\')');
+                    col.appendChild(b);
+                    row.appendChild(col);
+                    table.appendChild(row);
+                    info.appendChild(table);
+                }
+            }
+        }
+
+        function httpGet(api_endpoint) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open( "GET", api_endpoint, false ); // false for synchronous request
+            xmlHttp.send( null );
+            return xmlHttp.responseText;
+        }
+
+        function is_used(node_name, id_start, active_nodes) {
+            var cbox = document.getElementById(id_start + '-' + node_name);
+            if(cbox.checked) {
+                if(active_nodes.allNodes().includes(node_name)) {
+                    cbox.checked = false;
+                    alert('ERROR: Node \'' + node_name + '\' is in more than one category.' + 
+                    ' All reconfigurations will be cancelled.');
+                    return true;
+                } else {
+                    active_nodes[id_start].push(node_name);
+                    return false;
+                }
+            }
+        }
+
+        function reconfigure(node_list) {
+            node_list = node_list.split(',');
+            // HardReboot, DeployAgain, ReleaseNodes ID prefixes
+            var prefix_id = [ 'hr', 'da', 'rn' ];
+            // Nodes to reconfigure
+            var used_nodes = {
+                hr: [],
+                da: [],
+                rn: [],
+                clearNodes: function() {
+                    this.hr = [];
+                    this.da = [];
+                    this.rn = [];
+                },
+                allNodes: function() {
+                    return this.hr.concat(this.da).concat(this.rn);
+                },
+                uncheckNodes: function(gui_effect=false) {
+                    // Uncheck the boxes
+                    for(var p = 0; p < prefix_id.length; p++) {
+                        selectedNodes = this[prefix_id[p]];
+                        for(var i = 0; i < selectedNodes.length; i++) {
+                            $('#' + prefix_id[p] + '-' + selectedNodes[i]).prop('checked', false);
+                            if(gui_effect) {
+                                $('#' + prefix_id[p] + '-title-' + selectedNodes[i]).fadeOut(
+                                    300,
+                                    function() {
+                                        $(this).fadeIn(
+                                            200
+                                        ).removeClass('minfo-selected');
+                                    }
+                                ).addClass('minfo-selected');
+                            }
+                        }
+                    }
+                },
+                hardReboot: function() {
+                    for(var i = 0; i < this.hr.length; i++) {
+                        httpGet('/server/reboot/' + this.hr[i]);
+                    }
+                    this.hr = [];
+                },
+                deployAgain: function() {
+                    for(var i = 0; i < this.da.length; i++) {
+                        httpGet('/server/redeploy/' + this.da[i]);
+                    }
+                    this.da = [];
+                },
+                releaseNodes: function() {
+                    for(var i = 0; i < this.rn.length; i++) {
+                        httpGet('/server/release/' + this.rn[i]);
+                    }
+                    this.rn = [];
+                }
+            };
+            // Add the selected nodes
+            var cancel = false;
+            for(var i = 0; i < node_list.length; i++) {
+                for(var p = 0; p < prefix_id.length; p++) {
+                    cancel |= is_used(node_list[i], prefix_id[p], used_nodes);
+                }
+            }
+            if(cancel) {
+                // Error in the node selection, cancel all reconfigurations
+                used_nodes.uncheckNodes(false);
+                used_nodes.clearNodes();
+            }
+            used_nodes.uncheckNodes(true);
+            // Send API requests
+            used_nodes.hardReboot();
+            used_nodes.deployAgain();
+            used_nodes.releaseNodes();
+        }
+
+        function copyToClipboard(str) {
+            const el = document.createElement('textarea');
+            el.value = str.title;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+        }
+
+        function row2Cols(name, value) {
+            var row = document.createElement('div');
+            row.className = 'row';
+            var colName = document.createElement('div');
+            colName.className = 'col';
+            colName.innerHTML = name;
+            row.appendChild(colName);
+            var colValue = document.createElement('div');
+            if(name == 'state') {
+                colValue.id = 'node-state';
+                colValue.className = 'col ' + value;
+            } else {
+                colValue.className = 'col';
+            }
+            colValue.innerHTML = value;
+            row.appendChild(colValue);
+            return row;
+        }
+
+        function nodeInfo(nodeName) {
+            var info = document.getElementById('dep-info');
+            info.className = 'node-info border';
+            for(var d = 0; d < app.deployments.length; d++) {
+                var myDep = app.deployments[d];
+                var nodeIdx = myDep.server_names.indexOf(nodeName);
+                if(nodeIdx >= 0) {
+                    var myNode = myDep.server_infos[nodeIdx];
+                    info.innerHTML = '<div class="mt-2">' + myNode.name +
+                        '</div><center class="mb-3">Environment: ' + myNode.env + '</center>';
+                    var infoTable = document.createElement('div');
+                    infoTable.className = 'container d-inline-block';
+                    info.appendChild(infoTable);
+                    var infoRow = document.createElement('div');
+                    infoRow.className = 'row';
+                    infoTable.appendChild(infoRow);
+                    // Show the information of the environment
+                    var colDesc = document.createElement('div');
+                    colDesc.className = 'col-8 desc-col';
+                    var header = document.createElement('div');
+                    header.innerHTML = 'Environment Description';
+                    colDesc.appendChild(header);
+                    for(var i = 0; i < myNode.desc.length; i++) {
+                        var desc_line = document.createElement('div');
+                        if(i == 0) {
+                            desc_line.className = desc_line.className + ' font-weight-bold';
+                        }
+                        desc_line.innerHTML = myNode.desc[i];
+                        colDesc.appendChild(desc_line);
+                    }
+                    infoRow.appendChild(colDesc);
+                    // Show the properties of the node
+                    var colProps = document.createElement('div');
+                    colProps.className = 'col';
+                    infoRow.appendChild(colProps);
+                    var propTable = document.createElement('div');
+                    propTable.className = 'container d-inline-block node-props';
+                    var row = document.createElement('div');
+                    row.className = 'row';
+                    var col = document.createElement('div');
+                    col.className = 'col';
+                    col.innerHTML = 'Node Properties';
+                    row.appendChild(col);
+                    propTable.appendChild(row);
+                    var printedProps = [ 'state', 'since', 'id', 'model', 'switch', 'port_number', 'ip', 'number' ];
+                    if('progress' in myNode && myNode['progress'] < 100) {
+                        printedProps.splice(1, 0, 'progress');
+                    }
+                    printedProps.forEach(function(propName) {
+                        propTable.appendChild(row2Cols(propName, myNode[propName]));
+                    });
+                    if('web' in myNode) {
+                        var row = document.createElement('div');
+                        row.className = 'row';
+                        var colName = document.createElement('div');
+                        colName.className = 'col';
+                        colName.innerHTML = 'Web Interface';
+                        var colValue = document.createElement('div');
+                        colValue.className = 'col';
+                        if(myNode.web == true) {
+                            colValue.innerHTML = '<a href="http://pi' +
+                                myNode.number + '.seduce.fr" target="_blank">pi' + myNode.number + '.seduce.fr</a>';
+                        } else {
+                            colValue.innerHTML = 'None';
+                        }
+                        row.appendChild(colName);
+                        row.appendChild(colValue);
+                        propTable.appendChild(row);
+                    }
+                    colProps.appendChild(propTable);
+                    // Display the action buttons
+                    var buttonRow = document.createElement('div');
+                    buttonRow.className = 'row mt-3';
+                    // Show Password button
+                    var col = document.createElement('div');
+                    col.className = 'col';
+                    col.innerHTML = '<div class="dropdown">' + 
+                    '<button class="btn btn-outline-dark dropdown-toggle minfo-button" type="button"' +
+                    'id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">' +
+                    'Show Password</button>' +
+                    '<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">' +
+                    '<span class="dropdown-item">' + myNode.password + '</span>' +
+                    '<span title="' + myNode.password + '" class="dropdown-item" onclick="copyToClipboard(this)">' +
+                    'Copy to Clipboard</span>' +
+                    '</div></div>';
+                    buttonRow.appendChild(col);
+                    // Hard Reboot button
+                    var col = document.createElement('div');
+                    col.className = 'col';
+                    col.innerHTML = '<a href="/server/reboot/' + myNode.name +
+                        '" class="shadow-none btn btn-outline-dark minfo-button">Hard Reboot</a>';
+                    buttonRow.appendChild(col);
+                    // Deploy Again button
+                    var col = document.createElement('div');
+                    col.className = 'col';
+                    col.innerHTML = '<a href="/server/redeploy/' + myNode.name +
+                        '" class="shadow-none btn btn-outline-dark minfo-button">Deploy Again</a>';
+                    buttonRow.appendChild(col);
+                    // Save Environment button
+                    var col = document.createElement('div');
+                    col.className = 'col';
+                    col.innerHTML = '<a href="/server/save_env/' + myNode.name +
+                        '" class="shadow-none btn btn-outline-dark minfo-button">Save Environment</a>';
+                    buttonRow.appendChild(col);
+                    infoTable.appendChild(buttonRow);
+                }
+            }
+        }
     </script>
 {% endblock %}

@@ -50,7 +50,7 @@ def resources(res_type):
     for node in cluster_desc['nodes'].values():
         if res_type in node:
             if not node[res_type] in result:
-                result[node[res_type]] = {'name': node[res_type], 'values': [] }
+                result[node[res_type]] = { 'name': node[res_type], 'values': [] }
             if node['name'] in used_nodes:
                 for key in used_nodes[node['name']]:
                     node[key] = used_nodes[node['name']][key]
@@ -66,6 +66,9 @@ def deployment(deployment_id):
     session = open_session()
     deployment = session.query(Deployment).query.filter_by(id=deployment_id).first()
     dep_info = { "id": deployment.id, "state": deployment.state, "info": deployment.temp_info }
+    if deployment.start_date is not None:
+        s_date = datetime.datetime.strptime(str(deployment.start_date), '%Y-%m-%d %H:%M:%S')
+        dep_info['since'] = s_date.strftime("%d %b. at %H:%M")
     close_session(session)
     if not deployment:
         return json.dumps({
@@ -97,36 +100,31 @@ def user_deployments():
         if d.name not in deployment_info.keys():
             # Deployment state is used to show/hide both the 'destroy' and the 'More info' buttons
             deployment_info[d.name] = {"name": d.name, "state": d.state, "user_id": d.user_id,
-                    "ids": [], "server_names": [], "server_infos": [], "server_props": [] }
+                    "ids": [], "server_names": [], "server_infos": [] }
         deployment_info[d.name]["ids"].append(d.id)
         node_desc = cluster_desc["nodes"][d.node_name]
         deployment_info[d.name]["server_names"].append(node_desc["name"])
         if d.environment is not None:
+            if d.start_date is not None:
+                s_date = datetime.datetime.strptime(str(d.start_date), '%Y-%m-%d %H:%M:%S')
+                node_desc['since'] = s_date.strftime("%d %b. at %H:%M")
             env_desc = cluster_desc["environments"][d.environment]
             web_interface = False
             if 'web' in env_desc:
                 web_interface = env_desc['web']
-            s_keys = list(node_desc.keys())
-            s_keys.remove('name')
-            s_keys.remove('id')
-            s_keys.remove('model')
-            s_values = []
-            for key in s_keys:
-                s_values.append(tuple([key, node_desc[key]]))
-            deployment_info[d.name]["server_infos"].append({
-                "name": node_desc["name"], "number": int(node_desc["name"].split('-')[1]), "env": d.environment, "id": node_desc["id"], "state": d.state,
-                "model": node_desc["model"], "password": d.system_pwd, "web_ui": web_interface,
-                "desc": env_desc['desc'], "other_props": s_values
-            })
+            node_desc['number'] = int(node_desc["name"].split('-')[1])
+            node_desc['env'] = d.environment
+            node_desc['state'] = d.state
+            if d.state.endswith('_check'):
+                node_desc["progress"] = d.temp_info
+            else:
+                node_desc["progress"] = 100
+            node_desc['password'] = d.system_pwd
+            node_desc['web'] = web_interface
+            node_desc['desc'] = env_desc['desc']
+            deployment_info[d.name]["server_infos"].append(node_desc);
     close_session(session)
-    if not deployments:
-        return json.dumps({
-            "status": "ko",
-        })
-    return json.dumps({
-        "status": "ok",
-        "deployments": list(deployment_info.values())
-    })
+    return { "deployments": list(deployment_info.values()) }
 
 
 @webappapp_api_blueprint.route("/api/user_info")

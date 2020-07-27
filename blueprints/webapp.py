@@ -79,7 +79,7 @@ def cancel():
     # Delete previous deployments still in initialized state
     old_dep = db_session.query(Deployment).filter_by(user_id=db_user.id, state="initialized").delete()
     close_session(db_session)
-    return flask.redirect(flask.url_for("app.home"))
+    return flask.redirect(flask.url_for("app.resources"))
 
 
 @webapp_blueprint.route("/user/ssh_put/", methods=["POST"])
@@ -270,7 +270,7 @@ def configure():
 @webapp_blueprint.route("/")
 @flask_login.login_required
 def home():
-    return flask.render_template("homepage_vuejs.html.jinja2")
+    return flask.render_template("deployments.html.jinja2")
 
 
 @webapp_blueprint.route("/resources")
