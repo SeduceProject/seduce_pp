@@ -54,7 +54,8 @@
                     <div class="row">
                         <div class="container deployment-list">
                             <div v-if="deployments.length == 0" class="text-center">
-                                No deployments ! Reserve nodes from the <a href="/resources">resources page</a>
+                                No deployments ! Reserve nodes from the
+                                <a href="/resources">resources page</a>.
                             </div>
                             <!-- row one deployment -->
                             <div v-for="d in deployments" class="row mb-2">
@@ -116,6 +117,7 @@
                 },
                 reload_info: function() {
                     var info = document.getElementById('dep-info');
+                    var not_found = true;
                     if(info.children[0].tagName == 'DIV') {
                         if(info.className.includes('node-info')) {
                             var nodeName = info.children[0].innerHTML;
@@ -124,6 +126,7 @@
                                 var myDep = app.deployments[d];
                                 var nodeIdx = myDep.server_names.indexOf(nodeName);
                                 if(nodeIdx >= 0) {
+                                    not_found = false;
                                     if(myDep.server_infos[nodeIdx].state != displayedState) {
                                         nodeInfo(nodeName);
                                     }
@@ -131,18 +134,17 @@
                             }
                         } else {
                             var depName = info.children[0].id;
-                            var not_found = true;
                             for(var d = 0; d < this.deployments.length; d++) {
                                 if(alphaString(this.deployments[d].name) == depName) {
                                     not_found = false;
                                     deploymentInfo(this.deployments[d].ids[0]);
                                 }
                             }
-                            if(not_found) {
-                                info.innerHTML = 'Click on deployment squares to reconfigure your deployments.<br/>' +
-                                    'Click on node squares to display the node information.';
-                            }
                         }
+                    }
+                    if(not_found) {
+                        info.innerHTML = 'Click on deployment squares to reconfigure your deployments.<br/>' +
+                            'Click on node squares to display the node information.';
                     }
                 }
             },
