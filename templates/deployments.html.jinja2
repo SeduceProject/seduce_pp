@@ -237,6 +237,17 @@
                     col.appendChild(b);
                     row.appendChild(col);
                     table.appendChild(row);
+                    // The row of the destroy button
+                    if(myDep.state != 'destroy_request' && myDep.state != 'destroying') {
+                        row = document.createElement('div');
+                        row.className = 'row mt-1';
+                        col = document.createElement('div');
+                        col.className = 'col';
+                        col.innerHTML = '<a href="/deployment/destroy/' + myDep.ids +
+                            '" class="btn btn-outline-danger">Destroy</a>';
+                        row.appendChild(col);
+                        table.appendChild(row);
+                    }
                     info.appendChild(table);
                 }
             }

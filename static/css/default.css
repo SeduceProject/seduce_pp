@@ -206,6 +206,10 @@
     width: 90%;
 }
 
+.reconfigure-table a {
+    width: 90%;
+}
+
 .node-info {
     height: 500px;
     padding: 5px;
