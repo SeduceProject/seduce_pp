@@ -3,7 +3,7 @@ from database.tables import User, Deployment
 from flask import Blueprint
 from flask_login import current_user
 from lib.config_loader import get_cluster_desc
-import datetime, flask, flask_login, json, logging, uuid
+import copy, datetime, flask, flask_login, json, logging, uuid
 
 
 webappapp_api_blueprint = Blueprint('app_api', __name__, template_folder='templates')
@@ -24,7 +24,7 @@ def authorized():
 @webappapp_api_blueprint.route("/api/resources/<string:res_type>")
 @flask_login.login_required
 def resources(res_type):
-    cluster_desc = get_cluster_desc()
+    cluster_desc = copy.deepcopy(get_cluster_desc())
     session = open_session()
     # Get my user_id
     db_user = session.query(User).filter(User.email == current_user.id).first()
@@ -87,7 +87,7 @@ def deployment(deployment_id):
 @webappapp_api_blueprint.route("/api/deployments")
 @flask_login.login_required
 def user_deployments():
-    cluster_desc = get_cluster_desc()
+    cluster_desc = copy.deepcopy(get_cluster_desc())
     user = current_user
     misc = {}
     session = open_session()
