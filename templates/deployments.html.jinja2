@@ -149,9 +149,11 @@
             beforeMount: function () {
                 this.reload_all_data();
                 this.loading = true;
+                /** Stop refreshing **/
                 setInterval(function () {
                     this.reload_all_data();
                 }.bind(this), 5000);
+                /** **/
             },
             delimiters: ['[[', ']]']
         });
@@ -188,11 +190,25 @@
                         desc: 'Take the node out of the deployment. The node will go back to the free state.',
                         id: 'rn'
                     });
-                    // The row of the action tables
+                    // The row with the titles
                     row = document.createElement('div');
                     row.className = 'row';
                     actions.forEach(function(action) {
-                        // Build the node list to execute actions
+                        var col = document.createElement('div');
+                        col.className = 'col mb-1';
+                        var desc = document.createElement('a');
+                        desc.title = action.desc;
+                        var text = document.createElement('div');
+                        text.innerHTML = action.name;
+                        desc.appendChild(text);
+                        col.appendChild(desc);
+                        row.appendChild(col);
+                    });
+                    table.appendChild(row);
+                    // The row with the node list to select nodes from checkboxes
+                    row = document.createElement('div');
+                    row.className = 'row';
+                    actions.forEach(function(action) {
                         var node_list = document.createElement('div');
                         node_list.className = 'container';
                         for(var n = 0; n < app.deployments[d].server_infos.length; n++) {
@@ -215,12 +231,6 @@
                         }
                         var col = document.createElement('div');
                         col.className = 'col';
-                        var desc = document.createElement('a');
-                        desc.title = action.desc;
-                        var text = document.createElement('div');
-                        text.innerHTML = action.name;
-                        desc.appendChild(text);
-                        col.appendChild(desc);
                         col.appendChild(node_list);
                         row.appendChild(col);
                     });
