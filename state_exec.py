@@ -15,7 +15,8 @@ lost_nodes = []
 def is_lost(deployment, logger):
     logger.error('\'%s\' is lost. Hard reboot the node or destroy the deployment. '\
             'Node monitoring will be stopped.' % deployment.node_name)
-    deployment.temp_info = deployment.state
+    if deployment.state != 'rebooting':
+        deployment.temp_info = deployment.state
     deployment.state = 'lost'
 
 def collect_nodes(node_state):
@@ -149,6 +150,10 @@ def env_copy_fct(deployment, cluster_desc, db_session, logger):
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.now() - updated).total_seconds()
         logger.warning("Could not connect to %s since %d seconds" % (server['name'], elapsedTime))
+        if elapsedTime > 90 and deployment.temp_info != 'env_copy':
+            logger.warning('%s: Hard rebooting...' % server['name'])
+            deployment.temp_info = 'env_copy'
+            deployment.state = 'off_requested'
         if elapsedTime > lost_timeout:
             is_lost(deployment, logger)
     return ret_fct
@@ -357,6 +362,12 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
         # Reboot to initialize the operating system
         (stdin, stdout, stderr) = ssh.exec_command("reboot")
         return_code = stdout.channel.recv_exit_status()
+        if return_code != 0:
+            logger.error("%s: Soft reboot failure, hard rebooting" % server['name']);
+            # Set the state after the reboot
+            deployment.temp_info = 'user_conf'
+            # Turn off/on the node
+            deployment.state = 'off_requested'
         ssh.close()
         return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -409,6 +420,10 @@ def user_conf_fct(deployment, cluster_desc, db_session, logger):
         updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
         elapsedTime = (datetime.datetime.now() - updated).total_seconds()
         logger.warning("Could not connect to %s since %d seconds" % (server['name'], elapsedTime))
+        if elapsedTime > 90 and deployment.temp_info != 'user_conf':
+            logger.warning('%s: Hard rebooting...' % server['name'])
+            deployment.temp_info = 'user_conf'
+            deployment.state = 'off_requested'
         if elapsedTime > lost_timeout:
             is_lost(deployment, logger)
     return False
