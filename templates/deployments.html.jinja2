@@ -431,9 +431,12 @@
                     col.innerHTML = 'Node Properties';
                     row.appendChild(col);
                     propTable.appendChild(row);
-                    var printedProps = [ 'state', 'since', 'id', 'model', 'switch', 'port_number', 'ip', 'number' ];
+                    var printedProps = [ 'state', 'starts_at', 'id', 'model', 'switch', 'port_number', 'ip', 'number' ];
                     if('progress' in myNode && myNode['progress'] < 100) {
                         printedProps.splice(1, 0, 'progress');
+                    }
+                    if('last_state' in myNode && myNode['state'] == 'lost') {
+                        printedProps.splice(1, 0, 'last_state');
                     }
                     printedProps.forEach(function(propName) {
                         propTable.appendChild(row2Cols(propName, myNode[propName]));
@@ -447,7 +450,7 @@
                         var colValue = document.createElement('div');
                         colValue.className = 'col';
                         if(myNode.web == true) {
-                            colValue.innerHTML = '<a href="http://pi' +
+                            colValue.innerHTML = '<a href="https://pi' +
                                 myNode.number + '.seduce.fr" target="_blank">pi' + myNode.number + '.seduce.fr</a>';
                         } else {
                             colValue.innerHTML = 'None';

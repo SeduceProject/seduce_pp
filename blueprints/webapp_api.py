@@ -44,7 +44,7 @@ def resources(res_type):
             used_nodes[d.node_name] = { 'user': id2email[d.user_id], 'dep_name': d.name }
         if d.start_date is not None:
             s_date = datetime.datetime.strptime(str(d.start_date), '%Y-%m-%d %H:%M:%S')
-            used_nodes[d.node_name]['since'] = s_date.strftime("%d %b. at %H:%M")
+            used_nodes[d.node_name]['starts_at'] = s_date.strftime("%d %b. at %H:%M")
     close_session(session)
     result = {}
     for node in cluster_desc['nodes'].values():
@@ -68,7 +68,7 @@ def deployment(deployment_id):
     dep_info = { "id": deployment.id, "state": deployment.state, "info": deployment.temp_info }
     if deployment.start_date is not None:
         s_date = datetime.datetime.strptime(str(deployment.start_date), '%Y-%m-%d %H:%M:%S')
-        dep_info['since'] = s_date.strftime("%d %b. at %H:%M")
+        dep_info['starts_at'] = s_date.strftime("%d %b. at %H:%M")
     close_session(session)
     if not deployment:
         return json.dumps({
@@ -107,7 +107,9 @@ def user_deployments():
         if d.environment is not None:
             if d.start_date is not None:
                 s_date = datetime.datetime.strptime(str(d.start_date), '%Y-%m-%d %H:%M:%S')
-                node_desc['since'] = s_date.strftime("%d %b. at %H:%M")
+                node_desc['starts_at'] = s_date.strftime("%d %b. at %H:%M")
+            if d.state == 'lost':
+                node_desc['last_state'] = d.temp_info
             env_desc = cluster_desc["environments"][d.environment]
             web_interface = False
             if 'web' in env_desc:
