@@ -314,6 +314,23 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(server.get("ip"), username="root", timeout=1.0)
         if environment['type'] == 'default':
+            if environment['name'].startswith('ubuntu'):
+                # Set the password of the 'ubuntu' user
+                cmd = "sed -i 's/tototiti/%s/' boot_dir/user-data" % deployment.system_pwd
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+                # Set the hostname to modify the bash prompt
+                cmd = "echo '%s' > fs_dir/etc/hostname" % server['name']
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+                # Create a ssh folder in the root folder of the SD CARD's file system
+                cmd = "mkdir fs_dir/root/.ssh"
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+                # Add the public key of the server
+                cmd = "cp /root/.ssh/authorized_keys fs_dir/root/.ssh/authorized_keys"
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
             if environment['name'].startswith('raspbian'):
                 # Create the ssh file in the boot partition to start SSH on startup
                 cmd = "touch boot_dir/ssh"
@@ -354,9 +371,6 @@ def system_conf_fct(deployment, cluster_desc, db_session, logger):
         # Delete the existing tftp directory
         shutil.rmtree(tftpboot_node_folder)
         os.mkdir(tftpboot_node_folder)
-        # Do NOT copy the *.dat files of the boot partition, they immensely slow down the raspberry
-        #cmd = f"scp -o 'StrictHostKeyChecking no' -r root@{server.get('ip')}:\"boot_dir/*.gz boot_dir/*.dtb \
-        #        boot_dir/*.img boot_dir/*.txt boot_dir/overlays/\" {tftpboot_node_folder}/"
         cmd = "scp -o 'StrictHostKeyChecking no' -r root@%s:boot_dir/* %s" % (server['ip'], tftpboot_node_folder)
         subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         # Reboot to initialize the operating system
@@ -411,7 +425,7 @@ def user_conf_fct(deployment, cluster_desc, db_session, logger):
                 return_code = stdout.channel.recv_exit_status()
             if deployment.environment.startswith('raspbian'):
                 # Change the 'pi' user password
-                cmd = "echo -e '%s\n%s' | sudo passwd pi" % (deployment.system_pwd, deployment.system_pwd)
+                cmd = "echo -e '%s\n%s' | passwd pi" % (deployment.system_pwd, deployment.system_pwd)
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
             ssh.close()
