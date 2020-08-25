@@ -11,7 +11,6 @@ import datetime, flask, flask_login, json, random, shutil, string, subprocess
 
 webapp_blueprint = Blueprint('app', __name__, template_folder='templates')
 
-
 def new_password(stringLength=8):
     """Generate a random string of letters and digits """
     lettersAndDigits = string.ascii_letters + string.digits
@@ -21,6 +20,7 @@ def new_password(stringLength=8):
 @webapp_blueprint.route("/server/take/<string:server_info>")
 @flask_login.login_required
 def take(server_info):
+    """ Create deployments in the initialized state """
     cluster_desc = get_cluster_desc()
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
@@ -50,6 +50,7 @@ def take(server_info):
 @webapp_blueprint.route("/server/process_take/", methods=["POST"])
 @flask_login.login_required
 def process_take():
+    """ Start deploying the selected environment """
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     deployments = db_session.query(Deployment).filter_by(user_id = db_user.id, state = "initialized").all()
@@ -74,6 +75,7 @@ def process_take():
 @webapp_blueprint.route("/server/cancel/")
 @flask_login.login_required
 def cancel():
+    """ Cancel the deployment (that is in the initialized state) """
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     # Delete previous deployments still in initialized state
@@ -82,36 +84,10 @@ def cancel():
     return flask.redirect(flask.url_for("app.resources"))
 
 
-@webapp_blueprint.route("/user/ssh_put/", methods=["POST"])
-@flask_login.login_required
-def ssh_put():
-    my_ssh = flask.request.form.get("ssh_key")
-    if my_ssh is not None and len(my_ssh) > 0:
-        db_session = open_session()
-        db_user = db_session.query(User).filter_by(email = current_user.id).first()
-        db_user.ssh_key = my_ssh
-        close_session(db_session)
-    return flask.redirect(flask.url_for("app.user"))
-
-
-@webapp_blueprint.route("/user/pwd_put/", methods=["POST"])
-@flask_login.login_required
-def pwd_put():
-    pwd = flask.request.form.get("password")
-    confirm_pwd = flask.request.form.get("confirm_password")
-    if pwd == confirm_pwd:
-        db_session = open_session()
-        db_user = db_session.query(User).filter_by(email = current_user.id).first()
-        db_user._set_password = pwd
-        close_session(db_session)
-        return flask.redirect(flask.url_for("app.user"))
-    else:
-        return 'The two passwords are not identical!<a href="/user">Try again</a>'
-
-
 @webapp_blueprint.route("/server/reboot/<string:n_name>")
 @flask_login.login_required
 def ask_reboot(n_name):
+    """ Hard reboot the server """
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     # Verify the node belongs to my deployments
@@ -129,6 +105,7 @@ def ask_reboot(n_name):
 @webapp_blueprint.route("/server/redeploy/<string:n_name>")
 @flask_login.login_required
 def ask_redeploy(n_name):
+    """ Deploy again the environment on the server """
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     # Verify the node belongs to my deployments
@@ -142,6 +119,7 @@ def ask_redeploy(n_name):
 @webapp_blueprint.route("/server/release/<string:n_name>")
 @flask_login.login_required
 def ask_release_node(n_name):
+    """ Delete the deployment associated to the server """
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     # Get the deployment associated to the node
@@ -156,6 +134,7 @@ def ask_release_node(n_name):
 @webapp_blueprint.route("/deployment/destroy/<string:deployment_ids>")
 @flask_login.login_required
 def ask_destruction(deployment_ids):
+    """ Destroy multiple deployments from their id """
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     for d in deployment_ids.split(","):
@@ -169,6 +148,7 @@ def ask_destruction(deployment_ids):
 @webapp_blueprint.route("/server/save_env/<string:n_name>")
 @flask_login.login_required
 def save_env(n_name):
+    """ Display the form to configure the 'save environment' action """
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
     deployment = db_session.query(Deployment).filter_by(user_id = db_user.id, node_name = n_name).filter(
@@ -183,6 +163,7 @@ def save_env(n_name):
 @webapp_blueprint.route("/server/build_env/", methods=["POST"])
 @flask_login.login_required
 def build_env():
+    """ Execute the 'save environment' action => create a file image from the internal storage of the server"""
     cluster_desc = get_cluster_desc()
     db_session = open_session()
     db_user = db_session.query(User).filter_by(email = current_user.id).first()
@@ -206,6 +187,7 @@ def build_env():
 
 @webapp_blueprint.route("/configuration/configure/", methods=["POST"])
 def configure():
+    """ deprecated: use the admin page to configure the PiSeduce cluster """
     if len(glob('cluster_desc/nodes/node-*.json')) > 0:
         return flask.redirect(flask.url_for("app.home"))
     old_ip = flask.request.form.get("my_ip")
@@ -267,33 +249,67 @@ def configure():
     return flask.redirect(flask.url_for("app.configuration"))
 
 
+@webapp_blueprint.route("/user/ssh_put/", methods=["POST"])
+@flask_login.login_required
+def ssh_put():
+    """ Create/update the SSH key of the user account """
+    my_ssh = flask.request.form.get("ssh_key")
+    if my_ssh is not None and len(my_ssh) > 0:
+        db_session = open_session()
+        db_user = db_session.query(User).filter_by(email = current_user.id).first()
+        db_user.ssh_key = my_ssh
+        close_session(db_session)
+    return flask.redirect(flask.url_for("app.user"))
+
+
+@webapp_blueprint.route("/user/pwd_put/", methods=["POST"])
+@flask_login.login_required
+def pwd_put():
+    """ Create/update the password of the user account """
+    pwd = flask.request.form.get("password")
+    confirm_pwd = flask.request.form.get("confirm_password")
+    if pwd == confirm_pwd:
+        db_session = open_session()
+        db_user = db_session.query(User).filter_by(email = current_user.id).first()
+        db_user._set_password = pwd
+        close_session(db_session)
+        return flask.redirect(flask.url_for("app.user"))
+    else:
+        return 'The two passwords are not identical!<a href="/user">Try again</a>'
+
+
 @webapp_blueprint.route("/")
 @flask_login.login_required
 def home():
+    """ Display the home page that is the deployments page """
     return flask.render_template("deployments.html.jinja2")
 
 
 @webapp_blueprint.route("/resources")
 @flask_login.login_required
 def resources():
+    """ Display the resources page to select the ressources and create deployments """
     return flask.render_template("resources.html.jinja2")
 
 
 @webapp_blueprint.route("/deployments")
 @flask_login.login_required
 def deployments():
+    """ Display the deployments page to manage the existing deployments """
     return flask.render_template("deployments.html.jinja2")
 
 
 @webapp_blueprint.route("/user")
 @flask_login.login_required
 def user():
+    """ Display the user page to register one SSH key, update the password, etc. """
     return flask.render_template("user_vuejs.html.jinja2")
 
 
 @webapp_blueprint.route("/admin")
 @admin_login_required
 def admin():
+    """ Display the admin page to configure the switches of the cluster and manage user accounts """
     load_cluster_desc()
     return flask.render_template("admin.html.jinja2")
 
@@ -301,9 +317,11 @@ def admin():
 @webapp_blueprint.route("/form_switch")
 @flask_login.login_required
 def add_switch():
+    """ Display the form to add a new switch to the infrastructure """
     return flask.render_template("form_switch.html.jinja2")
 
 
 @webapp_blueprint.route("/configuration")
 def configuration():
+    """ Deprecated: display the log of the configure action described below """
     return flask.render_template("first_boot_exec.html.jinja2")
