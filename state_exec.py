@@ -20,7 +20,7 @@ def is_lost(deployment, logger):
     deployment.state = 'lost'
 
 def collect_nodes(node_state):
-    logger_compute = logging.getLogger("COMPUTE")
+    logger_compute = logging.getLogger("STATE_EXEC")
     cluster_desc = get_cluster_desc()
     db_session = open_session()
     pending_deployments = db_session.query(Deployment).filter_by(state = node_state).all()

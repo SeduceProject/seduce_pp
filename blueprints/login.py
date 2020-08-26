@@ -16,42 +16,26 @@ login_blueprint = Blueprint('login', __name__, template_folder='templates')
 @login_blueprint.route('/login?msg=<msg>', methods=['GET', 'POST'])
 def login(msg=None):
     from initialization import User as InitUser, bcrypt
-    if len(glob('cluster_desc/nodes/node-*.json')) == 0:
-        cmd = "cat /etc/dhcpcd.conf | grep ^static"
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        output = process.stdout.decode('utf-8')
-        dhcp_on = len(output) == 0
-        cmd = "ifconfig | grep -B 1 broadcast"
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        output = process.stdout.decode('utf-8').split('\n')
-        master_interface = output[0].split(':')[0]
-        master_ip = output[1].split()[1]
-        cmd = "route -n | grep -A 1 Gateway | tail -n 1 | awk '{ print $2 }'"
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        gateway = process.stdout.decode('utf-8').strip()
-        return flask.render_template("form_configure.html.jinja2",
-                ip = master_ip, iface = master_interface, gateway_ip = gateway, dhcp = dhcp_on)
+    if flask.request.method == 'GET':
+        next_url = flask.request.args.get("next")
+        return render_template("login/login.html", next_url=next_url, msg=msg)
+    email = flask.request.form.get('email', "")
+    password = flask.request.form.get('password', "")
+    next_url = flask.request.form.get('next_url', "/")
+    db_session = open_session()
+    user_account = db_session.query(User).filter(User.email == email).first()
+    redirect_url = ''
+    # User login
+    if (user_account is not None and user_account.user_authorized and
+            bcrypt.check_password_hash(user_account.password, password)):
+        user = InitUser()
+        user.id = email
+        flask_login.login_user(user)
+        redirect_url = next_url if (next_url is not None and next_url != "None") else flask.url_for("app.home")
     else:
-        if flask.request.method == 'GET':
-            next_url = flask.request.args.get("next")
-            return render_template("login/login.html", next_url=next_url, msg=msg)
-        email = flask.request.form.get('email', "")
-        password = flask.request.form.get('password', "")
-        next_url = flask.request.form.get('next_url', "/")
-        db_session = open_session()
-        user_account = db_session.query(User).filter(User.email == email).first()
-        redirect_url = ''
-        # User login
-        if (user_account is not None and user_account.user_authorized and
-                bcrypt.check_password_hash(user_account.password, password)):
-            user = InitUser()
-            user.id = email
-            flask_login.login_user(user)
-            redirect_url = next_url if (next_url is not None and next_url != "None") else flask.url_for("app.home")
-        else:
-            redirect_url = flask.url_for("login.login", msg="You are not authorized to log in")
-        close_session(db_session)
-        return flask.redirect(redirect_url)
+        redirect_url = flask.url_for("login.login", msg="You are not authorized to log in")
+    close_session(db_session)
+    return flask.redirect(redirect_url)
 
 
 @login_blueprint.route('/signup', methods=['GET', 'POST'])

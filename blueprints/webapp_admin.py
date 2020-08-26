@@ -10,7 +10,7 @@ from lib.config_loader import add_domain_filter, del_domain_filter, get_cluster_
 from lib.config_loader import load_config, save_mail_config, set_email_signup
 from lib.dgs121028p import turn_on_port, turn_off_port
 from paramiko.ssh_exception import AuthenticationException, SSHException
-import datetime, flask, flask_login, json, os, paramiko, shutil, socket, subprocess, time
+import datetime, flask, flask_login, json, logging, os, paramiko, shutil, socket, subprocess, time
 
 
 webapp_admin_blueprint = Blueprint('app_admin', __name__, template_folder='templates')
@@ -185,6 +185,7 @@ def check_port(switch_port):
 @flask_login.login_required
 @admin_login_required
 def analyze_port(switch_ports):
+    logger = logging.getLogger("STATE_EXEC")
     cluster_desc = get_cluster_desc()
     switch_ports = switch_ports.split(',')
     switch = cluster_desc['switches'][switch_ports[0].split('-')[0]]
@@ -201,7 +202,7 @@ def analyze_port(switch_ports):
     network_ip = cluster_desc['first_node_ip'][:last_dot_idx]
     ip_offset = int(cluster_desc['first_node_ip'].split('.')[-1]) - 1
     # Expose TFTP files to all nodes (boot from the NFS server)
-    print('Copy TFTP files to the tftpboot directory')
+    logger.info('Copy TFTP files to the tftpboot directory')
     tftp_files = glob('/tftpboot/rpiboot_uboot/*')
     for f in tftp_files:
         if os.path.isdir(f):
@@ -214,16 +215,16 @@ def analyze_port(switch_ports):
     for port in switch_ports:
         port_number = int(port.split('-')[1])
         if switch['master_port'] == port_number:
-            print('Can not analyze the pimaster port. Aborting !')
+            logger.info('Can not analyze the pimaster port. Aborting !')
         else:
-            print('Analyzing the node on the port %d' % port_number)
+            logger.info('Analyzing the node on the port %d' % port_number)
             # Turn off the node
             turn_off_port(switch['name'], port_number)
             time.sleep(1)
             # Turn on the node
             turn_on_port(switch['name'], port_number)
             time.sleep(5)
-            print('Capturing DHCP requests')
+            logger.info('Capturing DHCP requests')
             # Listening DHCP Requests during 10 seconds
             cmd = "rm -f /tmp/port.pcap; tshark -nni eth0 -w /tmp/port.pcap -a duration:20 port 67 and 68"
             subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -242,7 +243,7 @@ def analyze_port(switch_ports):
                 node_ip = '%s.%d' % (network_ip, node_name_idx + ip_offset)
                 node_name = 'node-%d' % node_name_idx
                 mac = mac[0]
-                print('The MAC address is %s' % mac)
+                logger.info('The MAC address is %s' % mac)
                 # Add the IP to the DHCP server
                 cmd = "sed -i '/%s/d' /etc/dnsmasq.conf; echo 'dhcp-host=%s,%s,%s' >> /etc/dnsmasq.conf" % (
                         mac, mac, node_name, node_ip)
@@ -250,15 +251,15 @@ def analyze_port(switch_ports):
                 # Restart the DHCP server
                 cmd = 'service dnsmasq restart'
                 subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                # Turn off the node
-                turn_off_port(switch['name'], port_number)
                 new_nodes.append({
                     'name': node_name, 'port_number': port_number, 'ip': node_ip, 'switch': switch['name'] })
             else:
-                print("Wrong MAC addresses detected: %s" % mac)
+                logger.info("Wrong MAC addresses detected: %s" % mac)
+            # Turn off the node
+            turn_off_port(switch['name'], port_number)
     # Start all nodes
     for node in new_nodes:
-        print("%s: Starting..." % node['name'])
+        logger.info("%s: Starting..." % node['name'])
         time.sleep(1)
         turn_on_port(switch['name'], node['port_number'])
     # Let nodes boot
@@ -281,22 +282,23 @@ def analyze_port(switch_ports):
                         if rev == 'c03111':
                             node['model'] = 'RPI4B'
                         if rev == 'a020d3':
-                            node['model'] = 'RPI3B+'
+                            node['model'] = 'RPI3Bplus'
                     if 'Serial' in output:
                         node['id'] = output.split()[-1][-8:]
                 ssh.close()
                 # Write the configuration file of the node
-                print('%s: Writing the configuration file' % node['name'])
+                logger.info('%s: Writing the configuration file' % node['name'])
                 with open('cluster_desc/nodes/%s.json' % node['name'], 'w+') as conf:
                     json.dump(node, conf, indent=4)
                 load_cluster_desc()
             except (AuthenticationException, SSHException, socket.error):
-                print('%s: Can not connect via SSH' % node['name'])
+                logger.info('%s: Can not connect via SSH' % node['name'])
                 again += 1
                 time.sleep(10)
         # Turn off the node
         turn_off_port(switch['name'], node['port_number'])
     # Clean the TFTP folder
+    logger.info("Cleaning the TFTP folder")
     for f in tftp_files:
         new_f = f.replace('/rpiboot_uboot','')
         if os.path.isdir(new_f):
