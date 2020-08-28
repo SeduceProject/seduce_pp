@@ -8,12 +8,13 @@ import json, logging, logging.config, os, random, subprocess, sys, time
 
 test_email = 'test@imt-atlantique.fr'
 test_deployment_name = 'automatic testing'
-pubkey_file = 'ssh_key/test-piseduce.pub'
+pubkey_file = 'libtest/ssh_key/test-piseduce.pub'
+result_dir = 'libtest/json_test'
 # Use this environment to only test the NFS boot process
 boot_test_environment = 'boot_test'
 
 # Beautiful logger
-logging.config.fileConfig('logging-test.conf', disable_existing_loggers=1)
+logging.config.fileConfig('libtest/logging-test.conf', disable_existing_loggers=1)
 logger = logging.getLogger("TESTING")
 
 def destroy_test_deployment():
@@ -238,7 +239,10 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
 
 if __name__ == "__main__":
     file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
-    file_stats = 'json_test/%s_stats_tests.json' % file_id
+    if not os.path.isdir(result_dir):
+        print("Error: output directory is missing !Try 'mkdir %s'" % result_dir)
+        sys.exit(13)
+    file_stats = '%s/%s_stats_tests.json' % (result_dir, file_id)
     stats_data = {}
     cluster_desc = get_cluster_desc()
     #for env in [ { 'name': boot_test_environment } ]:
