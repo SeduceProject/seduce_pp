@@ -22,9 +22,9 @@ def destroy_test_deployment():
     if len(test_user) == 0:
         raise Exception("No test user in the database. Please create it:\n"
                 "INSERT INTO "
-                "user(state, email, firstname, lastname, _password, email_confirmed, user_authorized, is_admin) "
-                "VALUES('confirmed', '%s', 'Test','Test', "
-                "'$2b$12$PJCxhXp6vwLkEm8y2hctVudY/EQCfq2njV0SuFbglZoJMar0FDm6i', 1, 0, 0);" % test_email)
+                "user(email, firstname, lastname, _password, email_confirmed, user_authorized, is_admin) "
+                "VALUES('%s', 'Test','Test', "
+                "'$2b$12$PJCxhXp6vwLkEm8y2hctVudY/EQCfq2njV0SuFbglZoJMar0FDm6i', 1, 1, 0);" % test_email)
     test_user_id = test_user[0].id
     deployments = db_session.query(Deployment).filter(
             Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').all()
@@ -243,7 +243,7 @@ if __name__ == "__main__":
     for nb in [ 4, 8, 12, 16, 20 ]:
         stats_data = {}
         file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
-        file_stats = 'paper_results/%d_nodes_RPI4_%s.json' % (nb, file_id)
+        file_stats = 'article/paper_results/RPI4_64/%d_nodes_RPI4_%s.json' % (nb, file_id)
         for env in [ {'name': 'raspbian_buster_32bit'} ]:
         #for env in cluster_desc["environments"].values():
             if env['name'] != boot_test_environment:
