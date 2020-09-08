@@ -1,7 +1,7 @@
 from glob import glob
 import json, os
 
-json_dir = '../article/paper_results/RPI4_32'
+json_dir = '../article/paper_results/RPI3_32'
 
 if __name__ == "__main__":
     node_results = {}
@@ -38,6 +38,7 @@ if __name__ == "__main__":
                 if nb_nodes not in paper_results:
                     paper_results[nb_nodes] = {
                             'avg_times': [],
+                            'ordered_nodes': [],
                             'failed': [],
                             'completed': []
                     }
@@ -46,11 +47,13 @@ if __name__ == "__main__":
                 if len(node_stat['times']) > 0:
                     node_stat['min'] = min(node_stat['times'])
                     node_stat['max'] = max(node_stat['times'])
-                    node_stat['avg'] = sum(node_stat['times']) / len(node_stat['times'])
+                    node_stat['avg'] = round(sum(node_stat['times']) / len(node_stat['times']))
                     paper_results[nb_nodes]['avg_times'].append(node_stat['avg'])
+                    paper_results[nb_nodes]['ordered_nodes'].append({ node: node_stat['avg']})
 
     for result in paper_results.values():
-        result['failure_ratio'] = round(sum(result['failed']) * 100 / sum(result['completed']), 2)
+        result['failure_ratio'] = round(sum(result['failed']) * 100 / sum(result['completed']))
+        result['ordered_nodes'] = sorted(result['ordered_nodes'], key=lambda t: list(t.values())[0])
         del result['failed']
         del result['completed']
         result['avg_times'] = round(sum(result['avg_times']) / len(result['avg_times']))
