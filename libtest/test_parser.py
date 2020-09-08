@@ -1,7 +1,7 @@
 from glob import glob
 import json, os
 
-json_dir = 'json_test'
+json_dir = '../article/paper_results/RPI4_32'
 
 if __name__ == "__main__":
     node_results = {}

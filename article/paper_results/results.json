@@ -1,0 +1,48 @@
+{
+	"RPI3_32": {
+		"4": {
+			"avg_times": 345,
+			"failure_ratio": 0.0
+		},
+		"8": {
+			"avg_times": 389,
+			"failure_ratio": 0.0
+		},
+		"12": {
+			"avg_times": 461,
+			"failure_ratio": 0.0
+		},
+		"16": {
+			"avg_times": 544,
+			"failure_ratio": 0.23
+		},
+		"20": {
+			"avg_times": 612,
+			"failure_ratio": 7.07
+		}
+	},
+	"RPI4_32": {
+		"4": {
+			"avg_times": 374,
+			"failure_ratio": 0.0
+		},
+		"8": {
+			"avg_times": 446,
+			"failure_ratio": 1.31
+		},
+		"12": {
+			"avg_times": 504,
+			"failure_ratio": 0.29
+		},
+		"16": {
+			"avg_times": 598,
+			"failure_ratio": 36.28
+		},
+		"20": {
+			"avg_times": 628,
+			"failure_ratio": 37.06
+		}
+	}
+
+}
+
