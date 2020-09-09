@@ -1,7 +1,7 @@
 from glob import glob
 import json, os
 
-json_dir = '../article/paper_results/RPI3_32'
+json_dir = '../article/paper_results/VM'
 
 if __name__ == "__main__":
     node_results = {}
@@ -54,6 +54,8 @@ if __name__ == "__main__":
     for result in paper_results.values():
         result['failure_ratio'] = round(sum(result['failed']) * 100 / sum(result['completed']))
         result['ordered_nodes'] = sorted(result['ordered_nodes'], key=lambda t: list(t.values())[0])
+        # Delete the ordered_nodes to copy the results
+        del result['ordered_nodes']
         del result['failed']
         del result['completed']
         result['avg_times'] = round(sum(result['avg_times']) / len(result['avg_times']))

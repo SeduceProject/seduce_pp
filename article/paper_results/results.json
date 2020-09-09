@@ -42,7 +42,49 @@
 			"avg_times": 628,
 			"failure_ratio": 37.06
 		}
-	}
-
+    },
+    "RPI4_64": {
+        "4": {
+            "avg_times": 357,
+            "failure_ratio": 0.0
+        },
+        "8": {
+            "avg_times": 401,
+            "failure_ratio": 0.0
+        },
+        "12": {
+            "avg_times": 465,
+            "failure_ratio": 0.0
+        },
+        "16": {
+            "avg_times": 534,
+            "failure_ratio": 10.34
+        },
+        "20": {
+            "avg_times": 600,
+            "failure_ratio": 8.11
+        }
+    },
+    "VM": {
+        "4": {
+            "avg_times": 326,
+            "failure_ratio": 0
+        },
+        "8": {
+            "avg_times": 355,
+            "failure_ratio": 2
+        },
+        "12": {
+            "avg_times": 391,
+            "failure_ratio": 0
+        },
+        "16": {
+            "avg_times": 425,
+            "failure_ratio": 0
+        },
+        "20": {
+            "avg_times": 454,
+            "failure_ratio": 0
+        }
+    }
 }
-
