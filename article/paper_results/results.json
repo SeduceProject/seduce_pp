@@ -1,49 +1,32 @@
 {
     "RPI3_32": {
         "4": {
-            "avg_times": 345,
-            "failure_ratio": 0.0
+            "avg_times": 344,
+            "failure_ratio": 0,
+            "nb_deployments": 81
         },
         "8": {
-            "avg_times": 389,
-            "failure_ratio": 0.0
+            "avg_times": 390,
+            "failure_ratio": 0,
+            "nb_deployments": 81
         },
         "12": {
             "avg_times": 461,
-            "failure_ratio": 0.0
+            "failure_ratio": 0,
+            "nb_deployments": 81
         },
         "16": {
             "avg_times": 544,
-            "failure_ratio": 0.23
+            "failure_ratio": 0,
+            "nb_deployments": 81
         },
         "20": {
             "avg_times": 612,
-            "failure_ratio": 7.07
+            "failure_ratio": 7,
+            "nb_deployments": 81
         }
     },
     "RPI4_32": {
-        "4": {
-            "avg_times": 374,
-            "failure_ratio": 0.0
-        },
-        "8": {
-            "avg_times": 446,
-            "failure_ratio": 1.31
-        },
-        "12": {
-            "avg_times": 504,
-            "failure_ratio": 0.29
-        },
-        "16": {
-            "avg_times": 598,
-            "failure_ratio": 36.28
-        },
-        "20": {
-            "avg_times": 628,
-            "failure_ratio": 37.06
-        }
-    },
-    "RPI4_32_2": {
         "4": {
             "avg_times": 370,
             "failure_ratio": 0,
@@ -66,8 +49,8 @@
         },
         "20": {
             "avg_times": 629,
-            "failure_ratio": 12,
-            "nb_deployments": 27
+            "failure_ratio": 9,
+            "nb_deployments": 26
         }
     },
     "RPI4_32_SDCARD":{
@@ -100,45 +83,55 @@
     "RPI4_64": {
         "4": {
             "avg_times": 357,
-            "failure_ratio": 0.0
+            "failure_ratio": 0,
+            "nb_deployments": 3
         },
         "8": {
             "avg_times": 401,
-            "failure_ratio": 0.0
+            "failure_ratio": 0,
+            "nb_deployments": 3
         },
         "12": {
             "avg_times": 465,
-            "failure_ratio": 0.0
+            "failure_ratio": 0,
+            "nb_deployments": 3
         },
         "16": {
             "avg_times": 534,
-            "failure_ratio": 10.34
+            "failure_ratio": 9,
+            "nb_deployments": 2
         },
         "20": {
             "avg_times": 600,
-            "failure_ratio": 8.11
+            "failure_ratio": 8,
+            "nb_deployments": 2
         }
     },
     "VM": {
         "4": {
             "avg_times": 326,
-            "failure_ratio": 0
+            "failure_ratio": 0,
+            "nb_deployments": 7
         },
         "8": {
             "avg_times": 355,
-            "failure_ratio": 2
+            "failure_ratio": 2,
+            "nb_deployments": 7
         },
         "12": {
             "avg_times": 391,
-            "failure_ratio": 0
+            "failure_ratio": 0,
+            "nb_deployments": 8
         },
         "16": {
             "avg_times": 425,
-            "failure_ratio": 0
+            "failure_ratio": 0,
+            "nb_deployments": 8
         },
         "20": {
             "avg_times": 454,
-            "failure_ratio": 0
+            "failure_ratio": 0,
+            "nb_deployments": 8
         }
     }
 }
