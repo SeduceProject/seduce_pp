@@ -1,7 +1,7 @@
 from glob import glob
 import json, os
 
-json_dir = '../article/paper_results/VM'
+json_dir = '../article/paper_results/RPI4_32_SDCARD/'
 
 if __name__ == "__main__":
     node_results = {}
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     for f in jsonff:
         with open(f, 'r') as jsonfile:
             data = json.load(jsonfile)
-            print("Read %s with %d environment(s)" % (os.path.basename(f), len(data.keys())))
+            #print("Read %s with %d environment(s)" % (os.path.basename(f), len(data.keys())))
             for env in data.keys():
                 for node in data[env].keys():
                     for node_info in data[env][node]:
@@ -51,14 +51,16 @@ if __name__ == "__main__":
                     paper_results[nb_nodes]['avg_times'].append(node_stat['avg'])
                     paper_results[nb_nodes]['ordered_nodes'].append({ node: node_stat['avg']})
 
-    for result in paper_results.values():
-        result['failure_ratio'] = round(sum(result['failed']) * 100 / sum(result['completed']))
+    for node_nb in paper_results:
+        result = paper_results[node_nb]
+        result['failure_ratio'] = round(sum(result['failed']) * 100 / (sum(result['failed']) + sum(result['completed'])))
         result['ordered_nodes'] = sorted(result['ordered_nodes'], key=lambda t: list(t.values())[0])
-        # Delete the ordered_nodes to copy the results
+        result['avg_times'] = round(sum(result['avg_times']) / len(result['avg_times']))
+        result['nb_deployments'] = int((sum(result['failed']) + sum(result['completed'])) / node_nb)
+        # Delete the ordered_nodes to clean the paper results
         del result['ordered_nodes']
         del result['failed']
         del result['completed']
-        result['avg_times'] = round(sum(result['avg_times']) / len(result['avg_times']))
 
     for node in node_results:
         for env in node_results[node]:
