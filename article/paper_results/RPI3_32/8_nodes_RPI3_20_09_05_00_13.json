@@ -1,0 +1,229 @@
+{
+    "raspbian_buster_32bit": {
+        "node-1": [
+            {
+                "ip": "192.168.1.51",
+                "start_date": "2020-09-05 00:13:43.663467",
+                "states": {
+                    "last_state": "deployed",
+                    "last_date": "2020-09-05 00:19:53",
+                    "nfs_boot_conf": 2.0,
+                    "nfs_boot_off": 4.0,
+                    "nfs_boot_on": 7.0,
+                    "env_copy": 39.0,
+                    "env_check": 188.0,
+                    "delete_partition": 8.0,
+                    "create_partition": 8.0,
+                    "mount_partition": 10.0,
+                    "resize_partition": 9.0,
+                    "wait_resizing": 9.0,
+                    "system_conf": 12.0,
+                    "user_conf": 53.0,
+                    "user_script": 21.0
+                },
+                "total": 370.0,
+                "ping": true,
+                "ssh": true,
+                "init_script": true
+            }
+        ],
+        "node-2": [
+            {
+                "ip": "192.168.1.52",
+                "start_date": "2020-09-05 00:13:43.664000",
+                "states": {
+                    "last_state": "deployed",
+                    "last_date": "2020-09-05 00:20:14",
+                    "nfs_boot_conf": 2.0,
+                    "nfs_boot_off": 5.0,
+                    "nfs_boot_on": 6.0,
+                    "env_copy": 49.0,
+                    "env_check": 188.0,
+                    "delete_partition": 10.0,
+                    "create_partition": 9.0,
+                    "mount_partition": 8.0,
+                    "resize_partition": 8.0,
+                    "wait_resizing": 31.0,
+                    "system_conf": 22.0,
+                    "user_conf": 43.0,
+                    "user_script": 10.0
+                },
+                "total": 391.0,
+                "ping": true,
+                "ssh": true,
+                "init_script": true
+            }
+        ],
+        "node-3": [
+            {
+                "ip": "192.168.1.53",
+                "start_date": "2020-09-05 00:13:43.664461",
+                "states": {
+                    "last_state": "deployed",
+                    "last_date": "2020-09-05 00:20:15",
+                    "nfs_boot_conf": 2.0,
+                    "nfs_boot_off": 5.0,
+                    "nfs_boot_on": 7.0,
+                    "env_copy": 49.0,
+                    "env_check": 187.0,
+                    "delete_partition": 11.0,
+                    "create_partition": 9.0,
+                    "mount_partition": 8.0,
+                    "resize_partition": 8.0,
+                    "wait_resizing": 30.0,
+                    "system_conf": 27.0,
+                    "user_conf": 39.0,
+                    "user_script": 10.0
+                },
+                "total": 392.0,
+                "ping": true,
+                "ssh": true,
+                "init_script": true
+            }
+        ],
+        "node-4": [
+            {
+                "ip": "192.168.1.54",
+                "start_date": "2020-09-05 00:13:43.664921",
+                "states": {
+                    "last_state": "deployed",
+                    "last_date": "2020-09-05 00:21:24",
+                    "nfs_boot_conf": 2.0,
+                    "nfs_boot_off": 5.0,
+                    "nfs_boot_on": 7.0,
+                    "env_copy": 38.0,
+                    "env_check": 189.0,
+                    "delete_partition": 7.0,
+                    "create_partition": 9.0,
+                    "mount_partition": 10.0,
+                    "resize_partition": 8.0,
+                    "wait_resizing": 9.0,
+                    "system_conf": 19.0,
+                    "user_conf": 5.0,
+                    "off_requested": 96.0,
+                    "on_requested": 6.0,
+                    "rebooting": 46.0,
+                    "user_script": 5.0
+                },
+                "total": 461.0,
+                "ping": true,
+                "ssh": true,
+                "init_script": true
+            }
+        ],
+        "node-5": [
+            {
+                "ip": "192.168.1.55",
+                "start_date": "2020-09-05 00:13:43.665366",
+                "states": {
+                    "last_state": "deployed",
+                    "last_date": "2020-09-05 00:21:24",
+                    "nfs_boot_conf": 2.0,
+                    "nfs_boot_off": 5.0,
+                    "nfs_boot_on": 8.0,
+                    "env_copy": 38.0,
+                    "env_check": 189.0,
+                    "delete_partition": 7.0,
+                    "create_partition": 10.0,
+                    "mount_partition": 8.0,
+                    "resize_partition": 9.0,
+                    "wait_resizing": 9.0,
+                    "system_conf": 25.0,
+                    "user_conf": 5.0,
+                    "off_requested": 96.0,
+                    "on_requested": 7.0,
+                    "rebooting": 38.0,
+                    "user_script": 5.0
+                },
+                "total": 461.0,
+                "ping": true,
+                "ssh": true,
+                "init_script": true
+            }
+        ],
+        "node-7": [
+            {
+                "ip": "192.168.1.57",
+                "start_date": "2020-09-05 00:13:43.665820",
+                "states": {
+                    "last_state": "deployed",
+                    "last_date": "2020-09-05 00:20:32",
+                    "nfs_boot_conf": 2.0,
+                    "nfs_boot_off": 6.0,
+                    "nfs_boot_on": 7.0,
+                    "env_copy": 49.0,
+                    "env_check": 197.0,
+                    "delete_partition": 9.0,
+                    "create_partition": 9.0,
+                    "mount_partition": 7.0,
+                    "resize_partition": 30.0,
+                    "wait_resizing": 28.0,
+                    "system_conf": 16.0,
+                    "user_conf": 42.0,
+                    "user_script": 7.0
+                },
+                "total": 409.0,
+                "ping": true,
+                "ssh": true,
+                "init_script": true
+            }
+        ],
+        "node-8": [
+            {
+                "ip": "192.168.1.58",
+                "start_date": "2020-09-05 00:13:43.666277",
+                "states": {
+                    "last_state": "deployed",
+                    "last_date": "2020-09-05 00:20:33",
+                    "nfs_boot_conf": 2.0,
+                    "nfs_boot_off": 6.0,
+                    "nfs_boot_on": 8.0,
+                    "env_copy": 48.0,
+                    "env_check": 198.0,
+                    "delete_partition": 9.0,
+                    "create_partition": 9.0,
+                    "mount_partition": 7.0,
+                    "resize_partition": 30.0,
+                    "wait_resizing": 27.0,
+                    "system_conf": 22.0,
+                    "user_conf": 37.0,
+                    "user_script": 7.0
+                },
+                "total": 410.0,
+                "ping": true,
+                "ssh": true,
+                "init_script": true
+            }
+        ],
+        "node-9": [
+            {
+                "ip": "192.168.1.59",
+                "start_date": "2020-09-05 00:13:43.666750",
+                "states": {
+                    "last_state": "deployed",
+                    "last_date": "2020-09-05 00:21:33",
+                    "nfs_boot_conf": 2.0,
+                    "nfs_boot_off": 6.0,
+                    "nfs_boot_on": 8.0,
+                    "env_copy": 39.0,
+                    "env_check": 188.0,
+                    "delete_partition": 6.0,
+                    "create_partition": 11.0,
+                    "mount_partition": 8.0,
+                    "resize_partition": 8.0,
+                    "wait_resizing": 9.0,
+                    "system_conf": 30.0,
+                    "user_conf": 4.0,
+                    "off_requested": 98.0,
+                    "on_requested": 6.0,
+                    "rebooting": 43.0,
+                    "user_script": 4.0
+                },
+                "total": 470.0,
+                "ping": true,
+                "ssh": true,
+                "init_script": true
+            }
+        ]
+    }
+}

@@ -1,0 +1,219 @@
+\documentclass[letterpaper, 10 pt, conference]{ieeeconf}
+
+\IEEEoverridecommandlockouts
+
+\overrideIEEEmargins
+
+\makeatletter
+\let\NAT@parse\undefined
+\makeatother
+
+\usepackage[dvipsnames]{xcolor}
+
+\newcommand*\linkcolours{ForestGreen}
+
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{gensymb}
+\usepackage{amsmath}
+\usepackage{breakurl}
+\def\UrlBreaks{\do\/\do-}
+\usepackage{url,hyperref}
+\hypersetup{
+colorlinks,
+linkcolor=\linkcolours,
+citecolor=\linkcolours,
+filecolor=\linkcolours,
+urlcolor=\linkcolours}
+
+%\usepackage{algorithm}
+\usepackage[]{algorithm2e}
+\usepackage{algorithmic}
+
+\usepackage[labelfont={bf},font=small]{caption}
+\usepackage[none]{hyphenat}
+
+\usepackage{mathtools, cuted}
+
+\usepackage[noadjust, nobreak]{cite}
+\def\citepunct{,\,}
+
+\usepackage{tabularx}
+\usepackage{amsmath}
+
+\usepackage{float}
+
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+
+\newcommand*\diff{\mathop{}\!\mathrm{d}}
+\newcommand*\Diff[1]{\mathop{}\!\mathrm{d^#1}}
+\newcommand*\imgres{600}
+
+\newcommand*\GitHubLoc{https://github.com/Jeffrey-Ede/ALRC}
+
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+
+
+\usepackage[]{placeins}
+
+\newcommand\extraspace{3pt}
+
+\usepackage{placeins}
+
+\usepackage{tikz}
+\newcommand*\circled[1]{\tikz[baseline=(char.base)]{
+            \node[shape=circle,draw,inner sep=0.8pt] (char) {#1};}}
+            
+\usepackage[framemethod=tikz]{mdframed}
+
+\usepackage{afterpage}
+
+\usepackage{stfloats}
+
+\usepackage{atbegshi}
+\newcommand{\handlethispage}{}
+\newcommand{\discardpagesfromhere}{\let\handlethispage\AtBeginShipoutDiscard}
+\newcommand{\keeppagesfromhere}{\let\handlethispage\relax}
+\AtBeginShipout{\handlethispage}
+
+\usepackage{comment}
+
+\title{\LARGE \bf
+\textit{Fog@Home}: Toward a Volunteer Fog Computing infrastructure \\running on commodity hardware
+}
+
+\author{Contributors$^{1}$% <-this % stops a space
+\\IMT Atlantique, France
+\\jonathan.pastor@imt-atlantique.fr
+}
+
+
+\begin{document}
+
+
+\maketitle
+\thispagestyle{empty}
+\pagestyle{empty}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{abstract}
+With the advent of \textit{Cloud Computing}, IT applications have adopted complex architectures composed of many software services leveraging in computing infrastructures hosted in large datacenters. 
+To meet economies of scale and reduce operational costs, these large datacenters are located in places where energy price is affordable.
+These locations are often located far from population centers, leading to an important network latency between hosted services and end users.
+\textit{Fog Computing} is a paradigm that proposes to extend \textit{Cloud Computing}'s large datacenters with smaller datacenters located close to population centers : latency-critical applications are intended to be hosted in these smaller datacenters, while non latency-critical applications will be hosted in classical datacenters.
+In this article we propose a framework that enables to build distributed \textit{Fog Computing} infrastructure, with a functioning inspired by \textit{Volunteer Computing}, which has low hardware requirements.
+\end{abstract}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+In this article we propose \textit{Fog@Home}, a framework that can set up an infrastructure at the intersection between \textit{Fog computing} infrastructures and \textit{Volunteer Computing} infrastructures.
+Les infrastructures de type Fog Computing sont de plus en plus utilisées, par exemple, dans les villes intelligentes. Ces infrastructures sont complexes au sens où elles mettent en oeuvre une grande diversité d'éléments (différents capteurs, unités de calcul de faible consommation) en grand nombre (par ex, gestion des feux de signalisation d'une grande métropole). Dans l'objectif de tester le déploiement d'un outil opérant dans le Fog Computing ou à des fins de recherches pour l'étude de ces infrastructures, nous avons besoin d'infrastructures géo-distribuées et possédant un nombre important d'éléments facilement accessibles.
+
+\begin{figure}[ht]
+  \vspace*{-.2cm}
+  \begin{center}
+  \subcapcentertrue
+  \includegraphics[width=\linewidth]{figure1.pdf}
+  \caption{Architectural overview}
+  \label{fig:overview}
+  \end{center}
+\vspace*{-.3cm}
+\end{figure}
+
+Pour un seul acteur, une telle plate-forme peut s'avérer difficile à mettre en place (installation d'éléments à l'échelle nationale) et coûteuse (nombre conséquent d'appareils à acquérir - switch, capteurs de différents types, unité de calcul et de stockage). Cependant, pour une communauté composée de plusieurs acteurs, une telle infrastructure peut-être vue comme un agrégat de petites entités que nous appellerons, fog cluster. Il est alors envisageable que chaque acteur ajoute un fog cluster à l'infrastructure pour un investissement financier faible. En effet, pour contribuer à une architecture IaaS de type Grid5000, les acteurs doivent acheter du matériel coûteux (serveur, climatisation) et les coûts de maintenance sont eux aussi élevés (consommation électrique, administrateur, remplacement de matériel). Pour une infrastructure de fog, cette contribution est moindre car le matériel est peu coûteux (capteurs, nano-ordinateurs - single-board computer) et les coûts de maintenance associés sont faibles (consommation énergétique basse, pièces de rechange peu onéreuses). Pour ces raisons, une communauté d'une centaine d'acteurs à l'échelle d'un pays se rassemblant pour créer une infrastructure commune nous semble réaliste et prometteuse. Chaque acteur pourrait alors contribuer à l'infrastructure en hébergeant un fog cluster dans sa structure (université, entreprise) et, ainsi, profiter des ressources de toute la communauté. 
+
+Dans cet article, nous présentons la première brique de cette infrastructure collaborative de fog computing : le fog cluster. Nous allons détailler le matériel nécessaire à la création de ce cluster ainsi que la solution logicielle développée pour sa gestion. Enfin, nous évaluerons les performances du gestionnaire de ressources du cluster en comparant différente configuration possible. Nous finirons par évoquer les futures étapes et réflexions nécessaires à la création de cette plate-forme de fog computing collaborative.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Architecture Matérielle}
+\label{sec:architecture}
+La plate-forme de fog computing présentée dans cet article peut être vue comme l'agrégation de fog clusters connectés entre eux via Internet. Chaque fog cluster va apporter des ressources à l'infrastructure et, en contrepartie, pouvoir consommer les ressources offertes par cette plate-forme.
+Le matériel a été choisi dans le but d'acquérir un matériel rapide à installer et à administrer, offrant la flexibilité nécessaire pour s'adapter à de nombreux cas d'utilisation et ayant un prix peu élevé favorisant le remplacement des pièces. Dans cette optique, nous avons choisi de baser la plate-forme sur les populaires Raspberry Pi connectés à l'aide d'un switch PoE (Power over Ethernet).
+
+L'avantage majeur des Raspberry Pi est la possibilité de les alimenter en PoE à partir de la carte réseau. Grâce à la technologie PoE, le switch est capable d'alimenter les  Raspberry ce qui diminue le nombre de câbles et de prises nécessaires à l'alimentation du cluster. Les Raspberry sont donc connectés au switch avec un câble Ethernet qui fournit l'alimentation et la connexion au réseau. De plus, la possibilité de contrôler l'alimentation des ports PoE du switch via le protocole SNMP permet d'éteindre et d'allumer les Raspberry très facilement. Les Raspberry Pi ont aussi été choisis car nous étions à la recherche d'un nano-ordinateur supportant le boot PXE afin de choisir le système d'exploitation à exécuter au démarrage. Le PoE et le boot PXE nous offrent alors de vastes possibilités de configuration des Raspberry.
+
+Nous avons testé des Raspberry Pi 3B+ (2GB de RAM) et les Raspberry Pi 4 (4Gb de RAM). Lors du choix des Raspberry, il faut s'assurer que le modèle choisi prend bien en charge la technologie PXE. Pour la prise en charge du PoE, il faut ajouter des cartes PoE HAT qui se montent sur les Raspberry. Nous avons aussi ajouté une carte micro-SD de 32 Gb ce qui nous laisse 30 Gb de libre après installation du système d'exploitation Raspbian.
+
+Le switch choisi doit supporter la technologie PoE sur un maximum de port. Il faut bien vérifier que le power budget du switch est suffisant pour alimenter tous les Raspberry connectés. D'après les tests de consommation réalisés~\ref{ici}, un Raspberry Pi consomme au maximum 8~W. Un switch disposant de 8 ports PoE doit donc avoir un power budget d'au minimum 64 W (8 x 8 W).
+
+Avec cette configuration, il est donc possible de créer un fog cluster de 8 Raspberry Pi 4 (4Gb de RAM) pour un peu moins de 1000 euros~\ref{facture_annexe}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Noeud de service}
+\label{sec:gestionnaire}
+Le fog cluster construit avec le matériel listé ci-dessus dispose donc de 8 noeuds Raspberry~Pi~4. Sur ces 8 noeuds, un des noeuds sera utilisé comme noeud de service et les 7 autres noeuds seront les noeuds ressources que les utilisateurs pourront réserver.
+
+Le noeud de service établit le lien entre les utilisateurs et les autres noeuds du cluster, appelés noeuds ressources. Pour garantir le bon fonctionnement du cluster, le noeud de service fournit :
+\begin{itemize}
+    \item un serveur DHCP définissant les adresses IP des noeuds ressources ;
+    \item un serveur PXE hébergeant les différents systèmes d'exploitation à installer sur les noeuds ressources ;
+    \item un serveur NFS utiliser pour démarrer les noeuds tout en pouvant formater leur stockage interne ;
+    \item le gestionnaire de ressources du cluster qui permet aux utilisateurs de réserver des ressources ;
+    \item une base de données pour enregistrer les comptes utilisateurs et gérer la configuration des noeuds ressources ;
+\end{itemize}
+
+Pour configurer les noeuds ressources, le gestionnaire doit avoir connaissance de l'architecture du fog cluster. Plusieurs informations sont décrites à l'aide de fichiers JSON pour assurer le bon fonctionnement du gestionnaire. Pour les switchs~\ref{switch_json} des noeuds ressources, les informations nécessaires aux connexions SNMP sont renseignées. Le gestionnaire peut alors activer et désactiver l'alimentation PoE des ports ce qui permet d'éteindre et d'allumer les noeuds. La description des noeuds ressources~\ref{noeud_json} précise le port du switch sur lequel le noeud est branché ainsi que son identifiant utilisé lors du boot PXE. Des informations sur chaque système d'exploitation à installer~\ref{env_json} sont nécessaires afin de configurer correctement les partitions après avoir copié le système sur le noeud ressource.
+Pour pouvoir faciliter l'ajout de nouvelles ressources, chaque élément (switch, ressource, environnement) est décrit dans un fichier JSON indépendant. Après l'installation du gestionnaire de ressources, l'administrateur de l'infrastructure doit fournir une description des ressources disponibles. Pour cela, il peut soit remplir les fichiers de description manuellement, soit utiliser la page d'administration du gestionnaire. À partir de cette page d'administration, l'administrateur va pouvoir ajouter des switchs en renseignant leur adresse IP et les informations nécessaires à l'utilisation du protocole SNMP (communauté, OID des ports PoE). Pour chaque switch, l'administrateur pourra alors éteindre et allumer les ports PoE et lancer la détection de ressources sur un ou plusieurs ports. Ces outils d'administration permettent de remplir les fichiers JSON décrivant les switchs et les ressources. Les fichiers décrivant les environnements sont à remplir manuellement \textbf{(travailler pour une découverte automatique des environnements?)}.
+
+Le gestionnaire de ressources correspond au point d'entrée des utilisateurs sur la plate-forme de fog computing. Cet outil va permettre aux utilisateurs de s'authentifier afin d'avoir accès aux ressources de la plate-forme. Un utilisateur authentifié peut sélectionner des ressources disponibles puis choisir un environnement, c'est-à-dire, un système d'exploitation et une configuration logicielle, à déployer. Une fois l'environnement déployé, l'utilisateur à un accès administrateur à son noeud.
+
+Pour déployer un environnement, le gestionnaire a besoin de deux fichiers : le fichier image du système d'exploitation incluant une configuration logicielle spécifique ainsi que le fichier~JSON décrivant l'environnement. À partir de ces fichiers, le gestionnaire va ensuite exécuter une liste de commandes en se connectant avec le protocole SSH sur chaque noeud ressource à configurer. Pour exécuter ces commandes, le gestionnaire de ressources fait passer le noeud par une séquence d'états prédéfinis~\ref{diagramme_etats}. Chaque état~\ref{etat_json} est composé d'un nom, d'une série de commandes à exécuter et d'une condition à vérifier pour que le noeud passe à l'état suivant. Tant que la condition n'est pas vérifiée, l'état du noeud n'est pas modifié. Chaque état possède un timeout qui est utilisé pour détecter les blocages lors du déploiement. Lorsque ce timeout expire, le noeud est soit redémarré pour essayer de continuer le déploiement, soit considéré comme perdu. Dans ce cas, l'utilisateur peut choisir de redéployer son environnement ou de libérer le noeud. L'utilisation de ces états permet aux utilisateurs de suivre le déploiement des ressources demandées. Les états simplifient aussi la détection et la correction de pannes lors des déploiements. Dans l'exemple illustré par la figure~\ref{diagramme_etats}, on voit les états parcourus par les noeuds lors de la configuration de l'environnement Raspbian Buster. En cas d'expiration du timeout dans l'état \textit{user\_conf}, le gestionnaire de ressources va redémarrer le noeud en coupant puis rétablissant l'alimentation du port PoE. La condition de l'état \textit{user\_conf} sera alors à nouveau tester. Si le timeout expire une seconde fois, le noeud passera dans l'état \textit{lost}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Automatisation des déploiements des environnements}
+\label{sec:os_install}
+Le fog cluster mis en place à partir du matériel listé ci-dessus offrira donc pour configurer le système d'exploitation installé sur chaque Raspberry Pi appelé noeud du cluster. Dans cette section, nous allons détailler le processus de démarrage d'un noeud permettant l'installation et la configuration du système d'exploitation avant son utilisation par un acteur de la plate-forme.
+
+Afin d'automatiser l'installation et la configuration du système d'exploitation d'un noeud du cluster, nous avons besoin de pouvoir écrire sur son stockage interne, c'est-à-dire, sur la carte SD du Raspberry. Pour faire cela, la configuration d'un noeud se déroule en trois étapes : le démarrage du noeud sur un système d'exploitation installé sur un serveur NFS possédant un serveur SSH, l'écriture du nouveau système d'exploitation sur le stockage interne puis le redémarrage du noeud sur son stockage interne.
+
+Pour pouvoir choisir l'environnement chargé au démarrage des noeuds, les noeuds sont configurés pour récupérer leur environnement de démarrage sur un serveur PXE distant. Cet environnement comprend plusieurs fichiers de configuration, notamment le fichier \textit{cmdline.txt} que nous utilisons pour démarrer un noeud soit sur le serveur NFS, soit sur son stockage interne. Ces fichiers de configuration sont présents dans les images des systèmes d'exploitation. Par exemple, dans les images raspiOS (anciennement, Raspbian), les fichiers de configuration sont situés dans la première partition de l'image. Ces fichiers sont donc copiés sur notre serveur PXE et les noeuds sont configurés pour toujours demander ces fichiers lors de leur démarrage. Pour l'installation du système d'exploitation du noeud, nous démarrons donc le noeud à partir du serveur NFS et nous pouvons alors nous connecter sur le noeud afin de copier l'image du système d'exploitation de notre choix sur le stockage interne.
+Afin de gérer le démarrage de plusieurs noeuds simultanément, nous créons un dossier de démarrage par noeud. Le nom de ce dossier doit être l'identifiant du noeud obtenu en lisant la propriété \textit{Serial} du fichier \textit{/proc/cpuinfo}.
+
+Une fois la copie du nouveau système d'exploitation effectuée, la partition système du noeud est montée sur le système NFS afin de pouvoir configurer le noeud pour son utilisation future. Par exemple, nous ajoutons les clés SSH du gestionnaire et de l'utilisateur pour avoir un accès administrateur sur le nouveau système.
+
+Après cette phase de configuration, nous réalisons l'extension de la partition système existante afin qu'elle utilise la totalité de l'espace de stockage disponible. Cette opération est traditionnellement faite au premier démarrage du noeud après l'installation du système. Cependant, n'ayant pas de connexion à l'interface graphique, nous préférons effectuer cette opération à partir du système monté en NFS.
+
+Après ces opérations, le noeud est redémarré puis mis à la disposition de l'utilisateur.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Evaluation}
+\label{sec:implementation}
+But: montrer qu'une plateforme hébergée sur des PI4 est viable
+
+L'état de chaque noeud est stocké dans une base de donnée relationnelle MariaDB. Le gestionnaire de ressources est une application Flask codée en Python.
+
+tester le déploiement à partir de USB VS à partir de SDCARD
+
+tester l'install de tout le système sur USB
+
+tester les performances 32bit VS 64bit ?
+
+comparaison des temps de déploiement PiSeduce VM, PiSeduce RPI3, PiSeduce RPI4
+
+Comparer les taux de réussite des déploiements sur le RPI4 avec et sans le redémarrage automatique des noeuds en cas de blocage (diminuer le timeout lost\_node à 160 s).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+1. Comment les fog clusters sont-ils reliés entre eux ? Point centralisé, décentralisé, BDD distribuée
+2. Protocole de consommation des ressources : Comment gèrer le ratio ressources apportées / ressources consommées ? Calcul des ressources consommées par cluster ou par utilisateur ?
+deux niveaux de consommation : une politique de consommation au niveau du cluster (les consommations au niveau de la plate-forme) et une politique de consommation au niveau de l'utilisateur interne au cluster.
+3. Quel mécanisme d'authentification ? est-ce qu'un utilisateur peut s'authentifier sur n'importe quel cluster...
+4. Mécanisme de réservations : une réservation de moins d'1h peut-être faite instantanément quelque-soit la taille de la réservation. Une réservation consommant moins de 10\% de l'infrastructure
+est traitée immédiatement ; une réservation consommant entre 11\% et 30\% de l'infrastructure doit être annoncée 2 jours (48 h) avant et est traitée 24 h avant ; une réservation consommant entre 31\% et 50\% doit être annoncée 4 jours avant et est traitée 48 h avant ; une réservation consommant entre 50\% et 80\% doit être annoncée 6 jours avant et est traitée 72 h avant. L'annonce de la réservation permet aux autres utilisateurs d'être informés et, éventuellement, de demander des ressources eux aussi. Lors du traitement des réservations pour un jour donné, l'algorithme partage les ressources en fonction des demandes pour satisfaire au mieux les utilisateurs.
+
+
+In this article we propose to implement a framework to deploy infrastructures at the convergence between \textit{Fog Computing} and \textit{Volunteer Computing} on commodity hardware, with little financial cost.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\bibliographystyle{ieeetr}
+\bibliography{bibliography}
+
+\clearpage
+
+\end{document}
+
