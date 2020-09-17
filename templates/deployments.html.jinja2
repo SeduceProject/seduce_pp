@@ -47,7 +47,8 @@
                                 <div class="col-2 border-right text-center pointer"
                                     :onclick="'deploymentInfo(\''+ d.ids[0] + '\')'">
                                     [[ d.name ]]<br>
-                                    [[ d.server_infos.length ]] nodes
+                                    [[ d.server_infos.length ]] nodes<br/>
+                                    <span class="text-info">Node Mngt</span>
                                 </div>
                                 <div class="col">
                                     <div v-for="n in d.server_infos" class="deploying-node"
@@ -56,6 +57,7 @@
                                             <div>
                                                 <div>[[ n.name ]]</div>
                                                 <div>[[ n.ip ]]</div>
+                                                <div class="text-info">Node Info</div>
                                             </div>
                                         </div>
                                     </div>
