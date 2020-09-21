@@ -839,13 +839,23 @@ def destroy_format_fct(deployment, cluster_desc, db_session, logger):
     server = cluster_desc['nodes'][deployment.node_name]
     if deployment.environment is not None:
         environment = cluster_desc['environments'][deployment.environment]
+        formated = False
         try:
+
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(server.get("ip"), username=environment.get("root"), timeout=1.0)
             (stdin, stdout, stderr) = ssh.exec_command('mkfs.ext4 -F /dev/mmcblk0')
             return_code = stdout.channel.recv_exit_status()
             ssh.close()
+            formated = True
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
+            elapsedTime = (datetime.datetime.now() - updated).total_seconds()
+            logger.info("Could not connect to %s since %d seconds" % (server['name'], elapsedTime))
+            if elapsedTime > 80:
+                formated = True
+        if formated:
             # Turn off port
             turn_off_port(server["switch"], server["port_number"])
             # Delete the tftpboot folder
@@ -853,6 +863,5 @@ def destroy_format_fct(deployment, cluster_desc, db_session, logger):
             if os.path.isdir(tftpboot_node_folder):
                 shutil.rmtree(tftpboot_node_folder)
             return True
-        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            logger.warning('%s: can not connect' % server['name'])
-        return False
+        else:
+            return False
