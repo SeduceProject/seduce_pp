@@ -237,7 +237,7 @@
                     row.appendChild(col);
                     table.appendChild(row);
                     // The row of the destroy button
-                    if(myDep.state != 'destroy_request' && myDep.state != 'destroying') {
+                    if(myDep.state != 'destroy_off' && myDep.state != 'destroy_on' && myDep.state != 'destroy_format') {
                         row = document.createElement('div');
                         row.className = 'row mt-1';
                         col = document.createElement('div');

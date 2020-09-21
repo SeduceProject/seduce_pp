@@ -825,39 +825,34 @@ def rebooting_fct(deployment, cluster_desc, db_session, logger):
 
 
 # Destroying deployments
-def destroy_request_fct(deployment, cluster_desc, db_session, logger):
+def destroy_off_fct(deployment, cluster_desc, db_session, logger):
+    nfs_boot_conf_fct(deployment, cluster_desc, db_session, logger)
+    return nfs_boot_off_fct(deployment, cluster_desc, db_session, logger)
+
+
+def destroy_on_fct(deployment, cluster_desc, db_session, logger):
+    return nfs_boot_on_fct(deployment, cluster_desc, db_session, logger)
+
+
+def destroy_format_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     if deployment.environment is not None:
         environment = cluster_desc['environments'][deployment.environment]
-        # Remove the bootcode.bin file that can appear after updating the Raspbian OS
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
-            (stdin, stdout, stderr) = ssh.exec_command('rm /boot/bootcode.bin && sync')
+            ssh.connect(server.get("ip"), username=environment.get("root"), timeout=1.0)
+            (stdin, stdout, stderr) = ssh.exec_command('mkfs.ext4 -F /dev/mmcblk0')
             return_code = stdout.channel.recv_exit_status()
             ssh.close()
+            # Turn off port
+            turn_off_port(server["switch"], server["port_number"])
+            # Delete the tftpboot folder
+            tftpboot_node_folder = "/tftpboot/%s" % server["id"]
+            if os.path.isdir(tftpboot_node_folder):
+                shutil.rmtree(tftpboot_node_folder)
+            return True
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            logger.warning('No SSH connection: can not try to delete the bootcode.bin file')
-    # Turn off port
-    turn_off_port(server["switch"], server["port_number"])
-    # Delete the tftpboot folder
-    tftpboot_node_folder = "/tftpboot/%s" % server["id"]
-    if os.path.isdir(tftpboot_node_folder):
-        shutil.rmtree(tftpboot_node_folder)
-    return True
-
-
-def destroying_fct(deployment, cluster_desc, db_session, logger):
-    # Get description of the server that will be deployed
-    server = cluster_desc['nodes'][deployment.node_name]
-    can_connect = True
-    try:
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server.get("ip"), username="root", timeout=1.0)
-        ssh.close()
-    except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        can_connect = False
-    return not can_connect
+            logger.warning('%s: can not connect' % server['name'])
+        return False
