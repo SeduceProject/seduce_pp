@@ -30,7 +30,7 @@ def destroy_test_deployment():
     deployments = db_session.query(Deployment).filter(
             Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').all()
     for d in deployments:
-        d.state = 'destroy_request'
+        d.state = 'destroy_off'
         db_session.add(d)
     db_session.commit()
     destroyed = set()
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     for nb in [ 4, 8, 12, 16, 20 ]:
         stats_data = {}
         file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
-        file_stats = 'article/paper_results/RPI4_64/%d_nodes_RPI4_%s.json' % (nb, file_id)
+        file_stats = 'article/paper_results/RPI4_32_SWITCH/%d_nodes_RPI4_%s.json' % (nb, file_id)
         for env in [ {'name': 'raspbian_buster_32bit'} ]:
         #for env in cluster_desc["environments"].values():
             if env['name'] != boot_test_environment:

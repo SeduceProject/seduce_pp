@@ -2,6 +2,7 @@
 if [ "$1" == '-h' ]; then
     echo 'Safe usage (show results): ./validation.sh "RPI4_32_SDCARD/16_nodes_RPI4_20_09_1*"'
     echo 'Usage (show and delete files): ./validation.sh "RPI4_32_SDCARD/16_nodes_RPI4_20_09_1*" 10'
+    echo '  => Delete the files containing 10 or more failed deployments'
     exit
 fi
 
