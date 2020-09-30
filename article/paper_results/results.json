@@ -26,6 +26,33 @@
             "nb_deployments": 81
         }
     },
+    "RPI3_32_2": {
+        "4": {
+            "avg_times": 348,
+            "failure_ratio": 0,
+            "nb_deployments": 15
+        },
+        "8": {
+            "avg_times": 397,
+            "failure_ratio": 2,
+            "nb_deployments": 15
+        },
+        "12": {
+            "avg_times": 454,
+            "failure_ratio": 0,
+            "nb_deployments": 15
+        },
+        "16": {
+            "avg_times": 527,
+            "failure_ratio": 0,
+            "nb_deployments": 15
+        },
+        "20": {
+            "avg_times": 627,
+            "failure_ratio": 6,
+            "nb_deployments": 15
+        }
+    },
     "RPI4_32_SWITCH": {
         "4": {
             "avg_times": 369,
