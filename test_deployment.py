@@ -69,8 +69,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
             free_nodes.append({ 'name': server.get("name"), 'ip': server.get('ip'),
                 'ssh_user': ssh_user_env, 'shell': shell_env, 'script': script_env, 'env': test_env })
     if len(free_nodes) > nb_nodes:
-        #selected_nodes = random.sample(free_nodes, nb_nodes)
-        selected_nodes = free_nodes[:nb_nodes]
+        selected_nodes = random.sample(free_nodes, nb_nodes)
     else:
         selected_nodes = free_nodes
     process = subprocess.run("cat %s" % pubkey_file, shell=True, check=True,
@@ -188,7 +187,7 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
         time.sleep(2)
     close_session(db_session)
     if dep_env == boot_test_environment:
-        sleep_time = 50
+        sleep_time = 60
     else:
         sleep_time = 10
     logger.info("Waiting %d seconds before starting additional tests" % sleep_time)
@@ -240,19 +239,15 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
 
 if __name__ == "__main__":
     cluster_desc = get_cluster_desc()
-    #for env in [ { 'name': boot_test_environment } ]:
-    for nb in [ 4, 8, 12, 16, 20 ]:
-        stats_data = {}
-        file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
-        file_stats = 'article/paper_results/RPI4_32_SWITCH/%d_nodes_RPI4_%s.json' % (nb, file_id)
-        for env in [ {'name': 'raspbian_buster_32bit'} ]:
-        #for env in cluster_desc["environments"].values():
-            if env['name'] != boot_test_environment:
-                logger.info("Deploying the '%s' environment" % env['name'])
-                testing_environment(env['name'], file_id, stats_data, nb)
-        logger.info("Destroy older deployments")
-        destroy_test_deployment()
-        logger.info("Write the detailed statistics to the '%s'" % file_stats)
-        with open(file_stats, 'w') as json_file:
-            json.dump(stats_data, json_file, indent=4)
-        time.sleep(120)
+    stats_data = {}
+    file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
+    file_stats = 'json_test/%s.json' % file_id
+    for env in [ { 'name': boot_test_environment } ]:
+    #for env in cluster_desc["environments"].values():
+        logger.info("Deploying the '%s' environment" % env['name'])
+        testing_environment(env['name'], file_id, stats_data, 10)
+    logger.info("Destroy older deployments")
+    destroy_test_deployment()
+    logger.info("Write the detailed statistics to the '%s'" % file_stats)
+    with open(file_stats, 'w') as json_file:
+        json.dump(stats_data, json_file, indent=4)
