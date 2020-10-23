@@ -490,16 +490,8 @@
 }
 
 /* Destroying nodes */
-.destroy_off {
+.destroying {
     background-color: #fd7dff;
-}
-
-.destroy_on {
-    background-color: #eb7dff;
-}
-
-.destroy_format {
-    background-color: #da7dff;
 }
 
 .destroyed {

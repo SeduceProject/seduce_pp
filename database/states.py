@@ -11,7 +11,7 @@ progress = {
                 'user_script', 'deployed' ],
             [ 'img_create_part', 'img_format_part', 'img_copy', 'img_copy_check', 'img_customize', 'img_compress',
                 'img_compress_check', 'img_upload', 'upload_check', 'deployed' ],
-            [ 'destroy_off', 'destroy_on', 'destroy_format', 'destroyed' ],
+            [ 'destroying', 'destroyed' ],
             [ 'off_requested', 'on_requested', 'rebooting' ]
         ]
     }
@@ -32,7 +32,7 @@ def reboot_state(deployment):
 
 
 def destroy_state(deployment):
-    deployment.state = 'destroy_off'
+    deployment.state = 'destroying'
 
 
 def progress_state(state_key, state):

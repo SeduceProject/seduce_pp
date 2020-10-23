@@ -825,43 +825,36 @@ def rebooting_fct(deployment, cluster_desc, db_session, logger):
 
 
 # Destroying deployments
-def destroy_off_fct(deployment, cluster_desc, db_session, logger):
-    nfs_boot_conf_fct(deployment, cluster_desc, db_session, logger)
-    return nfs_boot_off_fct(deployment, cluster_desc, db_session, logger)
-
-
-def destroy_on_fct(deployment, cluster_desc, db_session, logger):
-    return nfs_boot_on_fct(deployment, cluster_desc, db_session, logger)
-
-
-def destroy_format_fct(deployment, cluster_desc, db_session, logger):
+def destroying_fct(deployment, cluster_desc, db_session, logger):
     # Get description of the server that will be deployed
     server = cluster_desc['nodes'][deployment.node_name]
     if deployment.environment is not None:
         environment = cluster_desc['environments'][deployment.environment]
-        formated = False
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
-
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(server.get("ip"), username=environment.get("root"), timeout=1.0)
-            (stdin, stdout, stderr) = ssh.exec_command('mkfs.ext4 -F /dev/mmcblk0')
+            # Try to connect to the deployed environment
+            ssh.connect(server.get("ip"), username=environment.get("ssh_user"), timeout=1.0)
+            (stdin, stdout, stderr) = ssh.exec_command('rm -f /boot/bootcode.bin')
             return_code = stdout.channel.recv_exit_status()
             ssh.close()
-            formated = True
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            updated = datetime.datetime.strptime(str(deployment.updated_at), '%Y-%m-%d %H:%M:%S')
-            elapsedTime = (datetime.datetime.now() - updated).total_seconds()
-            logger.info("Could not connect to %s since %d seconds" % (server['name'], elapsedTime))
-            if elapsedTime > 80:
-                formated = True
-        if formated:
-            # Turn off port
-            turn_off_port(server["switch"], server["port_number"])
-            # Delete the tftpboot folder
-            tftpboot_node_folder = "/tftpboot/%s" % server["id"]
-            if os.path.isdir(tftpboot_node_folder):
-                shutil.rmtree(tftpboot_node_folder)
-            return True
-        else:
-            return False
+            logger.info("Can not connect to the deployed environment. Connecting to the NFS environment")
+            try:
+                # Try to connect to the nfs environment
+                ssh.connect(server.get("ip"), username="root", timeout=1.0)
+                cmd = "mount /dev/mmcblk0p1 boot_dir"
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
+                (stdin, stdout, stderr) = ssh.exec_command('rm -f boot_dir/bootcode.bin')
+                return_code = stdout.channel.recv_exit_status()
+                ssh.close()
+            except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+                logger.info("Can not connect to the NFS environment.")
+    # Turn off port
+    turn_off_port(server["switch"], server["port_number"])
+    # Delete the tftpboot folder
+    tftpboot_node_folder = "/tftpboot/%s" % server["id"]
+    if os.path.isdir(tftpboot_node_folder):
+        shutil.rmtree(tftpboot_node_folder)
+    return True
