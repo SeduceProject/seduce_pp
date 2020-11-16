@@ -15,21 +15,23 @@
                     <div class="row">
                         <div class="col deployment-legend">
                             <div class="legend-text">Deployment Process:</div>
-                            <div class="legend-color initialized"></div>
-                            <div class="legend-color nfs_boot_conf"></div>
-                            <div class="legend-color nfs_boot_off"></div>
-                            <div class="legend-color nfs_boot_on"></div>
-                            <div class="legend-color env_copy"></div>
-                            <div class="legend-color env_check"></div>
-                            <div class="legend-color delete_partition"></div>
-                            <div class="legend-color create_partition"></div>
-                            <div class="legend-color mount_partition"></div>
-                            <div class="legend-color resize_partition"></div>
-                            <div class="legend-color wait_resizing"></div>
-                            <div class="legend-color system_conf"></div>
-                            <div class="legend-color user_conf"></div>
-                            <div class="legend-color user_script"></div>
-                            <div class="legend-color deployed"></div>
+                            <div class="legend-color initialized" title="initialized"></div>
+                            <div class="legend-color boot_conf" title="boot_conf"></div>
+                            <div class="legend-color turn_off" title="turn_off"></div>
+                            <div class="legend-color turn_on" title="turn_on"></div>
+                            <div class="legend-color ssh_nfs" title="ssh_nfs"></div>
+                            <div class="legend-color env_copy" title="env_copy"></div>
+                            <div class="legend-color env_check" title="env_check"></div>
+                            <div class="legend-color delete_partition" title="delete_partition"></div>
+                            <div class="legend-color create_partition" title="create_partition"></div>
+                            <div class="legend-color mount_partition" title="mount_partition"></div>
+                            <div class="legend-color resize_partition" title="resize_partition"></div>
+                            <div class="legend-color wait_resizing" title="wait_resizing"></div>
+                            <div class="legend-color system_conf" title="system_conf"></div>
+                            <div class="legend-color ssh_system" title="ssh_system"></div>
+                            <div class="legend-color user_conf" title="user_conf"></div>
+                            <div class="legend-color user_script" title="user_script"></div>
+                            <div class="legend-color deployed" title="deployed"></div>
                             <div class="legend-text">Lost Nodes:</div>
                             <div class="legend-color lost"></div>
                         </div>
@@ -53,7 +55,7 @@
                                 <div class="col">
                                     <div v-for="n in d.server_infos" class="deploying-node"
                                         :onclick="'nodeInfo(\'' + n.name + '\')'">
-                                        <div :class="n.state" :style="'height: ' + n.progress + '%;'">
+                                        <div :class="n.state.replace('_post', '').replace('_exec', '')" :style="'height: ' + n.progress + '%;'">
                                             <div>
                                                 <div>[[ n.name ]]</div>
                                                 <div>[[ n.ip ]]</div>
@@ -237,7 +239,7 @@
                     row.appendChild(col);
                     table.appendChild(row);
                     // The row of the destroy button
-                    if(myDep.state != 'destroy_off' && myDep.state != 'destroy_on' && myDep.state != 'destroy_format') {
+                    if(myDep.state != 'destroying') {
                         row = document.createElement('div');
                         row.className = 'row mt-1';
                         col = document.createElement('div');
@@ -367,11 +369,11 @@
             var colValue = document.createElement('div');
             if(name == 'state') {
                 colValue.id = 'node-state';
-                colValue.className = 'col ' + value;
+                colValue.className = 'col ' + value.replace('_exec', '').replace('_post', '');
             } else {
                 colValue.className = 'col';
             }
-            colValue.innerHTML = value;
+            colValue.innerHTML = value.toString().substring(0,16);
             row.appendChild(colValue);
             return row;
         }

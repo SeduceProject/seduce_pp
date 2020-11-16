@@ -1,5 +1,5 @@
 from database.connector import open_session, close_session
-from database.states import progress_forward
+from database.states import process
 from database.tables import Deployment, User
 from datetime import datetime
 from lib.config_loader import get_cluster_desc
@@ -30,7 +30,8 @@ def destroy_test_deployment():
     deployments = db_session.query(Deployment).filter(
             Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').all()
     for d in deployments:
-        d.state = 'destroying'
+        d.process = 'destroy'
+        d.state = process['destroy'][0]
         db_session.add(d)
     db_session.commit()
     destroyed = set()
@@ -45,17 +46,17 @@ def destroy_test_deployment():
     return test_user_id
 
 
-def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
+def reserve_free_nodes(test_user_id, stats, nb_nodes, random_select=True, test_env="tiny_core"):
     db_session = open_session()
     deployments = db_session.query(Deployment).filter(Deployment.state != "destroyed").all()
     used_nodes = [ d.node_name for d in deployments ]
     cluster_desc = get_cluster_desc()
-    logger.info("Used nodes: %s" % used_nodes)
+    logger.info("Unavailable nodes: %s" % used_nodes)
     free_nodes = []
     ssh_user_env = None
     shell_env = None
     script_env = None
-    if test_env != 'boot_test':
+    if test_env != boot_test_environment:
         for env in cluster_desc["environments"].values():
             if env['name'] == test_env:
                 ssh_user_env = env['ssh_user']
@@ -69,14 +70,23 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, test_env="tiny_core"):
             free_nodes.append({ 'name': server.get("name"), 'ip': server.get('ip'),
                 'ssh_user': ssh_user_env, 'shell': shell_env, 'script': script_env, 'env': test_env })
     if len(free_nodes) > nb_nodes:
-        selected_nodes = random.sample(free_nodes, nb_nodes)
+        if random_select:
+            selected_nodes = random.sample(free_nodes, nb_nodes)
+        else:
+            # Sort the nodes using the node number
+            selected_nodes = sorted(free_nodes, key=lambda node: int(node['name'].split('-')[1]))[:nb_nodes]
     else:
         selected_nodes = free_nodes
     process = subprocess.run("cat %s" % pubkey_file, shell=True, check=True,
             stdout=subprocess.PIPE, universal_newlines=True)
     for node in selected_nodes:
         new_deployment = Deployment()
-        new_deployment.state = "nfs_boot_conf"
+        if test_env == boot_test_environment:
+            new_deployment.process = "boot_test"
+            new_deployment.state = "boot_conf"
+        else:
+            new_deployment.process = "deployment"
+            new_deployment.state = "boot_conf"
         new_deployment.environment = test_env
         new_deployment.node_name = node['name']
         new_deployment.name = test_deployment_name
@@ -131,12 +141,10 @@ def state_register(dep, stats):
             state_info['last_date'] = str(dep.start_date)
         else:
             state_info['last_date'] = str(dep.updated_at)
-    if dep.state == 'deployed' or (dep.environment == boot_test_environment and dep.state == 'env_copy'):
+    if dep.state == 'deployed' or dep.state == 'booted':
         start_dep = datetime.strptime(str(dep.start_date), '%Y-%m-%d %H:%M:%S')
         end_dep = datetime.strptime(str(dep.updated_at), '%Y-%m-%d %H:%M:%S')
         stats[dep.environment][dep.node_name][-1]['total'] = (end_dep - start_dep).total_seconds()
-        if dep.state != 'deployed':
-            dep.state = 'deployed'
         return True
     else:
         return False
@@ -151,7 +159,7 @@ def exec_bash(cmd):
         return False
 
 
-def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
+def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2, random_select = True):
     file_summary = 'deployment_results.txt'
     # Nodes with a deployed environment
     success_nodes = 0
@@ -163,7 +171,7 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
     logger.info("Destroy older deployments")
     test_user_id = destroy_test_deployment()
     logger.info("Start a new deployment")
-    nodes = reserve_free_nodes(test_user_id, dep_stats, nb_nodes, dep_env)
+    nodes = reserve_free_nodes(test_user_id, dep_stats, nb_nodes, random_select, dep_env)
     if len(nodes) == 0:
         logger.error("No available node")
         sys.exit(2)
@@ -175,28 +183,21 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
                 Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').filter(
                         Deployment.name == test_deployment_name).all()
         for d in deployments:
-            my_state = d.state
             if d.id not in deployed_env:
                 if state_register(d, dep_stats):
-                    logger.warning("Stop monitoring the node '%s'" % d.node_name)
+                    logger.warning("Stop monitoring the node '%s' in '%s' state" % (d.node_name, d.state))
                     deployed_env.append(d.id)
-            if d.state != my_state:
-                logger.info("The deployment state has been modified for the node '%s'" % d.node_name)
-                db_session.add(d)
+        # Commit to refresh the deployment states
         db_session.commit()
         time.sleep(2)
     close_session(db_session)
-    if dep_env == boot_test_environment:
-        sleep_time = 60
-    else:
-        sleep_time = 10
-    logger.info("Waiting %d seconds before starting additional tests" % sleep_time)
-    time.sleep(sleep_time)
+    logger.info("Waiting 10 seconds before starting additional tests")
+    time.sleep(10)
     logger.info("Check the deployment of %d nodes: %s" % (len(nodes), [ n['ip'] for n in nodes] ))
     for n in nodes:
         n_stats = dep_stats[n['env']][n['name']][-1]
         if dep_env == boot_test_environment:
-            if n_stats['states']['last_state'] == 'env_copy':
+            if n_stats['states']['last_state'] == 'booted':
                 logger.info("%s: Ping connection" % n['ip'])
                 n_stats['ping'] = exec_bash('ping -c 1 -w 1 %s' % n['ip'])
                 logger.info("%s: SSH connection" % n['ip'])
@@ -239,15 +240,17 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2):
 
 if __name__ == "__main__":
     cluster_desc = get_cluster_desc()
-    stats_data = {}
-    file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
-    file_stats = 'json_test/%s.json' % file_id
-    for env in [ { 'name': boot_test_environment } ]:
-    #for env in cluster_desc["environments"].values():
-        logger.info("Deploying the '%s' environment" % env['name'])
-        testing_environment(env['name'], file_id, stats_data, 30)
-    logger.info("Destroy older deployments")
-    destroy_test_deployment()
-    logger.info("Write the detailed statistics to the '%s'" % file_stats)
-    with open(file_stats, 'w') as json_file:
-        json.dump(stats_data, json_file, indent=4)
+    random_select = True
+    for nb_nodes in [ 4 ]:
+        stats_data = {}
+        file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
+        file_stats = 'json_test/%d_nodes_%s.json' % (nb_nodes, file_id)
+        for env in [ { 'name': boot_test_environment } ]:
+        #for env in cluster_desc["environments"].values():
+            logger.info("Deploying the '%s' environment" % env['name'])
+            testing_environment(env['name'], file_id, stats_data, nb_nodes, random_select)
+        logger.info("Destroy older deployments")
+        destroy_test_deployment()
+        logger.info("Write the detailed statistics to the '%s'" % file_stats)
+        with open(file_stats, 'w') as json_file:
+            json.dump(stats_data, json_file, indent=4)

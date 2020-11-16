@@ -1,6 +1,6 @@
 from database.connector import open_session, close_session
+from database.states import process
 from database.tables import Deployment, User
-from database.states import deployment_initial_state, destroy_state, init_deployment_state, reboot_state
 from flask import Blueprint
 from flask_login import current_user
 from glob import glob
@@ -32,6 +32,7 @@ def take(server_info):
     server_names = info[1].replace(' ','').split(",")
     for n_name in server_names:
         new_deployment = Deployment()
+        new_deployment.process = "deployment"
         new_deployment.state = "initialized"
         new_deployment.node_name = n_name
         new_deployment.user_id = db_user.id
@@ -67,7 +68,7 @@ def process_take():
         d.duration = flask.request.form.get("duration_text")
         d.system_size = flask.request.form.get("more_space")
         d.start_date = datetime.datetime.now()
-        d.state = deployment_initial_state
+        d.state = process['deployment'][0]
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
 
@@ -97,7 +98,8 @@ def ask_reboot(n_name):
         # Do not remember the 'lost' state but the state before it
         if my_deployment.state != 'lost':
             my_deployment.temp_info = my_deployment.state
-        reboot_state(my_deployment)
+        my_deployment.process = "reboot"
+        my_deployment.state = process["reboot"][0]
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
 
@@ -111,7 +113,7 @@ def ask_redeploy(n_name):
     # Verify the node belongs to my deployments
     my_deployment = db_session.query(Deployment).filter_by(user_id = db_user.id,
             node_name = n_name).filter(Deployment.state != "destroyed").first()
-    init_deployment_state(my_deployment)
+    my_deployment.state = process['deployment'][0]
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
 
@@ -126,7 +128,8 @@ def ask_release_node(n_name):
     my_deployment = db_session.query(Deployment).filter_by(user_id = db_user.id,
             node_name = n_name).filter(Deployment.state != "destroyed").first()
     if my_deployment is not None:
-        destroy_state(my_deployment)
+        my_deployment.process = 'destroy'
+        my_deployment.state = process['destroy'][0]
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
 
@@ -140,7 +143,8 @@ def ask_destruction(deployment_ids):
     for d in deployment_ids.split(","):
         deployment = db_session.query(Deployment).filter_by(id = d, user_id = db_user.id).first()
         if deployment is not None:
-            destroy_state(deployment)
+            deployment.process = 'destroy'
+            deployment.state = process['destroy'][0]
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
 
@@ -179,7 +183,8 @@ def build_env():
     env_file_path = cluster_desc['env_cfg_dir'] + env['name'].replace(' ', '_') + '.json'
     with open(env_file_path, 'w') as jsonfile:
         json.dump(env, jsonfile)
-    deployment.state = 'img_create_part'
+    deployment.process = 'save_env'
+    deployment.state = 'img_part'
     deployment.temp_info = env['name']
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))

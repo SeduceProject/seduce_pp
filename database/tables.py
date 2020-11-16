@@ -1,5 +1,5 @@
 from database.base import Base
-from database.states import user_initial_state, deployment_initial_state
+from database.states import user_initial_state
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
@@ -38,7 +38,8 @@ class User(Base):
 class Deployment(Base):
     __tablename__ = 'deployment'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    state = Column(String(120), default=deployment_initial_state)
+    state = Column(String(120))
+    process = Column(Text)
     environment = Column(Text)
     node_name = Column(Text)
     name = Column(Text)
@@ -55,6 +56,4 @@ class Deployment(Base):
 
 
     def __repr__(self):
-        return "Deployment(%s, %s, %s, %s)" % (self.id, self.name, self.state, self.updated_at)
-
-
+        return "Deployment(%s, %s, %s, %s, %s)" % (self.id, self.process, self.state, self.name, self.updated_at)

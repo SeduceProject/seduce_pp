@@ -1,5 +1,4 @@
 from database.connector import open_session, close_session
-from database.states import progress_forward
 from database.tables import User
 from flask import Blueprint, render_template
 from glob import glob

@@ -412,81 +412,82 @@
 }
 
 /* Deploying nodes */
+/* 20 generated colors from https://mokole.com/palette.html */
 .initialized {
-    background-color: #ece4ff;
+    background-color: #dcdcdc;
 }
 
-.nfs_boot_conf {
-    background-color: #E97DFF;
+.boot_conf {
+    background-color: #2e8b57;
 }
 
-.nfs_boot_off {
-    background-color: #E286F7;
+.turn_off {
+    background-color: #191970;
 }
 
-.nfs_boot_on {
-    background-color: #DB8EF0;
+.turn_on {
+    background-color: #b22222;
+}
+
+.ssh_nfs {
+    background-color: #bdb76b;
 }
 
 .env_copy {
-    background-color: #D397E8;
+    background-color: #9acd32;
 }
 
 .env_check {
-    background-color: #CCA0E0;
+    background-color: #ff0000;
 }
 
 .delete_partition {
-    background-color: #C5A8D8;
+    background-color: #ff8c00;
 }
 
 .create_partition {
-    background-color: #BEB1D1;
+    background-color: #ffd700;
 }
 
 .mount_partition {
-    background-color: #B7BAC9;
+    background-color: #0000cd;
 }
 
 .resize_partition {
-    background-color: #AFC2C1;
+    background-color: #dda0dd;
 }
 
 .wait_resizing {
-    background-color: #A8CBB9;
+    background-color: #ba55d3;
 }
 
 .system_conf {
-    background-color: #A1D4B2;
+    background-color: #00fa9a;
+}
+
+.ssh_system {
+    background-color: #00ffff;
 }
 
 .user_conf {
-    background-color: #9ADCAA;
+    background-color: #ff00ff;
 }
 
 .user_script {
-    background-color: #93E5A2;
+    background-color: #1e90ff;
 }
 
 .deployed {
-    background-color: #7DFF8B;
+    background-color: #00ff00;
 }
 
 .lost {
-    background-color: darkgrey;
+    background-color: #696969;
 }
 
 /* Rebooting nodes */
-.off_requested {
-    background-color: #ffe496;
-}
-
-.on_requested {
-    background-color: #fffd96;
-}
-
-.rebooting {
-    background-color: #e6ff96;
+.coming_back {
+    background-color: #ff1493;
 }
 
 /* Destroying nodes */
@@ -499,40 +500,40 @@
 }
 
 /* Save environments */
-.img_create_part {
-    background-color: #ffff99;
+.img_part {
+    background-color: #dcdcdc;
 }
 
-.img_format_part {
-    background-color: #f2ff98;
+.img_format {
+    background-color: #191970;
 }
 
 .img_copy {
-    background-color: #e5ff96;
+    background-color: #bdb76b;
 }
 
 .img_copy_check {
-    background-color: #d8ff95;
+    background-color: #ff0000;
 }
 
 .img_customize {
-    background-color: #cbff93;
+    background-color: #ffd700;
 }
 
 .img_compress {
-    background-color: #cbff93;
+    background-color: #00ff00;
 }
 
 .img_compress_check {
-    background-color: #beff92;
+    background-color: #00fa9a;
 }
 
-.img_upload {
-    background-color: #b1ff91;
+.upload {
+    background-color: #ff00ff;
 }
 
 .upload_check {
-    background-color: #a4ff8f;
+    background-color: #dda0dd;
 }
 
 /* Slider of the node reservation form */
