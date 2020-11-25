@@ -364,13 +364,16 @@
             row.className = 'row';
             var colName = document.createElement('div');
             colName.className = 'col';
-            colName.innerHTML = name;
-            row.appendChild(colName);
             var colValue = document.createElement('div');
             if(name == 'state') {
+                node_state = value.replace('_exec', '').replace('_post', '')
+                colName.innerHTML = 'state <div class="state-prop ' + node_state + '"></div>';
+                row.appendChild(colName);
                 colValue.id = 'node-state';
-                colValue.className = 'col ' + value.replace('_exec', '').replace('_post', '');
+                colValue.className = 'col';
             } else {
+                colName.innerHTML = name;
+                row.appendChild(colName);
                 colValue.className = 'col';
             }
             colValue.innerHTML = value.toString().substring(0,16);

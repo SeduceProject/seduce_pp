@@ -243,6 +243,12 @@
     text-align: center;
 }
 
+.state-prop {
+    width: 24px;
+    height: 100%;
+    margin-right: 6px;
+    float: left;
+}
 /* Old classes: sort them to delete useless classes */
 .server-container {
     width: 100%;
