@@ -246,7 +246,7 @@ def mount_partition_post(node, cluster_desc, logger):
         return_code = stdout.channel.recv_exit_status()
         output = stdout.readlines()
         nb_files = int(output[-1].strip())
-        if nb_files < 5:
+        if nb_files < 2:
             logger.error("[%s] fs partition is not mounted" % server["name"])
             return False
         return True
