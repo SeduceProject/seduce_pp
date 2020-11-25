@@ -3,29 +3,68 @@ import logging
 
 user_initial_state = 'user_created'
 
+# Add the environment names to the 'environments' array to limit the process to specific environments
 process = {
-        'deployment': [
-            'boot_conf', 'turn_off', 'turn_on', 'ssh_nfs', 'env_copy', 'env_check', 
-            'delete_partition', 'create_partition', 'mount_partition', 'resize_partition',
-            'wait_resizing', 'system_conf', 'ssh_system', 'user_conf', 'user_script', 'deployed'
-        ],
-        'destroy': [
-            'destroying', 'turn_off', 'destroyed'
-        ],
-        'reboot': [
-            'turn_off', 'turn_on', 'coming_back'
-        ],
-        'boot_test': [
-            'boot_conf', 'turn_off', 'turn_on', 'ssh_nfs', 'booted'
-        ],
-        'save_env': [
-            'img_part', 'img_format', 'img_copy', 'img_copy_check', 'img_customize',
-            'img_compress', 'img_compress_check', 'upload', 'upload_check', 'deployed'
-        ]
+    'deploy': [
+        {
+            'environments': [],
+            'states': [
+                'boot_conf', 'turn_off', 'turn_on', 'ssh_nfs', 'env_copy', 'env_check', 
+                'delete_partition', 'create_partition', 'mount_partition', 'resize_partition',
+                'wait_resizing', 'system_conf', 'ssh_system', 'user_conf', 'user_script', 
+                'deployed'
+            ]
+        }
+    ],
+    'destroy': [
+        {
+            'environments': [],
+            'states': [
+                'destroying', 'turn_off', 'destroyed'
+            ]
+        }
+    ],
+    'reboot': [
+        {
+            'environments': [],
+            'states': [
+                'turn_off', 'turn_on', 'coming_back'
+            ]
+        }
+    ],
+    'boot_test': [
+        {
+            'environments': [],
+            'states': [
+                'boot_conf', 'turn_off', 'turn_on', 'ssh_nfs', 'booted'
+            ]
+        }
+    ],
+    'save_env': [
+        {
+            'environments': [],
+            'states': [
+                'img_part', 'img_format', 'img_copy', 'img_copy_check', 'img_customize',
+                'img_compress', 'img_compress_check', 'upload', 'upload_check', 'deployed'
+            ]
+        }
+    ]
 }
 
-# State names must not include '_exec' or '_post'
-# lost timeout must be greater then reboot before_reboot
+
+# Select the right list of process states
+def select_process(process_name, env_name):
+    if process_name in process:
+        for p in process[process_name]:
+            if len(p['environments']) == 0 or env_name in p['environments']:
+                return p['states']
+    return []
+
+
+# State names must NOT include '_exec' or '_post'
+# 'lost' timeouts must be greater then 'before_reboot' timeouts
+# 0: infinite timeouts
+# The states must be ordered according to the process values
 state_desc = {
     'boot_conf': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'turn_off': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },

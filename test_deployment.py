@@ -1,5 +1,5 @@
 from database.connector import open_session, close_session
-from database.states import process
+from database.states import select_process
 from database.tables import Deployment, User
 from datetime import datetime
 from lib.config_loader import get_cluster_desc
@@ -31,7 +31,7 @@ def destroy_test_deployment():
             Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').all()
     for d in deployments:
         d.process = 'destroy'
-        d.state = process['destroy'][0]
+        d.state = select_process('destroy', d.environment)[0]
         db_session.add(d)
     db_session.commit()
     destroyed = set()
@@ -85,7 +85,7 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, random_select=True, test_e
             new_deployment.process = "boot_test"
             new_deployment.state = "boot_conf"
         else:
-            new_deployment.process = "deployment"
+            new_deployment.process = "deploy"
             new_deployment.state = "boot_conf"
         new_deployment.environment = test_env
         new_deployment.node_name = node['name']

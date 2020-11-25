@@ -1,5 +1,5 @@
 from database.connector import create_tables, open_session, close_session
-from database.states import process, state_desc
+from database.states import select_process, state_desc
 from database.tables import Deployment
 from datetime import datetime
 from lib.config_loader import load_cluster_desc
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     for node in old_nodes:
         # Try to rescue lost nodes
         if node.state == "lost" and node.temp_info is not None:
-            node.process = "deployment"
+            node.process = "deploy"
             node.state = node.temp_info.replace("_post","")
             node.temp_info = None
         if node.state != "lost":
@@ -51,9 +51,13 @@ if __name__ == "__main__":
             if len(pending_nodes) > 0:
                 logger.info("## Nb. of pending nodes: %d" % len(pending_nodes))
             # Sort the nodes according the list of states
-            sorted_nodes = { key: [] for key in [item for state in process.values() for item in state ]}
+            sorted_nodes = { key: [] for key in state_desc.keys() }
             for node in pending_nodes:
-                sorted_nodes[node.state.replace("_exec", "").replace("_post","")].append(node)
+                node_state = node.state.replace("_exec", "").replace("_post","")
+                if node_state in sorted_nodes:
+                    sorted_nodes[node_state].append(node)
+                else:
+                    logger.warning("[%s] unknow state '%s'" % (node.node_name, node.state))
             # Execute the functions of the states
             for state in sorted_nodes:
                 for node in sorted_nodes[state]:
@@ -70,7 +74,7 @@ if __name__ == "__main__":
                         if state_fct.endswith("_exec") and state_desc[state]["post"]:
                             node.state = state_fct.replace("_exec", "_post")
                         else:
-                            process_list = process[node.process]
+                            process_list = select_process(node.process, node.environment)
                             # The exec_node_fct can change the state, compute the new value of the node state
                             node_state = node.state.replace("_exec", "").replace("_post","")
                             state_idx = process_list.index(node_state)
@@ -92,7 +96,7 @@ if __name__ == "__main__":
                                 # Remember the last state
                                 node.temp_info = node.state
                                 node.process = "reboot"
-                                node.state = process["reboot"][0]
+                                node.state = select_process("reboot", node.environment)[0]
                             else:
                                 do_lost = False
                                 logger.info("[%s] not ready since %d seconds" %(node.node_name, elapsedTime))

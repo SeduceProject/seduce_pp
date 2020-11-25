@@ -1,5 +1,5 @@
 from database.connector import open_session, close_session
-from database.states import process, use_env_ssh_user
+from database.states import select_process, use_env_ssh_user
 from database.tables import Deployment, User
 from glob import glob
 from lib.config_loader import get_cluster_desc, load_cluster_desc
@@ -389,7 +389,7 @@ def system_conf_exec(node, cluster_desc, logger):
             node.temp_info = "user_conf"
             # Turn off/on the node
             node.process = "reboot"
-            node.state = process["reboot"][0]
+            node.state = select_process("reboot", node.environment)[0]
             ret_val = False
         ssh.close()
         return ret_val
@@ -866,7 +866,7 @@ def coming_back_exec(node, cluster_desc, logger):
             ssh.connect(server["ip"], username="root", timeout=1.0)
         ssh.close()
         # Come back to the deployment process
-        node.process = "deployment"
+        node.process = "deploy"
         node.state = node.temp_info
         node.temp_info = None
         return True
