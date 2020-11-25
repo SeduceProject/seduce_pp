@@ -869,7 +869,8 @@ def coming_back_exec(node, cluster_desc, logger):
         node.process = "deploy"
         node.state = node.temp_info
         node.temp_info = None
-        return True
+        # Always return False to avoid rewriting the node.state property
+        return False
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         logger.warning("[%s] SSH connection failed" % server["name"])
     return False
