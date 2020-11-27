@@ -1,9 +1,0 @@
-{
-    "name": "NODENAME",
-    "id": "NODEID",
-    "port_number": NODEPORT,
-    "ip": "NODEIP",
-    "model": "RPI3B+",
-    "public_ip": "piNODEPORT.seduce.fr",
-    "public_port": "220NODEPORT"
-}

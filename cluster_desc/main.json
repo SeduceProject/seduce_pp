@@ -3,15 +3,12 @@
         "ip": "PIMASTERIP",
         "user": "root"
     },
-    "switch": {
-        "ip": "SWITCHIP",
-        "snmp_community": "SNMPCOMMUNITY",
-        "snmp_oid": "SNMPOID",
-        "snmp_oid_offset": SNMPOIDOFFSET
-    },
-    "email_signup": false,
+    "first_node_ip": "FIRSTNODEIP",
+    "email_signup": true,
     "email_filters": [
-        "@piseduce.fr"
+        "@mines-nantes.fr",
+        "@imt-atlantique.fr",
+        "@inria.fr"
     ],
     "comments": "WARNING: Do NOT forget the ending /",
     "env_cfg_dir": "/root/seduce_pp/cluster_desc/environments/",

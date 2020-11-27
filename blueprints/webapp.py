@@ -190,70 +190,6 @@ def build_env():
     return flask.redirect(flask.url_for("app.home"))
 
 
-@webapp_blueprint.route("/configuration/configure/", methods=["POST"])
-def configure():
-    """ deprecated: use the admin page to configure the PiSeduce cluster """
-    if len(glob('cluster_desc/nodes/node-*.json')) > 0:
-        return flask.redirect(flask.url_for("app.home"))
-    old_ip = flask.request.form.get("my_ip")
-    new_ip = flask.request.form.get("master_ip")
-    # For DHCP configuratin, the master ip field is disable (users can not edit it)
-    if new_ip is None:
-        new_ip = old_ip
-    dhcp_old = flask.request.form.get("dhcp_on")
-    dhcp_conf = flask.request.form.get("dhcp_conf")
-    switch_oid = flask.request.form.get("switch_oid")
-    # Compare dhcp values to know if there is a change
-    no_dhcp_change = (dhcp_conf is None and dhcp_old == 'False') or (dhcp_conf is not None and dhcp_old == 'True')
-    if old_ip == new_ip and no_dhcp_change:
-        # Generate the autoconf script
-        shutil.copy('autoconf/files/master-conf-script', 'config.sh')
-        cmd = "sed -i 's/GATEWAY_IP_CONF/%s/' config.sh" % flask.request.form.get("master_gateway")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/IFACE_CONF/%s/' config.sh" % flask.request.form.get("master_iface")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/MASTER_PORT_CONF/%s/' config.sh" % flask.request.form.get("master_port")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/SWITCH_IP_CONF/%s/' config.sh" % flask.request.form.get("switch_ip")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/NB_PORT_CONF/%s/' config.sh" % flask.request.form.get("nb_port")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/SNMP_COMMUNITY_NAME/%s/' config.sh" % flask.request.form.get("snmp_community")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        oid_offset = int(switch_oid[switch_oid.rindex('.') + 1:]) - 1
-        cmd = "sed -i 's/SNMP_OID_CONF_OFFSET/%d/' config.sh" % oid_offset
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/SNMP_OID_CONF/%s/' config.sh" % switch_oid[:switch_oid.rindex('.')]
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/NETWORK_IP_CONF/%s/' config.sh" % new_ip[:new_ip.rindex('.')]
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/INC_IP_CONF/%s/' config.sh" % flask.request.form.get("inc_ip")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/CHANGE_ME_ROOT/%s/' config.sh" % flask.request.form.get("root_pwd")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "sed -i 's/CHANGE_ME_USER/%s/' config.sh" % flask.request.form.get("user_pwd")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        # Configure the pifrontend database access
-        cmd = "sed -i 's/CHANGE_ME_USER/%s/' seducepp.conf" % flask.request.form.get("user_pwd")
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        cmd = "./config.sh &"
-        config_log = open('first_boot_log.txt', 'w')
-        process = subprocess.run(cmd, shell=True, stdout=config_log, stderr=config_log)
-    else:
-        # Change the IP configuration
-        if dhcp_conf is None:
-            shutil.copy('autoconf/files/dhcpcd.conf_static', '/etc/dhcpcd.conf')
-            cmd = "sed -i 's/PIMASTERIP/%s/' /etc/dhcpcd.conf" % new_ip
-            process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            cmd = "sed -i 's/GATEWAYIP/%s/' /etc/dhcpcd.conf" % flask.request.form.get("master_gateway")
-            process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        else:
-            shutil.copy('autoconf/files/dhcpcd.conf_dhcp', '/etc/dhcpcd.conf')
-        cmd = "reboot"
-        process = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return flask.redirect(flask.url_for("app.configuration"))
-
-
 @webapp_blueprint.route("/user/ssh_put/", methods=["POST"])
 @flask_login.login_required
 def ssh_put():
@@ -324,9 +260,3 @@ def admin():
 def add_switch():
     """ Display the form to add a new switch to the infrastructure """
     return flask.render_template("form_switch.html.jinja2")
-
-
-@webapp_blueprint.route("/configuration")
-def configuration():
-    """ Deprecated: display the log of the configure action described below """
-    return flask.render_template("first_boot_exec.html.jinja2")

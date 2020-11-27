@@ -11,7 +11,6 @@ apt install pv vim
 ```
 mkdir -p /nfs/raspi
 rsync -xa --progress --exclude /nfs / /nfs/raspi
-cat /root/.ssh/id_rsa.pub > /nfs/raspi/root/.ssh/authorized_keys
 cd /nfs/raspi
 mount --bind /dev dev
 mount --bind /sys sys
@@ -24,8 +23,19 @@ ssh-keygen
 mkdir /root/boot_dir /root/fs_dir
 echo 'nfspi' > /etc/hostname
 exit
-cat /nfs/raspi/root/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
 umount dev sys proc
+```
+
+### Copy SSH keys
+```
+ssh-keygen
+cat .ssh/id_rsa.pub > /nfs/raspi/root/.ssh/authorized_key
+cat /nfs/raspi/root/.ssh/id_rsa.pub > .ssh/authorized_keys
+```
+
+### Change password of the 'pi' user
+```
+passwd pi
 ```
 
 ### Configure the PiMaster as the network gateway
@@ -42,12 +52,19 @@ apt install dnsmasq git libffi-dev mariadb-client mariadb-server nfs-kernel-serv
 
 ### Prepare PXE boot
 * Create the TFTP directory: `mkdir /tftpboot`
-* Extract the rpiboot files: `tar xf tftpboot_init.tar.gz`
-* Copy the files to the tftpboot folder
+* Copy the boot files to the TFTP directory
 ```
-cp -r tftpboot_init/* /tftpboot/
+cp -r /boot/ tftpboot/rpiboot_uboot
+rm /tftpboot/rpiboot_uboot/bootcode.bin
 ```
-* Edit `/tftpboot/rpiboot_uboot/cmdline.txt` to configure the NFS boot:
+* Download the `bootcode.bin` file and the `cmdline.txt` template
+```
+cd /tftpboot/
+wget bootcode.bin
+cd rpiboot_uboot/
+wget cmdline.txt
+```
+* Edit the `cmdline.txt` file to replace the IP by your IP address
 ```
 nfsroot=192.168.1.62:/nfs/raspi,udp,v3 rw ip=dhcp root=/dev/nfs rootwait console=tty1 console=ttyAMA0,115200
 ```
@@ -102,7 +119,7 @@ GRANT ALL PRIVILEGES ON piseduce.* TO 'pipi'@'localhost';
 ### Configure seduce_pp
 * Clone the repository: `git clone https://github.com/remyimt/seduce_pp`
 * Download the environment images to /root/environements/
-* Edit lib/config/cluster_config.py
+* Write the `cluster_desc/environments/env_desc.json` file
 
 ### Create the systemD services
 * Configure the user in both `admin/tasks.service` and `admin/frontend.service`

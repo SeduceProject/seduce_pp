@@ -1,0 +1,2 @@
+# Environment configuration
+* One file environment_name.json per environment
