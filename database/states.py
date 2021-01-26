@@ -77,7 +77,7 @@ state_desc = {
     'mount_partition': { 'exec': True, 'post': True, 'before_reboot': 0, 'lost': 30 },
     'resize_partition': { 'exec': True, 'post': True, 'before_reboot': 0, 'lost': 30 },
     'wait_resizing': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 90 },
-    'system_conf': { 'exec': True, 'post': True, 'before_reboot': 0, 'lost': 30 },
+    'system_conf': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'ssh_system': { 'exec': False, 'post': True, 'before_reboot': 45, 'lost': 60 },
     'user_conf': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'user_script': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },

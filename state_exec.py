@@ -318,7 +318,10 @@ def system_conf_exec(node, cluster_desc, logger):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server["ip"], username="root", timeout=1.0)
+        ssh.connect(server["ip"], username="root",
+            timeout=1.0,
+            banner_timeout=1.0,
+            auth_timeout=1.0)
         if environment["type"] == "default":
             if environment["name"].startswith("ubuntu"):
                 # Set the password of the 'ubuntu' user
@@ -386,40 +389,45 @@ def system_conf_exec(node, cluster_desc, logger):
         if return_code != 0:
             logger.error("[%s] soft reboot failure, hard rebooting" % server["name"]);
             # Set the state after the reboot
-            node.temp_info = "user_conf"
+            node.temp_info = "ssh_system"
             # Turn off/on the node
             node.process = "reboot"
             node.state = select_process("reboot", node.environment)[0]
+            # Do not load the next state
             ret_val = False
         ssh.close()
+        # Check that the node is turned off
+        if ret_val:
+            ret = 0
+            while ret == 0:
+                logger.info("[%s] Waiting lost connection..." % server["name"])
+                time.sleep(1)
+                ret = os.system("ping -W 1 -c 1 %s" % server["ip"])
+            return ret != 0
         return ret_val
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+        logger.exception("Debuging")
         logger.warning("[%s] SSH connection failed" % server["name"])
     return False
 
 
-def system_conf_post(node, cluster_desc, logger):
-    server = cluster_desc["nodes"][node.node_name]
-    ret = os.system("ping -c 1 %s" % server["ip"])
-    return ret != 0
-
-
 def ssh_system_post(node, cluster_desc, logger):
     server = cluster_desc["nodes"][node.node_name]
+    environment = cluster_desc["environments"][node.environment]
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server["ip"], username="root", timeout=1.0)
+        ssh.connect(server["ip"], username=environment["ssh_user"], timeout=1.0)
         # Check the booted system is the NFS system
         (stdin, stdout, stderr) = ssh.exec_command("cat /etc/hostname")
         return_code = stdout.channel.recv_exit_status()
         myname = stdout.readlines()[0].strip()
         ssh.close()
-        if myname.startswith("node-"):
-            return True
-        else:
+        if myname == "nfspi":
             logger.error("[%s] fail to detect the OS filesystem: wrong hostname '%s'" % (server["name"], myname))
             return False
+        else:
+            return True
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
         logger.warning("[%s] SSH connection failed" % server["name"])
     return False
@@ -432,7 +440,10 @@ def user_conf_exec(node, cluster_desc, logger):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server["ip"], username=environment["ssh_user"], timeout=1.0)
+        ssh.connect(server["ip"], username=environment["ssh_user"],
+            timeout=1.0,
+            banner_timeout=1.0,
+            auth_timeout=1.0)
         (stdin, stdout, stderr) = ssh.exec_command("cat /etc/hostname")
         return_code = stdout.channel.recv_exit_status()
         myname = stdout.readlines()[0].strip()
@@ -478,7 +489,10 @@ def user_script_exec(node, cluster_desc, logger):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server["ip"], username=environment["ssh_user"], timeout=1.0)
+        ssh.connect(server["ip"], username=environment["ssh_user"],
+            timeout=1.0,
+            banner_timeout=1.0,
+            auth_timeout=1.0)
         finish_init = True
         # Implement a mecanism that execute the init script
         if node.init_script is not None and len(node.init_script) > 0:
