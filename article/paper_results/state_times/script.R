@@ -1,0 +1,7 @@
+sink("states.Rout")
+pdf("20_states.pdf")
+exp_data <- read.table("20_states.txt", header=T, sep=";")
+cols = rainbow(3)
+barplot(as.matrix(exp_data), main="Experiments", ylab="Time (s)", beside=TRUE,cex.names=0.7, col=rainbow(3))
+legend("topright", c("VM", "RPI4", "RPI3"), cex=1, bty="n", fill=rainbow(3))
+dev.off()
