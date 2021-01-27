@@ -113,6 +113,7 @@ def ask_redeploy(n_name):
     # Verify the node belongs to my deployments
     my_deployment = db_session.query(Deployment).filter_by(user_id = db_user.id,
             node_name = n_name).filter(Deployment.state != "destroyed").first()
+    my_deployment.process = "deploy"
     my_deployment.state = select_process("deploy", my_deployment.environment)[0]
     close_session(db_session)
     return flask.redirect(flask.url_for("app.home"))
