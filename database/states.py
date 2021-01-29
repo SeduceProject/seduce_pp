@@ -11,8 +11,8 @@ process = {
             'states': [
                 'boot_conf', 'turn_off', 'turn_on', 'ssh_nfs', 'env_copy', 'env_check', 
                 'delete_partition', 'create_partition', 'mount_partition', 'resize_partition',
-                'wait_resizing', 'system_conf', 'ssh_system', 'user_conf', 'user_script', 
-                'deployed'
+                'wait_resizing', 'system_conf', 'boot_files', 'ssh_system', 'system_update',
+                'boot_update', 'user_conf', 'user_script', 'deployed'
             ]
         }
     ],
@@ -78,7 +78,10 @@ state_desc = {
     'resize_partition': { 'exec': True, 'post': True, 'before_reboot': 0, 'lost': 30 },
     'wait_resizing': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 90 },
     'system_conf': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
-    'ssh_system': { 'exec': False, 'post': True, 'before_reboot': 45, 'lost': 60 },
+    'boot_files': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
+    'ssh_system': { 'exec': False, 'post': True, 'before_reboot': 150, 'lost': 180 },
+    'system_update': { 'exec': True, 'post': True, 'before_reboot': 0, 'lost': 360 },
+    'boot_update': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'user_conf': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'user_script': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'deployed': { 'exec': False, 'post': False, 'before_reboot': 0, 'lost': 0 },

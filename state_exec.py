@@ -137,7 +137,7 @@ def env_check_exec(node, cluster_desc, logger):
                 updated = datetime.datetime.strptime(str(node.updated_at), "%Y-%m-%d %H:%M:%S")
                 elapsedTime = (datetime.datetime.now() - updated).total_seconds()
                 # Compute the progress value with an assumed transfert rate of 8 MB/s
-                percent = elapsedTime * 8000000 * 100 / environment["img_size"]
+                percent = round(elapsedTime * 8000000 * 100 / environment["img_size"])
             else:
                 percent = output[0].strip()
             node.temp_info = percent
@@ -370,22 +370,38 @@ def system_conf_exec(node, cluster_desc, logger):
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
         else:
-            if environment["name"].startswith("raspbian"):
+            if environment["name"].startswith("raspbian") or environment["name"].startswith("ubuntu"):
                 # Set the hostname to modify the bash prompt
                 cmd = "echo '%s' > fs_dir/etc/hostname" % server["name"]
                 (stdin, stdout, stderr) = ssh.exec_command(cmd)
                 return_code = stdout.channel.recv_exit_status()
-        # Copy boot files to the tftp folder
-        tftpboot_node_folder = "/tftpboot/%s" % server["id"]
-        # Delete the existing tftp directory
-        shutil.rmtree(tftpboot_node_folder)
-        os.mkdir(tftpboot_node_folder)
-        cmd = "scp -o 'StrictHostKeyChecking no' -r root@%s:boot_dir/* %s" % (server["ip"], tftpboot_node_folder)
-        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        # Reboot to initialize the operating system
+    except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+        logger.warning("[%s] SSH connection failed" % server["name"])
+    return True
+
+
+def boot_files_exec(node, cluster_desc, logger):
+    server = cluster_desc["nodes"][node.node_name]
+    environment = cluster_desc["environments"][node.environment]
+    # Copy boot files to the tftp directory
+    tftpboot_node_folder = "/tftpboot/%s" % server["id"]
+    # Delete the existing tftp directory
+    shutil.rmtree(tftpboot_node_folder)
+    # Create an empty tftp directory
+    os.mkdir(tftpboot_node_folder)
+    cmd = "scp -o 'StrictHostKeyChecking no' -r root@%s:boot_dir/* %s" % (server["ip"], tftpboot_node_folder)
+    subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Reboot to initialize the operating system
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(server["ip"], username="root",
+            timeout=1.0,
+            banner_timeout=1.0,
+            auth_timeout=1.0)
         (stdin, stdout, stderr) = ssh.exec_command("reboot")
         return_code = stdout.channel.recv_exit_status()
-        ret_val = True
+        soft_reboot = True
         if return_code != 0:
             logger.error("[%s] soft reboot failure, hard rebooting" % server["name"]);
             # Set the state after the reboot
@@ -394,21 +410,21 @@ def system_conf_exec(node, cluster_desc, logger):
             node.process = "reboot"
             node.state = select_process("reboot", node.environment)[0]
             # Do not load the next state
-            ret_val = False
+            soft_reboot = False
         ssh.close()
-        # Check that the node is turned off
-        if ret_val:
+        if soft_reboot:
+            # Check that the node is turned off
             ret = 0
             while ret == 0:
                 logger.info("[%s] Waiting lost connection..." % server["name"])
                 time.sleep(1)
                 ret = os.system("ping -W 1 -c 1 %s" % server["ip"])
-            return ret != 0
-        return ret_val
+            return True
+        else:
+            return soft_reboot
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-        logger.exception("Debuging")
         logger.warning("[%s] SSH connection failed" % server["name"])
-    return False
+        return False
 
 
 def ssh_system_post(node, cluster_desc, logger):
@@ -433,6 +449,68 @@ def ssh_system_post(node, cluster_desc, logger):
     return False
 
 
+def system_update_exec(node, cluster_desc, logger):
+    server = cluster_desc["nodes"][node.node_name]
+    environment = cluster_desc["environments"][node.environment]
+    if environment["name"].startswith("raspbian") or environment["name"].startswith("ubuntu"):
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server["ip"], username=environment["ssh_user"],
+                timeout=1.0,
+                banner_timeout=1.0,
+                auth_timeout=1.0)
+            cmd = "nohup chroot fs_dir bash -c 'apt update && apt -y dist-upgrade' &> /dev/null &"
+            (stdin, stdout, stderr) = ssh.exec_command(cmd)
+            return_code = stdout.channel.recv_exit_status()
+            ssh.close()
+            return True
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            logger.warning("[%s] SSH connection failed" % server["name"])
+        return False
+    else:
+        return True
+
+
+def system_update_post(node, cluster_desc, logger):
+    server = cluster_desc["nodes"][node.node_name]
+    environment = cluster_desc["environments"][node.environment]
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(server["ip"], username=environment["ssh_user"], 
+            timeout=1.0,
+            banner_timeout=1.0,
+            auth_timeout=1.0)
+        ret_fct = True
+        if ps_ssh(ssh, "'update\|upgrade'") != 0:
+            ret_fct = False
+        ssh.close()
+        return ret_fct
+    except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+        logger.warning("[%s] SSH connection failed" % server["name"])
+    return False
+
+
+def boot_update_exec(node, cluster_desc, logger):
+    server = cluster_desc["nodes"][node.node_name]
+    environment = cluster_desc["environments"][node.environment]
+    # Copy boot files to the tftp directory
+    tftpboot_node_folder = "/tftpboot/%s" % server["id"]
+    # Delete the existing tftp directory
+    shutil.rmtree(tftpboot_node_folder)
+    # Create an empty tftp directory
+    os.mkdir(tftpboot_node_folder)
+    cmd = ""
+    if environment["name"].startswith("ubuntu"):
+        cmd = "scp -o 'StrictHostKeyChecking no' -r root@%s:/boot/firmware/* %s" % (server["ip"], tftpboot_node_folder)
+    if environment["name"].startswith("raspbian"):
+        cmd = "scp -o 'StrictHostKeyChecking no' -r root@%s:/boot/* %s" % (server["ip"], tftpboot_node_folder)
+    if len(cmd) > 0:
+        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return True
+
+
 def user_conf_exec(node, cluster_desc, logger):
     server = cluster_desc["nodes"][node.node_name]
     environment = cluster_desc["environments"][node.environment]
@@ -444,38 +522,31 @@ def user_conf_exec(node, cluster_desc, logger):
             timeout=1.0,
             banner_timeout=1.0,
             auth_timeout=1.0)
-        (stdin, stdout, stderr) = ssh.exec_command("cat /etc/hostname")
-        return_code = stdout.channel.recv_exit_status()
-        myname = stdout.readlines()[0].strip()
-        if myname == "nfspi":
-            logger.error("[%s] hangs on the NFS filesystem" % server["name"])
-            ret_val = False
-        else:
-            # Get the user SSH key from the DB
-            db_session = open_session()
-            db_user = db_session.query(User).filter_by(id = node.user_id).first()
-            my_ssh_keys = ""
-            if db_user.ssh_key is not None and len(db_user.ssh_key) > 0:
-                my_ssh_keys = "\n%s" % db_user.ssh_key
-            if node.public_key is not None and len(node.public_key) > 0:
-                my_ssh_keys = "%s\n%s" % (my_ssh_keys, node.public_key)
-            if len(my_ssh_keys) > 0:
-                # Add the public key of the user
-                cmd = "echo '%s' >> .ssh/authorized_keys" % my_ssh_keys
-                (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                return_code = stdout.channel.recv_exit_status()
-            if node.environment == "tiny_core":
-                # Change the 'tc' user password
-                cmd = "echo -e '%s\n%s' | sudo passwd tc; filetool.sh -b" % (
-                        node.system_pwd, node.system_pwd)
-                (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                return_code = stdout.channel.recv_exit_status()
-            if node.environment.startswith("raspbian"):
-                # Change the 'pi' user password
-                cmd = "echo -e '%s\n%s' | passwd pi" % (node.system_pwd, node.system_pwd)
-                (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                return_code = stdout.channel.recv_exit_status()
-            close_session(db_session)
+        # Get the user SSH key from the DB
+        db_session = open_session()
+        db_user = db_session.query(User).filter_by(id = node.user_id).first()
+        my_ssh_keys = ""
+        if db_user.ssh_key is not None and len(db_user.ssh_key) > 0:
+            my_ssh_keys = "\n%s" % db_user.ssh_key
+        if node.public_key is not None and len(node.public_key) > 0:
+            my_ssh_keys = "%s\n%s" % (my_ssh_keys, node.public_key)
+        if len(my_ssh_keys) > 0:
+            # Add the public key of the user
+            cmd = "echo '%s' >> .ssh/authorized_keys" % my_ssh_keys
+            (stdin, stdout, stderr) = ssh.exec_command(cmd)
+            return_code = stdout.channel.recv_exit_status()
+        if node.environment == "tiny_core":
+            # Change the 'tc' user password
+            cmd = "echo -e '%s\n%s' | sudo passwd tc; filetool.sh -b" % (
+                    node.system_pwd, node.system_pwd)
+            (stdin, stdout, stderr) = ssh.exec_command(cmd)
+            return_code = stdout.channel.recv_exit_status()
+        if node.environment.startswith("raspbian"):
+            # Change the 'pi' user password
+            cmd = "echo -e '%s\n%s' | passwd pi" % (node.system_pwd, node.system_pwd)
+            (stdin, stdout, stderr) = ssh.exec_command(cmd)
+            return_code = stdout.channel.recv_exit_status()
+        close_session(db_session)
         ssh.close()
         return ret_val
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -898,26 +969,41 @@ def destroying_exec(node, cluster_desc, logger):
         environment = cluster_desc["environments"][node.environment]
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            # Try to connect to the deployed environment
-            ssh.connect(server["ip"], username=environment["ssh_user"], timeout=1.0)
-            (stdin, stdout, stderr) = ssh.exec_command("rm -f /boot/bootcode.bin")
-            return_code = stdout.channel.recv_exit_status()
-            ssh.close()
-        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-            logger.info("[%s] can not connect to the deployed environment" %
-                    server["name"])
+        if server["model"] == "RPI3Bplus":
+            # Delete the bootcode.bin file
             try:
-                # Try to connect to the nfs environment
-                ssh.connect(server["ip"], username="root", timeout=1.0)
-                cmd = "mount /dev/mmcblk0p1 boot_dir"
-                (stdin, stdout, stderr) = ssh.exec_command(cmd)
-                return_code = stdout.channel.recv_exit_status()
-                (stdin, stdout, stderr) = ssh.exec_command("rm -f boot_dir/bootcode.bin")
+                # Try to connect to the deployed environment
+                ssh.connect(server["ip"], username=environment["ssh_user"], timeout=1.0)
+                (stdin, stdout, stderr) = ssh.exec_command("rm -f /boot/bootcode.bin")
                 return_code = stdout.channel.recv_exit_status()
                 ssh.close()
             except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
-                logger.info("[%s] can not connect to the NFS environment" % server["name"])
+                logger.info("[%s] can not connect to the deployed environment" % server["name"])
+                try:
+                    # Try to connect to the nfs environment
+                    ssh.connect(server["ip"], username="root", timeout=1.0)
+                    cmd = "mount /dev/mmcblk0p1 boot_dir"
+                    (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                    return_code = stdout.channel.recv_exit_status()
+                    (stdin, stdout, stderr) = ssh.exec_command("rm -f boot_dir/bootcode.bin")
+                    return_code = stdout.channel.recv_exit_status()
+                    ssh.close()
+                except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+                    logger.info("[%s] can not connect to the NFS environment" % server["name"])
+        if server["model"] == "RPI4B" and environment["name"].startswith("raspbian"):
+            # Check the booloader configuration (netboot)
+            try:
+                # Try to connect to the deployed environment
+                ssh.connect(server["ip"], username=environment["ssh_user"], timeout=1.0)
+                (stdin, stdout, stderr) = ssh.exec_command("rpi-eeprom-config | grep BOOT_ORDER")
+                return_code = stdout.channel.recv_exit_status()
+                output = stdout.readlines()
+                if len(output) > 0 and output[0].strip() != "BOOT_ORDER=0x2":
+                    logger.error("[%s] wrong boot order value. Please update the EEPROM config!")
+                    return False
+                ssh.close()
+            except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+                logger.info("[%s] can not connect to the deployed environment" % server["name"])
     # Delete the tftpboot folder
     tftpboot_node_folder = "/tftpboot/%s" % server["id"]
     if os.path.isdir(tftpboot_node_folder):

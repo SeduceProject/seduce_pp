@@ -471,8 +471,20 @@
     background-color: #00fa9a;
 }
 
+.boot_files {
+    background-color: #87cefa;
+}
+
 .ssh_system {
     background-color: #00ffff;
+}
+
+.system_update {
+    background-color: #ffe4b5;
+}
+
+.boot_update {
+    background-color: #dc143c;
 }
 
 .user_conf {

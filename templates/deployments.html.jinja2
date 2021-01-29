@@ -28,7 +28,10 @@
                             <div class="legend-color resize_partition" title="resize_partition"></div>
                             <div class="legend-color wait_resizing" title="wait_resizing"></div>
                             <div class="legend-color system_conf" title="system_conf"></div>
+                            <div class="legend-color boot_files" title="boot_files"></div>
                             <div class="legend-color ssh_system" title="ssh_system"></div>
+                            <div class="legend-color system_update" title="system_update"></div>
+                            <div class="legend-color boot_update" title="boot_update"></div>
                             <div class="legend-color user_conf" title="user_conf"></div>
                             <div class="legend-color user_script" title="user_script"></div>
                             <div class="legend-color deployed" title="deployed"></div>
@@ -366,7 +369,7 @@
             colName.className = 'col';
             var colValue = document.createElement('div');
             if(name == 'state') {
-                node_state = value.replace('_exec', '').replace('_post', '')
+                node_state = value.replace('_exec', '').replace('_post', '');
                 colName.innerHTML = 'state <div class="state-prop ' + node_state + '"></div>';
                 row.appendChild(colName);
                 colValue.id = 'node-state';
@@ -376,7 +379,7 @@
                 row.appendChild(colName);
                 colValue.className = 'col';
             }
-            colValue.innerHTML = value.toString().substring(0,16);
+            colValue.innerHTML = value.toString().substring(0,14);
             row.appendChild(colValue);
             return row;
         }

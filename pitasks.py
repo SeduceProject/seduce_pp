@@ -77,9 +77,14 @@ if __name__ == "__main__":
                             process_list = select_process(node.process, node.environment)
                             # The exec_node_fct can change the state, compute the new value of the node state
                             node_state = node.state.replace("_exec", "").replace("_post","")
-                            state_idx = process_list.index(node_state)
-                            if state_idx + 1 < len(process_list):
-                                node.state = process_list[state_idx + 1]
+                            if node_state in process_list:
+                                state_idx = process_list.index(node_state)
+                                if state_idx + 1 < len(process_list):
+                                    node.state = process_list[state_idx + 1]
+                            else:
+                                logger.error("[%s] Wrong process. State '%s' does not exist in the '%s' process" % (
+                                    node.node_name, node_state, node.process))
+                                node.state = "lost"
                         node.updated_at = datetime.now()
                         logger.info("[%s] change the state to '%s'" % (node.node_name, node.state))
                     else:
