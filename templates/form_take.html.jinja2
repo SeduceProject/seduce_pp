@@ -29,6 +29,10 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label>Environment</label>
+                <div class="d-inline ml-os-update">
+                    <label>Update the OS:</label>
+                    <input type="checkbox" id="os_update" name="os_update" checked>
+                </div>
                 <select class="custom-select d-block w-100" id="environment" name="environment" required>
                     {% for environment in environments %}
                     <option value="{{ environment.name }}">{{ environment.name }}</option>

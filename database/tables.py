@@ -41,6 +41,7 @@ class Deployment(Base):
     state = Column(String(120))
     process = Column(Text)
     environment = Column(Text)
+    os_update = Column(Boolean)
     node_name = Column(Text)
     name = Column(Text)
     duration = Column(Text)

@@ -249,6 +249,13 @@
     margin-right: 6px;
     float: left;
 }
+
+/* form-take (deployment configuration) */
+.ml-os-update {
+    margin-left: 283px;
+}
+
+
 /* Old classes: sort them to delete useless classes */
 .server-container {
     width: 100%;

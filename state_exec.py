@@ -450,6 +450,10 @@ def ssh_system_post(node, cluster_desc, logger):
 
 
 def system_update_exec(node, cluster_desc, logger):
+    # Do not update the operating system
+    if not node.os_update:
+        return True
+    # Update the operating system
     server = cluster_desc["nodes"][node.node_name]
     environment = cluster_desc["environments"][node.environment]
     if environment["name"].startswith("raspbian") or environment["name"].startswith("ubuntu"):
@@ -460,7 +464,7 @@ def system_update_exec(node, cluster_desc, logger):
                 timeout=1.0,
                 banner_timeout=1.0,
                 auth_timeout=1.0)
-            cmd = "nohup chroot fs_dir bash -c 'apt update && apt -y dist-upgrade' &> /dev/null &"
+            cmd = "nohup bash -c 'apt update && apt -y dist-upgrade' &> /dev/null &"
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
             ssh.close()
@@ -473,6 +477,10 @@ def system_update_exec(node, cluster_desc, logger):
 
 
 def system_update_post(node, cluster_desc, logger):
+    # Do not update the operating system
+    if not node.os_update:
+        return True
+    # Update the operating system
     server = cluster_desc["nodes"][node.node_name]
     environment = cluster_desc["environments"][node.environment]
     try:
@@ -493,6 +501,10 @@ def system_update_post(node, cluster_desc, logger):
 
 
 def boot_update_exec(node, cluster_desc, logger):
+    # The operating system is not updated => do not update the boot files
+    if not node.os_update:
+        return True
+    # Update the operating system
     server = cluster_desc["nodes"][node.node_name]
     environment = cluster_desc["environments"][node.environment]
     # Copy boot files to the tftp directory

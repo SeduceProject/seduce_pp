@@ -45,6 +45,7 @@ if __name__ == "__main__":
             db_session = open_session()
             pending_nodes = db_session.query(Deployment).filter(
                     Deployment.state !="destroyed").filter(
+                    Deployment.state !="initialized").filter(
                     Deployment.state !="deployed").filter(
                     Deployment.state !="lost").filter(
                     Deployment.state !="booted").all()

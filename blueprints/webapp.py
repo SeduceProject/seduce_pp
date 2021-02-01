@@ -65,6 +65,7 @@ def process_take():
         else:
             d.system_pwd = new_password()
         d.environment = flask.request.form.get("environment")
+        d.os_update = flask.request.form.get("os_update") == "on"
         d.duration = flask.request.form.get("duration_text")
         d.system_size = flask.request.form.get("more_space")
         d.start_date = datetime.datetime.now()
