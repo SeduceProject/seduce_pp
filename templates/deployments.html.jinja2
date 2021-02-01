@@ -447,8 +447,13 @@
                         var colValue = document.createElement('div');
                         colValue.className = 'col';
                         if(myNode.web == true) {
-                            colValue.innerHTML = '<a href="https://pi' +
-                                myNode.number + '.seduce.fr" target="_blank">pi' + myNode.number + '.seduce.fr</a>';
+                            if(myNode.number < 10) {
+                                colValue.innerHTML = '<a href="https://pi0' +
+                                    myNode.number + '.seduce.fr" target="_blank">pi0' + myNode.number + '.seduce.fr</a>';
+                            } else {
+                                colValue.innerHTML = '<a href="https://pi' +
+                                    myNode.number + '.seduce.fr" target="_blank">pi' + myNode.number + '.seduce.fr</a>';
+                            }
                         } else {
                             colValue.innerHTML = 'None';
                         }
