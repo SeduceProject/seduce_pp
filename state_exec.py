@@ -450,8 +450,8 @@ def ssh_system_post(node, cluster_desc, logger):
 
 
 def system_update_exec(node, cluster_desc, logger):
-    # Do not update the operating system
     if not node.os_update:
+        # Do not update the operating system
         return True
     # Update the operating system
     server = cluster_desc["nodes"][node.node_name]
@@ -464,11 +464,16 @@ def system_update_exec(node, cluster_desc, logger):
                 timeout=1.0,
                 banner_timeout=1.0,
                 auth_timeout=1.0)
-            cmd = "nohup bash -c 'apt update && apt -y dist-upgrade' &> /dev/null &"
+            cmd = "apt-get update"
             (stdin, stdout, stderr) = ssh.exec_command(cmd)
             return_code = stdout.channel.recv_exit_status()
+            ret_fct = return_code == 0
+            if ret_fct:
+                cmd = "bash -c 'apt -y dist-upgrade &> /dev/null' &"
+                (stdin, stdout, stderr) = ssh.exec_command(cmd)
+                return_code = stdout.channel.recv_exit_status()
             ssh.close()
-            return True
+            return ret_fct
         except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
             logger.warning("[%s] SSH connection failed" % server["name"])
         return False
@@ -477,8 +482,8 @@ def system_update_exec(node, cluster_desc, logger):
 
 
 def system_update_post(node, cluster_desc, logger):
-    # Do not update the operating system
     if not node.os_update:
+        # Do not update the operating system
         return True
     # Update the operating system
     server = cluster_desc["nodes"][node.node_name]
@@ -493,6 +498,10 @@ def system_update_post(node, cluster_desc, logger):
         ret_fct = True
         if ps_ssh(ssh, "'update\|upgrade'") != 0:
             ret_fct = False
+        else:
+            cmd = "rm /boot/bootcode.bin"
+            (stdin, stdout, stderr) = ssh.exec_command(cmd)
+            return_code = stdout.channel.recv_exit_status()
         ssh.close()
         return ret_fct
     except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
@@ -501,8 +510,8 @@ def system_update_post(node, cluster_desc, logger):
 
 
 def boot_update_exec(node, cluster_desc, logger):
-    # The operating system is not updated => do not update the boot files
     if not node.os_update:
+        # The operating system is not updated => do not update the boot files
         return True
     # Update the operating system
     server = cluster_desc["nodes"][node.node_name]
@@ -520,7 +529,21 @@ def boot_update_exec(node, cluster_desc, logger):
         cmd = "scp -o 'StrictHostKeyChecking no' -r root@%s:/boot/* %s" % (server["ip"], tftpboot_node_folder)
     if len(cmd) > 0:
         subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return True
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(server["ip"], username=environment["ssh_user"],
+                timeout=1.0,
+                banner_timeout=1.0,
+                auth_timeout=1.0)
+            cmd = "reboot"
+            (stdin, stdout, stderr) = ssh.exec_command(cmd)
+            return_code = stdout.channel.recv_exit_status()
+            ssh.close()
+            return True
+        except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
+            logger.warning("[%s] SSH connection failed" % server["name"])
+    return False
 
 
 def user_conf_exec(node, cluster_desc, logger):
@@ -1007,12 +1030,19 @@ def destroying_exec(node, cluster_desc, logger):
             try:
                 # Try to connect to the deployed environment
                 ssh.connect(server["ip"], username=environment["ssh_user"], timeout=1.0)
-                (stdin, stdout, stderr) = ssh.exec_command("rpi-eeprom-config | grep BOOT_ORDER")
+                # Check the booted system is the NFS system
+                (stdin, stdout, stderr) = ssh.exec_command("cat /etc/hostname")
                 return_code = stdout.channel.recv_exit_status()
-                output = stdout.readlines()
-                if len(output) > 0 and output[0].strip() != "BOOT_ORDER=0x2":
-                    logger.error("[%s] wrong boot order value. Please update the EEPROM config!")
-                    return False
+                myname = stdout.readlines()[0].strip()
+                if myname != "nfspi":
+                    (stdin, stdout, stderr) = ssh.exec_command("rpi-eeprom-config | grep BOOT_ORDER")
+                    return_code = stdout.channel.recv_exit_status()
+                    output = stdout.readlines()
+                    if len(output) > 0 and output[0].strip() != "BOOT_ORDER=0x2":
+                        logger.error("[%s] wrong boot order value. Please update the EEPROM config!" % server["name"])
+                        return False
+                else:
+                    logger.info("[%s] Destroy a node running on the NFS system." % server["name"])
                 ssh.close()
             except (BadHostKeyException, AuthenticationException, SSHException, socket.error) as e:
                 logger.info("[%s] can not connect to the deployed environment" % server["name"])

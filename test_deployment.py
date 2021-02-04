@@ -6,7 +6,7 @@ from lib.config_loader import get_cluster_desc
 import json, logging, logging.config, os, random, subprocess, sys, time
 
 
-test_email = 'test@imt-atlantique.fr'
+email_account = 'remy.pottier@imt-atlantique.fr'
 test_deployment_name = 'automatic testing'
 pubkey_file = 'libtest/ssh_key/test-piseduce.pub'
 result_dir = 'libtest/json_test'
@@ -19,16 +19,17 @@ logger = logging.getLogger("TESTING")
 
 def destroy_test_deployment():
     db_session = open_session()
-    test_user = db_session.query(User).filter(User.email == test_email).all()
+    test_user = db_session.query(User).filter(User.email == email_account).all()
     if len(test_user) == 0:
-        raise Exception("No test user in the database. Please create it:\n"
-                "INSERT INTO "
-                "user(email, firstname, lastname, _password, email_confirmed, user_authorized, is_admin) "
-                "VALUES('%s', 'Test','Test', "
-                "'$2b$12$PJCxhXp6vwLkEm8y2hctVudY/EQCfq2njV0SuFbglZoJMar0FDm6i', 1, 1, 0);" % test_email)
+        raise Exception("No account with the email '%s'. Please select another account!" % email_account)
+    if len(test_user) > 1:
+        raise Exception("Too many accounts with the email '%s'. Please select another account!" % email_account)
     test_user_id = test_user[0].id
-    deployments = db_session.query(Deployment).filter(
-            Deployment.user_id == test_user_id).filter(Deployment.state != 'destroyed').all()
+    deployments = db_session.query(Deployment
+            ).filter(Deployment.user_id == test_user_id
+            ).filter(Deployment.state != 'destroyed'
+            ).filter(Deployment.name == test_deployment_name
+            ).all()
     for d in deployments:
         d.process = 'destroy'
         d.state = select_process('destroy', d.environment)[0]
@@ -88,9 +89,11 @@ def reserve_free_nodes(test_user_id, stats, nb_nodes, random_select=True, test_e
             new_deployment.process = "deploy"
             new_deployment.state = "boot_conf"
         new_deployment.environment = test_env
+        # Update the operating system
+        new_deployment.os_update = 1
         new_deployment.node_name = node['name']
         new_deployment.name = test_deployment_name
-        new_deployment.system_size = 200
+        new_deployment.system_size = 8
         new_deployment.system_pwd = "superC9PWD"
         new_deployment.public_key = process.stdout
         new_deployment.init_script = node['script']
@@ -118,8 +121,8 @@ def state_register(dep, stats):
     if dep.updated_at is not None:
         last_change = datetime.strptime(str(dep.updated_at), '%Y-%m-%d %H:%M:%S')
         from_change = (datetime.now() - last_change).total_seconds()
-        if dep.state == 'env_check':
-            if from_change > 600:
+        if dep.state.startswith('env_check') or dep.state.startswith("system_update"):
+            if from_change > 1200:
                 state_info[last_state] = from_change
                 logger.warning("Detected stuck deployment for the node '%s'" %
                         stats[dep.environment][dep.node_name][-1]['ip'])
@@ -174,7 +177,7 @@ def testing_environment(dep_env, file_id, dep_stats, nb_nodes = 2, random_select
     nodes = reserve_free_nodes(test_user_id, dep_stats, nb_nodes, random_select, dep_env)
     if len(nodes) == 0:
         logger.error("No available node")
-        sys.exit(2)
+        sys.exit(12)
     logger.info("Waiting the end of deployments")
     deployed_env = []
     db_session = open_session()
@@ -245,7 +248,13 @@ if __name__ == "__main__":
         stats_data = {}
         file_id = datetime.now().strftime("%y_%m_%d_%H_%M")
         file_stats = 'json_test/%d_nodes_%s.json' % (nb_nodes, file_id)
-        for env in [ { 'name': boot_test_environment } ]:
+        if '/' in file_stats:
+            dirs = file_stats.replace(os.path.basename(file_stats), '')
+            if not os.path.exists(dirs):
+                print("Path '%s' does not exist" % dirs)
+                sys.exit(12)
+        #for env in [ { 'name': boot_test_environment } ]:
+        for env in [ { "name": "ubuntu_20.04_32bit" } ]:
         #for env in cluster_desc["environments"].values():
             logger.info("Deploying the '%s' environment" % env['name'])
             testing_environment(env['name'], file_id, stats_data, nb_nodes, random_select)

@@ -380,6 +380,7 @@
                 colValue.className = 'col';
             }
             colValue.innerHTML = value.toString().substring(0,14);
+            colValue.title = value.toString();
             row.appendChild(colValue);
             return row;
         }

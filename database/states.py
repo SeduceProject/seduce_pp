@@ -52,15 +52,6 @@ process = {
 }
 
 
-# Select the right list of process states
-def select_process(process_name, env_name):
-    if process_name in process:
-        for p in process[process_name]:
-            if len(p['environments']) == 0 or env_name in p['environments']:
-                return p['states']
-    return []
-
-
 # State names must NOT include '_exec' or '_post'
 # 'lost' timeouts must be greater then 'before_reboot' timeouts
 # 0: infinite timeouts
@@ -80,9 +71,9 @@ state_desc = {
     'system_conf': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'boot_files': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'ssh_system': { 'exec': False, 'post': True, 'before_reboot': 150, 'lost': 180 },
-    'system_update': { 'exec': True, 'post': True, 'before_reboot': 0, 'lost': 360 },
+    'system_update': { 'exec': True, 'post': True, 'before_reboot': 0, 'lost': 0 },
     'boot_update': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
-    'user_conf': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
+    'user_conf': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 60 },
     'user_script': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 30 },
     'deployed': { 'exec': False, 'post': False, 'before_reboot': 0, 'lost': 0 },
 
@@ -103,6 +94,24 @@ state_desc = {
     'upload': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 0 },
     'upload_check': { 'exec': True, 'post': False, 'before_reboot': 0, 'lost': 0 }
 }
+
+# Get the process from a state name
+def get_process_from_state(state_name, env_name):
+    for process_name in process:
+        for states in process[process_name]:
+            if state_name in states["states"] and (
+                    len(states["environments"]) == 0 or env_name in states["environments"]):
+                return process_name
+    return ""
+
+# Select the right list of process states
+def select_process(process_name, env_name):
+    if process_name in process:
+        for p in process[process_name]:
+            if len(p['environments']) == 0 or env_name in p['environments']:
+                return p['states']
+    return []
+
 
 # Return True if SSH connections must use the 'ssh_user' property defined in the environment description
 def use_env_ssh_user(dep_state):
