@@ -1,5 +1,5 @@
 from database.connector import create_tables, open_session, close_session
-from database.states import select_process, state_desc
+from database.states import get_process_from_state, select_process, state_desc
 from database.tables import Deployment
 from datetime import datetime
 from lib.config_loader import load_cluster_desc
@@ -32,9 +32,15 @@ if __name__ == "__main__":
     for node in old_nodes:
         # Try to rescue lost nodes
         if node.state == "lost" and node.temp_info is not None:
-            node.process = "deploy"
-            node.state = node.temp_info.replace("_post","")
-            node.temp_info = None
+            state_name = node.temp_info.replace("_post","")
+            process_name = get_process_from_state(state_name, node.environment)
+            if len(process_name) == 0:
+                logger.error("[%s] No process with the state '%s'" % (node.node_name, state_name))
+            else:
+                node.process = process_name
+                node.state = state_name
+                node.temp_info = None
+        # Update the time of nodes that are deploying
         if node.state != "lost":
             node.updated_at = datetime.now()
     close_session(db_session)
