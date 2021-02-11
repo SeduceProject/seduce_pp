@@ -236,7 +236,7 @@ def analyze_port(switch_ports):
             # Cast to set to remove duplicate strings
             mac = set(process.stdout.split('\n'))
             # Keep only string that looks like mac addresses
-            mac = [m for m in mac if len(m) == 17]
+            mac = [m for m in mac if len(m) == 17 and (m.startswith("dc:a6:32") or m.startswith("b8:27:eb")) ]
             if len(mac) == 1:
                 # The MAC address is detected
                 node_name_idx += 1
@@ -283,6 +283,8 @@ def analyze_port(switch_ports):
                             node['model'] = 'RPI4B'
                         if rev == 'a020d3':
                             node['model'] = 'RPI3Bplus'
+                    else:
+                        node['model'] = 'RPI4B'
                     if 'Serial' in output:
                         node['id'] = output.split()[-1][-8:]
                 ssh.close()
