@@ -1,3 +1,8 @@
+### Deprecated project
+This project is deprecated and unmaintained. Two projects replace this one:
+* [piseduce_webui](https://github.com/SeduceProject/piseduce_webui)
+* [piseduce_agent](https://github.com/SeduceProject/piseduce_agent)
+
 ### PiMaster Installation from Images
 * Download the piseduce.img.tar.gz image
 * Write it to the SD CARD
